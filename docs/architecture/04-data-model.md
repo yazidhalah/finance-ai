@@ -1,6 +1,6 @@
 # 04 — PostgreSQL Entity Model
 
-Status: DRAFT, amended by slice 1 (see DM-06, DM-06a, DM-06b). The DDL below is **illustrative
+Status: DRAFT, amended by slice 1 (DM-06, DM-06a, DM-06b) and slice 2 (DM-20a). The DDL below is **illustrative
 specification**, not a migration.
 Migrations are written inside their vertical slice (doc 10) and must match this
 document or amend it.
@@ -298,6 +298,7 @@ CREATE TABLE customers (
   default_currency   char(3) NOT NULL DEFAULT 'JOD',
   risk_flag          text NOT NULL DEFAULT 'None'
                      CHECK (risk_flag IN ('None','Watch','HighRisk','Legal')),
+  status             text NOT NULL DEFAULT 'Active' CHECK (status IN ('Active','Inactive')),  -- DM-20a
   broken_promise_count_12m int NOT NULL DEFAULT 0,   -- maintained by job, advisory
   bounced_cheque_count_12m int NOT NULL DEFAULT 0,
   notes              text NULL,
@@ -332,6 +333,14 @@ CREATE UNIQUE INDEX one_primary_contact
 teh marbuta/heh (ة → ه) and yeh forms (ى → ي), and removes diacritics; a
 `pg_trgm` GIN index on it powers search and duplicate detection. Without this,
 "شركة الأمل" and "شركه الامل" are different customers and the import creates duplicates.
+
+**DM-20a** (added in slice 2) `customers.status` (`Active` / `Inactive`) is distinct from
+`deleted_at`: *inactive* means "we no longer trade with them but the history stands and they
+still appear in reports"; *deleted* means "should never have existed" and hides the row. The
+normalization of DM-20 is implemented as an `IMMUTABLE` SQL function `app_normalize_arabic(text)`
+feeding a stored generated column `normalized_name`, so search, duplicate detection and storage
+share one copy of the rules. The trigram index leads with `tenant_id` via `btree_gin` (§7).
+`customers` and `customer_contacts` also carry the §3.1 audit columns and `row_version`.
 
 **DM-21 Merge.** `customers.merged_into_id` (self FK, composite) records a merge;
 the merged row is retained, never deleted, and all child rows are re-pointed in one

@@ -189,3 +189,102 @@ public sealed class Validation
     private void Add(string field, string code) =>
         this.errors.Add(new ApiProblems.FieldError(field, code, $"errors.{field}.{code}"));
 }
+
+// ---------------------------------------------------------------------------------------
+// Slice 2 — Customers
+// ---------------------------------------------------------------------------------------
+
+/// <summary>
+/// API-05: money is an object, and the amount is a <b>string</b> with exactly three decimals.
+/// A JSON number is an IEEE-754 double in most clients and would violate FIN-01 the moment a
+/// browser parsed it. No arithmetic happens on this type anywhere; it carries a stored figure.
+/// </summary>
+public sealed record MoneyDto(string Amount, string Currency)
+{
+    public static MoneyDto From(decimal amount, string currency) =>
+        new(amount.ToString("F3", System.Globalization.CultureInfo.InvariantCulture), currency);
+}
+
+/// <summary>Inbound money: parsed to <c>decimal</c>, refused if it carries more than three decimals.</summary>
+public sealed record MoneyInput(string? Amount, string? Currency)
+{
+    public bool TryParse(out decimal amount)
+    {
+        amount = 0;
+        return this.Amount is not null
+            && decimal.TryParse(
+                this.Amount,
+                System.Globalization.NumberStyles.AllowDecimalPoint | System.Globalization.NumberStyles.AllowLeadingSign,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out amount)
+            && amount >= 0
+            && amount.Scale <= 3;
+    }
+}
+
+public sealed record CustomerRequest(
+    string? Code,
+    string? NameAr,
+    string? NameEn,
+    string? LegalName,
+    string? TaxRegistrationNo,
+    string? PreferredLanguage,
+    int? PaymentTermsDays,
+    MoneyInput? CreditLimit,
+    string? DefaultCurrency,
+    string? RiskFlag,
+    string? Status,
+    string? Notes,
+    /// <summary>PATCH only: a null field means "unchanged", so removing a limit needs an explicit flag.</summary>
+    bool? ClearCreditLimit);
+
+public sealed record CustomerResponse(
+    Guid Id,
+    string? Code,
+    string? NameAr,
+    string? NameEn,
+    string? LegalName,
+    string? TaxRegistrationNo,
+    string PreferredLanguage,
+    int PaymentTermsDays,
+    MoneyDto? CreditLimit,
+    string DefaultCurrency,
+    string RiskFlag,
+    string Status,
+    int BrokenPromiseCount12m,
+    int BouncedChequeCount12m,
+    string? Notes,
+    /// <summary>FIN-15 balance blocks per currency. Empty until slice 3 — an empty list, not zeros (D-2).</summary>
+    IReadOnlyList<object> Balances,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    string RowVersion);
+
+public sealed record CustomerListResponse(IReadOnlyList<CustomerResponse> Items, string? NextCursor, int TotalCount);
+
+public sealed record ContactRequest(
+    string? Name,
+    string? RoleTitle,
+    string? Email,
+    string? PhoneE164,
+    bool? IsPrimary,
+    bool? IsBilling,
+    string? PreferredLanguage);
+
+public sealed record ContactResponse(
+    Guid Id,
+    Guid CustomerId,
+    string Name,
+    string? RoleTitle,
+    string? Email,
+    string? PhoneE164,
+    bool IsPrimary,
+    bool IsBilling,
+    string? PreferredLanguage,
+    string RowVersion);
+
+public sealed record ContactListResponse(IReadOnlyList<ContactResponse> Items);
+
+public sealed record DuplicateCandidate(Guid CustomerId, Guid OtherCustomerId, string? NameA, string? NameB, double Similarity);
+
+public sealed record DuplicateListResponse(IReadOnlyList<DuplicateCandidate> Items);

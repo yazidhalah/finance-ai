@@ -198,3 +198,95 @@ export const api = {
       totalCount: number
     }>('/organization/members'),
 }
+
+// ---------------------------------------------------------------------------------------
+// Slice 2 — Customers
+// ---------------------------------------------------------------------------------------
+
+/** API-05: the amount is a string. The client formats it; it never adds, subtracts or compares it (UI-30). */
+export interface Money {
+  amount: string
+  currency: string
+}
+
+export interface Customer {
+  id: string
+  code: string | null
+  nameAr: string | null
+  nameEn: string | null
+  legalName: string | null
+  taxRegistrationNo: string | null
+  preferredLanguage: 'ar' | 'en'
+  paymentTermsDays: number
+  creditLimit: Money | null
+  defaultCurrency: string
+  riskFlag: 'None' | 'Watch' | 'HighRisk' | 'Legal'
+  status: 'Active' | 'Inactive'
+  notes: string | null
+  balances: unknown[]
+  rowVersion: string
+}
+
+export interface CustomerInput {
+  code?: string
+  nameAr?: string
+  nameEn?: string
+  legalName?: string
+  taxRegistrationNo?: string
+  preferredLanguage?: 'ar' | 'en'
+  paymentTermsDays?: number
+  creditLimit?: { amount: string; currency: string }
+  clearCreditLimit?: boolean
+  defaultCurrency?: string
+  riskFlag?: Customer['riskFlag']
+  status?: Customer['status']
+  notes?: string
+}
+
+export interface Contact {
+  id: string
+  customerId: string
+  name: string
+  roleTitle: string | null
+  email: string | null
+  phoneE164: string | null
+  isPrimary: boolean
+  isBilling: boolean
+  preferredLanguage: 'ar' | 'en' | null
+  rowVersion: string
+}
+
+export const customersApi = {
+  list: (params: { q?: string; cursor?: string; limit?: number }) => {
+    const query = new URLSearchParams()
+    if (params.q) query.set('q', params.q)
+    if (params.cursor) query.set('cursor', params.cursor)
+    if (params.limit) query.set('limit', String(params.limit))
+    const suffix = query.size ? `?${query}` : ''
+    return request<{ items: Customer[]; nextCursor: string | null; totalCount: number }>(`/customers${suffix}`)
+  },
+
+  get: (id: string) => request<Customer>(`/customers/${id}`),
+
+  create: (body: CustomerInput) => request<Customer>('/customers', { method: 'POST', body }),
+
+  update: (id: string, body: CustomerInput, rowVersion: string) =>
+    request<Customer>(`/customers/${id}`, { method: 'PATCH', body, ifMatch: rowVersion }),
+
+  remove: (id: string) => request<void>(`/customers/${id}`, { method: 'DELETE' }),
+
+  contacts: (id: string) => request<{ items: Contact[] }>(`/customers/${id}/contacts`),
+
+  addContact: (id: string, body: { name: string; email?: string; phoneE164?: string; roleTitle?: string; isPrimary?: boolean }) =>
+    request<Contact>(`/customers/${id}/contacts`, { method: 'POST', body }),
+
+  promoteContact: (id: string, contact: Contact) =>
+    request<Contact>(`/customers/${id}/contacts/${contact.id}`, {
+      method: 'PATCH',
+      body: { isPrimary: true },
+      ifMatch: contact.rowVersion,
+    }),
+
+  removeContact: (id: string, contactId: string) =>
+    request<void>(`/customers/${id}/contacts/${contactId}`, { method: 'DELETE' }),
+}

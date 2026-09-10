@@ -12,7 +12,7 @@ namespace FinanceAi.TestSupport;
 /// Hosts the real API in-process against the test database. Nothing is stubbed: the same middleware,
 /// the same authentication, the same transactions and the same RLS policies as production.
 /// </summary>
-public sealed class ApiFactory : WebApplicationFactory<Program>
+public class ApiFactory : WebApplicationFactory<Program>
 {
     private readonly System.Runtime.CompilerServices.ConditionalWeakTable<HttpClient, CookieContainerHandler> jars = new();
 

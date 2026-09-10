@@ -43,14 +43,14 @@ export function Field({
   )
 }
 
-export function TextInput({ invalid, ...props }: InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }) {
+export function TextInput({ invalid, className = '', ...props }: InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }) {
   return (
     <input
       {...props}
       aria-invalid={invalid || undefined}
       className={`w-full rounded-md border px-3 py-2 text-start outline-none focus-visible:ring-2 focus-visible:ring-sky-600 ${
         invalid ? 'border-red-600' : 'border-slate-300'
-      }`}
+      } ${className}`}
     />
   )
 }

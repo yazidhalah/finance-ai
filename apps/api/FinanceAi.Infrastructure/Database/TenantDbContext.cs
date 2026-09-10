@@ -31,6 +31,10 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
 
     public DbSet<AuditEvent> AuditEvents => this.Set<AuditEvent>();
 
+    public DbSet<Customer> Customers => this.Set<Customer>();
+
+    public DbSet<CustomerContact> CustomerContacts => this.Set<CustomerContact>();
+
     public override int SaveChanges()
     {
         this.StampTenant();
@@ -51,8 +55,15 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
         ConfigureSettings(model);
         ConfigureRefreshTokens(model);
         ConfigureAuditEvents(model);
+        ConfigureCustomers(model);
+        ConfigureCustomerContacts(model);
 
         this.ApplyTenantQueryFilters(model);
+
+        // DM-08: a soft-deleted customer is invisible to ordinary queries. Named so it composes with
+        // the tenant filter rather than replacing it, and so a query that must see deleted rows
+        // (a future "restore") can ignore this one filter by name and still keep the tenant one.
+        model.Entity<Customer>().HasQueryFilter("SoftDelete", c => c.DeletedAt == null);
     }
 
     /// <summary>
@@ -79,7 +90,7 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
     /// </summary>
     private void ApplyTenantQueryFilter<TEntity>(ModelBuilder model)
         where TEntity : class, ITenantScoped =>
-        model.Entity<TEntity>().HasQueryFilter(e => e.TenantId == this.CurrentTenantId);
+        model.Entity<TEntity>().HasQueryFilter("Tenant", e => e.TenantId == this.CurrentTenantId);
 
     private void StampTenant()
     {
@@ -208,5 +219,56 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.RequestId).HasColumnName("request_id");
             e.Property(x => x.PrevHash).HasColumnName("prev_hash");
             e.Property(x => x.Hash).HasColumnName("hash");
+        });
+
+    private static void ConfigureCustomers(ModelBuilder model) =>
+        model.Entity<Customer>(e =>
+        {
+            e.ToTable("customers");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.Code).HasColumnName("code");
+            e.Property(x => x.NameAr).HasColumnName("name_ar");
+            e.Property(x => x.NameEn).HasColumnName("name_en");
+            e.Property(x => x.LegalName).HasColumnName("legal_name");
+            e.Property(x => x.TaxRegistrationNo).HasColumnName("tax_registration_no");
+            e.Property(x => x.PreferredLanguage).HasColumnName("preferred_language");
+            e.Property(x => x.PaymentTermsDays).HasColumnName("payment_terms_days");
+            e.Property(x => x.CreditLimitAmount).HasColumnName("credit_limit_amount").HasColumnType("numeric(19,3)");
+            e.Property(x => x.CreditLimitCurrency).HasColumnName("credit_limit_currency").HasColumnType("char(3)");
+            e.Property(x => x.DefaultCurrency).HasColumnName("default_currency").HasColumnType("char(3)");
+            e.Property(x => x.RiskFlag).HasColumnName("risk_flag").HasConversion<string>();
+            e.Property(x => x.Status).HasColumnName("status").HasConversion<string>();
+            e.Property(x => x.BrokenPromiseCount12m).HasColumnName("broken_promise_count_12m");
+            e.Property(x => x.BouncedChequeCount12m).HasColumnName("bounced_cheque_count_12m");
+            e.Property(x => x.Notes).HasColumnName("notes");
+            e.Property(x => x.NormalizedName).HasColumnName("normalized_name").ValueGeneratedOnAddOrUpdate();
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.CreatedBy).HasColumnName("created_by");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.Property(x => x.UpdatedBy).HasColumnName("updated_by");
+            e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
+            e.Property(x => x.DeletedAt).HasColumnName("deleted_at");
+        });
+
+    private static void ConfigureCustomerContacts(ModelBuilder model) =>
+        model.Entity<CustomerContact>(e =>
+        {
+            e.ToTable("customer_contacts");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.CustomerId).HasColumnName("customer_id");
+            e.Property(x => x.Name).HasColumnName("name");
+            e.Property(x => x.RoleTitle).HasColumnName("role_title");
+            e.Property(x => x.Email).HasColumnName("email").HasColumnType("citext");
+            e.Property(x => x.PhoneE164).HasColumnName("phone_e164");
+            e.Property(x => x.IsPrimary).HasColumnName("is_primary");
+            e.Property(x => x.IsBilling).HasColumnName("is_billing");
+            e.Property(x => x.PreferredLanguage).HasColumnName("preferred_language");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
         });
 }
