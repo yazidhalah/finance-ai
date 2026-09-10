@@ -4,11 +4,12 @@ Status: **Approved for implementation.** These documents are the source of truth
 has had to diverge from them, the divergence is recorded in the slice's own document under
 [`slices/`](slices/) **and** amended here in the same commit (DM-34).
 
-Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b).
+Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b) and slice 2 (DM-20a).
 
 | Slice | Document | Status |
 |-------|----------|--------|
 | 1 | [slices/slice-01-organization-and-auth.md](slices/slice-01-organization-and-auth.md) | Implemented and tested |
+| 2 | [slices/slice-02-customers.md](slices/slice-02-customers.md) · [review](slices/slice-02-review.md) | Implemented and tested; merge and statement deferred to slice 3 |
 
 **Open questions still outstanding.** Q-01, Q-02, Q-04 and Q-06 in document 00 are marked as
 blocking for slice 1. None of them touches organization, identity, roles or sessions — they concern

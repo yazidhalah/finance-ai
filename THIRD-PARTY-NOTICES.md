@@ -9,7 +9,7 @@ source-available license is a blocking review finding, not a discussion.
 
 Versions are pinned; lockfiles (`package-lock.json`, `packages.lock.json`) are committed.
 
-Last updated: slice 1 — Organization & Authentication.
+Last updated: slice 2 — Customers.
 
 ---
 
@@ -66,6 +66,16 @@ ASP.NET Core, the .NET runtime and the base class libraries ship with the .NET 1
 
 Test-only dependencies do not ship, but they are recorded: a license that forbids commercial use
 would still be a problem in CI.
+
+## PostgreSQL extensions
+
+Bundled with PostgreSQL (contrib), enabled by the bootstrap script. No separate download.
+
+| Extension | License | Why |
+|-----------|---------|-----|
+| `citext` | PostgreSQL License | Case-insensitive email columns (slice 1). |
+| `pg_trgm` | PostgreSQL License | Arabic-aware customer search and duplicate detection, DM-20 (slice 2). |
+| `btree_gin` | PostgreSQL License | Lets the trigram index lead with `tenant_id`, doc 04 §7 (slice 2). |
 
 ## Infrastructure (container images)
 

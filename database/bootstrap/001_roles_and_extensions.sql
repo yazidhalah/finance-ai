@@ -12,6 +12,14 @@
 -- citext gives case-insensitive email comparison in the database rather than in every query.
 CREATE EXTENSION IF NOT EXISTS citext;
 
+-- pg_trgm powers Arabic-aware customer search and duplicate detection (DM-20). Trusted, but
+-- creating it needs CREATE on the database, which the migrator role deliberately lacks.
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- btree_gin lets a GIN trigram index lead with tenant_id, which doc 04 §7 requires of every index:
+-- a search index that does not partition by tenant invites a plan that scans across tenants.
+CREATE EXTENSION IF NOT EXISTS btree_gin;
+
 -- Least-privilege roles (SEC-100). Three separate roles, three separate connection strings.
 DO $$
 BEGIN

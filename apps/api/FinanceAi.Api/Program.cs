@@ -48,6 +48,7 @@ api.MapAuthEndpoints();
 api.MapMeEndpoints();
 api.MapOrganizationEndpoints();
 api.MapAuditEndpoints();
+api.MapCustomerEndpoints();
 
 // SEC-10: refuse to boot if any endpoint forgot to declare how it is authorized. This runs before
 // the first request is served, so the failure mode of a forgotten declaration is a crash at deploy
@@ -108,6 +109,9 @@ public static class ApiServiceRegistration
         services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<AuditChainVerifier>();
         services.AddScoped<PlatformIdentityStore>();
+
+        // Slice 3 replaces this with the real open-balance query (doc 10 §2.4).
+        services.AddScoped<FinanceAi.Domain.Entities.ICustomerBalanceGuard, FinanceAi.Domain.Entities.NoInvoicesYetBalanceGuard>();
 
         services.AddSingleton<IPasswordHasher, Argon2idPasswordHasher>();
         services.AddSingleton(TimeProvider.System);

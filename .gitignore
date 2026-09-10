@@ -17,3 +17,4 @@ Thumbs.db
 *.db
 *.sqlite3
 /infrastructure/data/
+*.tsbuildinfo

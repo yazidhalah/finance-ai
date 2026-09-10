@@ -94,7 +94,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
         // Pinned so that a permission becoming universal is a deliberate, visible change rather than
         // a quiet loss of test coverage.
         Assert.Equal(
-            ["tenant.read"],
+            ["customers.read", "tenant.read"],
             universal.Distinct(StringComparer.Ordinal).OrderBy(p => p, StringComparer.Ordinal).ToList());
     }
 
@@ -150,16 +150,16 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
         var organizationA = await fixture.Api.CreateOrganizationAsync("Sweep A");
         var organizationB = await fixture.Api.CreateOrganizationAsync("Sweep B");
 
-        // A real, existing id in B — not a random guid, so a 404 proves scoping rather than absence.
-        var memberOfB = await fixture.Database.ScalarAsync<Guid>(
-            "SELECT id FROM tenant_memberships WHERE tenant_id = @t LIMIT 1", ("t", organizationB.TenantId));
-        Assert.NotEqual(Guid.Empty, memberOfB);
+        // Real, existing ids in B — not random guids, so a 404 proves scoping rather than absence.
+        // Each slice that adds an entity with an {id} route registers how to create one in B here;
+        // a route whose entity has no registered id falls back to B's membership id.
+        var idsInB = await CreateEntitiesInAsync(organizationB);
 
         using var clientA = fixture.Api.AuthenticatedClient(organizationA.OwnerSession);
 
         foreach (var endpoint in withIdParameter)
         {
-            var response = await SendAsync(clientA, endpoint, memberOfB);
+            var response = await SendAsync(clientA, endpoint, IdFor(endpoint, idsInB), idsInB.ContactId);
 
             Assert.True(
                 response.StatusCode == HttpStatusCode.NotFound,
@@ -211,7 +211,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     {
         var endpoints = this.Endpoints();
 
-        Assert.Equal(13, endpoints.Count);
+        Assert.Equal(23, endpoints.Count);
         Assert.All(endpoints, e => Assert.True(e.Permission is not null || e.Access is not null));
 
         // The anonymous set is exactly registration, login and refresh — nothing has drifted into it.
@@ -249,12 +249,37 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     private static string Normalize(string? template) =>
         (template ?? string.Empty).Trim('/');
 
+    private sealed record ForeignIds(Guid MembershipId, Guid CustomerId, Guid ContactId);
+
+    /// <summary>One real row of every {id}-addressed entity, inside organization B.</summary>
+    private async Task<ForeignIds> CreateEntitiesInAsync(ApiScenario.Organization organization)
+    {
+        var membershipId = await fixture.Database.ScalarAsync<Guid>(
+            "SELECT id FROM tenant_memberships WHERE tenant_id = @t LIMIT 1", ("t", organization.TenantId));
+
+        using var client = fixture.Api.AuthenticatedClient(organization.OwnerSession);
+
+        var customer = await (await client.PostAsJsonAsync("/api/v1/customers", new { nameEn = "Sweep target" }, ApiScenario.Json))
+            .Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(ApiScenario.Json);
+        var customerId = customer.GetProperty("id").GetGuid();
+
+        var contact = await (await client.PostAsJsonAsync($"/api/v1/customers/{customerId}/contacts", new { name = "Sweep contact" }, ApiScenario.Json))
+            .Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(ApiScenario.Json);
+
+        Assert.NotEqual(Guid.Empty, membershipId);
+        return new ForeignIds(membershipId, customerId, contact.GetProperty("id").GetGuid());
+    }
+
+    private static Guid IdFor(EndpointUnderTest endpoint, ForeignIds ids) =>
+        endpoint.Template.Contains("customers", StringComparison.Ordinal) ? ids.CustomerId : ids.MembershipId;
+
     private static Task<HttpResponseMessage> SendAsync(
-        HttpClient client, EndpointUnderTest endpoint, Guid id)
+        HttpClient client, EndpointUnderTest endpoint, Guid id, Guid? secondaryId = null)
     {
         var path = "/" + endpoint.Template
             .Replace("{id:guid}", id.ToString(), StringComparison.Ordinal)
-            .Replace("{id}", id.ToString(), StringComparison.Ordinal);
+            .Replace("{id}", id.ToString(), StringComparison.Ordinal)
+            .Replace("{contactId:guid}", (secondaryId ?? Guid.CreateVersion7()).ToString(), StringComparison.Ordinal);
 
         var request = new HttpRequestMessage(new HttpMethod(endpoint.Method), path);
 
