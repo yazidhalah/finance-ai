@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+/*
+ * UI-25: an Arabic face with a matching Latin face, so a mixed string does not visually jump.
+ * Both are open-licensed and recorded in THIRD-PARTY-NOTICES.md. They are referenced by family
+ * name rather than bundled, so the build pulls nothing from a third-party CDN at runtime.
+ */
+@theme {
+  --font-sans: "IBM Plex Sans Arabic", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* UI-25: money and identifiers align in a column whichever direction the page runs. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

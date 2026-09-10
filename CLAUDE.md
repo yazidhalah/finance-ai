@@ -58,5 +58,8 @@ For each vertical slice:
 7. Stop and report if any required test fails — do not proceed to the next slice.
 
 # Current Phase
-Requirements and architecture only. Do not write application code until the
-documents under /docs are reviewed and approved.
+Implementation, one vertical slice at a time, against the approved specification in /docs.
+Slice 1 (Organization & Authentication) is complete — see
+/docs/slices/slice-01-organization-and-auth.md. Every later slice copies the tenant-isolation
+pattern established there (§5 of that document). Do not start a slice until the previous one's
+definition of done (doc 09 §9) is met.
