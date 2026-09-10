@@ -1,6 +1,7 @@
 # 04 — PostgreSQL Entity Model
 
-Status: DRAFT. The DDL below is **illustrative specification**, not a migration.
+Status: DRAFT, amended by slice 1 (see DM-06, DM-06a, DM-06b). The DDL below is **illustrative
+specification**, not a migration.
 Migrations are written inside their vertical slice (doc 10) and must match this
 document or amend it.
 
@@ -48,9 +49,56 @@ fail closed (no rows), never open. Policies are written so a missing setting yie
 `NULL = ...` → NULL → not true → **no rows**. There MUST be an integration test that
 opens a connection without setting the GUC and asserts zero rows from every table.
 
-**DM-06** Platform-level tables (`tenants`, `users`, `audit_log_platform`, migration
-history) are exempt from tenant RLS and are reachable only by explicitly
-platform-scoped code paths, which are individually reviewed.
+**DM-06** Platform-level tables (`tenants`, `users`, `tenant_memberships`, `refresh_tokens`,
+migration history) are reachable only by explicitly platform-scoped code paths, which are
+individually reviewed.
+
+> **Amended in slice 1.** The original text exempted these tables from RLS entirely. As built they
+> are *not* exempt: every one of them has RLS enabled and forced, and the identity flows that must
+> run before a tenant is known (login, refresh, registration, "which organizations do I belong
+> to") open a **platform scope** — a transaction-local `app.platform_scope = 'on'` — rather than
+> running unprotected.
+>
+> - `tenants` is visible when `id = app_current_tenant()`, or in platform scope.
+> - `users` is visible in platform scope, or — inside a tenant-scoped request — only to co-members
+>   of the current tenant, so "list my organization's members" cannot reach a stranger. A user may
+>   always update their own row (`PATCH /me`).
+> - `tenant_memberships` and `refresh_tokens` follow the ordinary tenant policy, plus platform scope.
+> - `tenant_settings` and `audit_events` have **no platform clause at all**: business data always
+>   requires a real tenant, so even an identity flow cannot read them without one.
+>
+> Platform scope is opened by exactly one file, `PlatformIdentityStore`. A static test over the
+> source tree fails the build if any other file calls it, and a second test confines
+> `IgnoreQueryFilters()` to that file and the audit writer. This is strictly stronger than the
+> original DM-06 and keeps the escape hatch reviewable.
+
+**DM-06a** `refresh_tokens` (added in slice 1) stores opaque, rotating refresh tokens with family
+revocation (SEC-04). Only the SHA-256 of each token is stored. Its foreign key is composite —
+`(tenant_id, user_id) REFERENCES tenant_memberships (tenant_id, user_id)` — so a session for a
+tenant the user is not a member of is unrepresentable (layer 3, DM-10).
+
+```sql
+CREATE TABLE refresh_tokens (
+  id             uuid PRIMARY KEY,
+  tenant_id      uuid NOT NULL REFERENCES tenants(id),
+  user_id        uuid NOT NULL REFERENCES users(id),
+  family_id      uuid NOT NULL,
+  token_hash     text NOT NULL UNIQUE,
+  issued_at      timestamptz NOT NULL DEFAULT now(),
+  expires_at     timestamptz NOT NULL,
+  rotated_at     timestamptz NULL,
+  revoked_at     timestamptz NULL,
+  revoked_reason text NULL
+                 CHECK (revoked_reason IN ('rotated','logout','reuse_detected','superseded')),
+  CONSTRAINT refresh_tokens_tenant_id_key UNIQUE (tenant_id, id),
+  CONSTRAINT fk_refresh_token_membership
+    FOREIGN KEY (tenant_id, user_id) REFERENCES tenant_memberships (tenant_id, user_id)
+);
+```
+
+**DM-06b** `tenants` carries `row_version bigint NOT NULL DEFAULT 1` (added in slice 1). §3.1 puts
+`row_version` on every table for optimistic concurrency (API-09) but §4's `tenants` DDL omitted it;
+the column is required for `PATCH /organization` to honour `If-Match`.
 
 ---
 
@@ -166,7 +214,8 @@ CREATE TABLE tenants (
   default_locale        text NOT NULL DEFAULT 'ar-JO' CHECK (default_locale IN ('ar-JO','en-JO')),
   status                text NOT NULL DEFAULT 'Active'
                         CHECK (status IN ('Active','Suspended','Closed')),
-  created_at            timestamptz NOT NULL DEFAULT now()
+  created_at            timestamptz NOT NULL DEFAULT now(),
+  row_version           bigint NOT NULL DEFAULT 1        -- optimistic concurrency (API-09, DM-06b)
 );
 
 CREATE TABLE users (                              -- global identity, not tenant-scoped

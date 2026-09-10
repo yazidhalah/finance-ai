@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- A support library, not a test project. Without this, `dotnet test` tries to run it as one,
+         finds no test host, and reports "Test Run Aborted" beside three green suites — the kind of
+         noise that trains people to ignore CI output. -->
+    <IsTestProject>false</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\apps\api\FinanceAi.Api\FinanceAi.Api.csproj" />
+    <ProjectReference Include="..\..\..\apps\api\FinanceAi.Infrastructure\FinanceAi.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\apps\api\FinanceAi.Domain\FinanceAi.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

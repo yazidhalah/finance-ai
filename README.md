@@ -8,11 +8,46 @@ No other module is designed or built until this one passes its acceptance tests
 
 ## Current phase
 
-**Requirements and architecture.** No application code is written yet. The full
-specification lives under [`/docs`](docs/README.md) and is awaiting review and approval.
+**Building, from the approved specification.** Slice 1 — Organization & Authentication — is
+implemented and tested; see
+[`docs/slices/slice-01-organization-and-auth.md`](docs/slices/slice-01-organization-and-auth.md)
+for its acceptance criteria, what it deliberately defers, and what its tests found.
 
-Start here: **[docs/README.md](docs/README.md)** — the index and the recommended reading
-order.
+The specification under [`/docs`](docs/README.md) remains the source of truth. Start there:
+**[docs/README.md](docs/README.md)** — the index and the recommended reading order.
+
+## Running it locally
+
+Prerequisites: .NET 10 SDK (pinned in `global.json`), Node 20+, Podman.
+
+```bash
+cp .env.example .env          # then set the passwords and generate a signing key:
+#   openssl rand -base64 24                                   -> POSTGRES_*_PASSWORD
+#   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 | base64 -w0
+#                                                             -> JWT_SIGNING_KEY_PEM_BASE64
+
+podman compose -f infrastructure/compose.yml up -d            # PostgreSQL 16 + pgvector, Mailpit
+
+dotnet run --project apps/api/FinanceAi.Migrator -- up        # least-privilege roles, then migrations
+dotnet run --project apps/api/FinanceAi.Api                   # http://127.0.0.1:5080
+npm --prefix apps/web install && npm --prefix apps/web run dev # http://127.0.0.1:5173
+```
+
+`.env` is git-ignored and no credential is ever written into source (SEC-67). The migrator's
+`bootstrap` step is the only thing that uses the administrative connection; the application connects
+as `finance_app`, which owns nothing and cannot bypass row-level security.
+
+## Running the tests
+
+```bash
+dotnet format --verify-no-changes     # formatting
+dotnet build --configuration Release  # build
+dotnet test  --configuration Release  # unit + integration + tenant-isolation, against real PostgreSQL
+npm --prefix apps/web run test        # web units: i18n parity, RTL, permission-filtered navigation
+```
+
+The .NET suites provision their own throwaway database per run, apply the real migrations to it, and
+drop it afterwards. Every test creates its own tenants (T-04).
 
 | Area | Document |
 |------|----------|
@@ -33,13 +68,17 @@ order.
 
 ```
 apps/api          ASP.NET Core modular monolith (.NET 10, pinned in global.json)
-apps/web          React + TypeScript + Vite + Tailwind + shadcn/ui
-apps/worker       Scheduled jobs (case creation, PTP evaluation, invariants, briefings)
-services/ai       Python + FastAPI, Qwen3 via Ollama; prompts, schemas, evaluations
-database          Migrations and seed data (PostgreSQL 16 + pgvector)
+  FinanceAi.Domain          entities, roles, the permission catalogue
+  FinanceAi.Infrastructure  EF Core, tenant scope, Argon2id, tokens, audit, migration runner
+  FinanceAi.Api             endpoints, authorization, middleware, structured logging
+  FinanceAi.Migrator        the migration job — the only thing that performs DDL
+apps/web          React + TypeScript + Vite + Tailwind (bilingual, RTL-first)
+apps/worker       Scheduled jobs (case creation, PTP evaluation, invariants, briefings) — not yet built
+services/ai       Python + FastAPI, Qwen3 via Ollama; prompts, schemas, evaluations — not yet built
+database          bootstrap (roles) and forward-only SQL migrations (PostgreSQL 16 + pgvector)
 infrastructure    Podman Compose and deployment
-tests             unit · integration · e2e · security · ai-evaluation
-docs              The specification (this is the current deliverable)
+tests             unit · integration · security · support (e2e and ai-evaluation not yet built)
+docs              The specification, plus a per-slice acceptance record under docs/slices
 ```
 
 ## Ground rules

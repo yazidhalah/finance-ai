@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.22.0" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The unit suite asserts the Argon2id parameters that SEC-01 mandates, which means reading
+         the encoded hash back. That parser is an implementation detail, not public surface. -->
+    <InternalsVisibleTo Include="FinanceAi.UnitTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FinanceAi.Domain\FinanceAi.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The SQL that actually runs is embedded here, so the migrator, the API and the test
+         fixture can never apply different bytes than the files reviewed in database/. -->
+    <EmbeddedResource Include="../../../database/bootstrap/*.sql" LogicalName="FinanceAi.Infrastructure.Sql.bootstrap.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../../database/migrations/*.sql" LogicalName="FinanceAi.Infrastructure.Sql.migrations.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

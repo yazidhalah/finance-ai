@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/apps/" />
+  <Folder Name="/apps/api/">
+    <Project Path="apps/api/FinanceAi.Api/FinanceAi.Api.csproj" />
+    <Project Path="apps/api/FinanceAi.Domain/FinanceAi.Domain.csproj" />
+    <Project Path="apps/api/FinanceAi.Infrastructure/FinanceAi.Infrastructure.csproj" />
+    <Project Path="apps/api/FinanceAi.Migrator/FinanceAi.Migrator.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/integration/">
+    <Project Path="tests/integration/FinanceAi.IntegrationTests/FinanceAi.IntegrationTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/security/">
+    <Project Path="tests/security/FinanceAi.SecurityTests/FinanceAi.SecurityTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/support/">
+    <Project Path="tests/support/FinanceAi.TestSupport/FinanceAi.TestSupport.csproj" />
+  </Folder>
+  <Folder Name="/tests/unit/">
+    <Project Path="tests/unit/FinanceAi.UnitTests/FinanceAi.UnitTests.csproj" />
+  </Folder>
+</Solution>
