@@ -63,3 +63,32 @@ Slice 1 (Organization & Authentication) is complete — see
 /docs/slices/slice-01-organization-and-auth.md. Every later slice copies the tenant-isolation
 pattern established there (§5 of that document). Do not start a slice until the previous one's
 definition of done (doc 09 §9) is met.
+
+# Slice Self-Review (required before any slice is reported complete)
+Before declaring a slice complete, write docs/slices/slice-0X-review.md
+answering explicitly, for every change in the slice:
+1. Every new endpoint: authenticated and routed through
+   TenantScopeMiddleware, or deliberately anonymous — state which, and why.
+2. Every new table: tenant_id, RLS enabled AND forced, at least one policy,
+   and a composite (tenant_id, id) foreign key to any other tenant-scoped
+   table it references. The existing enumeration-based tests in
+   TenantIsolationTests are not enough on their own for anything with
+   non-standard access patterns — add a targeted test.
+3. Any new code path that runs before a tenant or full authentication is
+   established, or that queries across more than one tenant by design
+   (e.g. anything added to PlatformIdentityStore): does every branch take
+   comparable time and disclose comparable information regardless of
+   whether the target exists, matches, or is in a valid state? Name any
+   branch that returns early before a cryptographic comparison or a full
+   data fetch.
+4. Any new money-related field or calculation: decimal type only, no
+   float/double; state where rounding happens if an amount is split,
+   allocated, or converted.
+5. Any AI-touching code: does the backend validate the AI's JSON output
+   against a strict schema before acting on it? Can the AI's output alone
+   ever finalize a financial fact (mark paid, write off, escalate) without
+   passing through a deterministic check or human approval first?
+6. Any new dependency: added to THIRD-PARTY-NOTICES.md in the same commit,
+   with an accurate license.
+If any answer is "not sure" rather than a clear yes, stop and flag it in
+the review doc instead of merging.
