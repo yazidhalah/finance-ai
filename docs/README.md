@@ -24,6 +24,7 @@ Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), sl
 | 13 | [slices/slice-13-auth-completion.md](slices/slice-13-auth-completion.md) · [review](slices/slice-13-review.md) | TOTP MFA (required for Owner/Admin after a 7-day grace), password reset, re-authentication for ownership transfer and write-off approval |
 | 14 | [slices/slice-14-deployment.md](slices/slice-14-deployment.md) · [review](slices/slice-14-review.md) | Podman Compose stack from a clean clone (A-15, SEC-69), the operations runbook (SEC-103), dependency audits in CI (SEC-68) — see [ops/runbook.md](ops/runbook.md) |
 | 15 | [slices/slice-15-ops-invariants-alerts.md](slices/slice-15-ops-invariants-alerts.md) · [review](slices/slice-15-review.md) | The invariant job per tenant (doc 03 §7) in the sweep, the SEC-102 alert path (email, webhook, `alerts` rows, T-153), `infrastructure/alert.sh`, the Audit screen (doc 06 §6.11) |
+| 16 | [slices/slice-16-ci-gates.md](slices/slice-16-ci-gates.md) · [review](slices/slice-16-review.md) | OpenAPI snapshot (`docs/api/openapi.json`, API-14), gitleaks in CI and pre-commit (SEC-67), the notices/licence checker (PRD-26), the nightly performance workflow (T-140/141) |
 
 **Open questions still outstanding.** Q-01, Q-02, Q-04 and Q-06 in document 00 remain unanswered.
 Slices 1–10 proceeded on the documented defaults (A-01…A-05, A-11, A-12). **Slice 3b built E1 on a
