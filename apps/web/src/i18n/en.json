@@ -1101,5 +1101,6 @@
   "audit.log.field": "Field",
   "audit.log.before": "Before",
   "audit.log.after": "After",
-  "audit.log.value": "Value"
+  "audit.log.value": "Value",
+  "audit.alerts.ownerEmail": "Email the Owners on critical alerts (the operator is always notified)"
 }

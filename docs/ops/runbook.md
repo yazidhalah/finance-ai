@@ -124,8 +124,9 @@ as `finance`, `stack.sh --profile full up -d --no-build migrate api` (the migrat
 
 Alerts are raised by the sweep's last step (the invariant job and the detectors, slice 15) and by the two scripts.
 Every alert is a row on the tenant's Audit screen, a `Critical`/`Warning` JSON log line, an email to `ALERT_EMAIL`
-and a POST to `ALERT_WEBHOOK_URL` — set both in `.env`. One page per tenant, kind and UTC day; acknowledging on
-the Audit screen marks it handled and is audited.
+and a POST to `ALERT_WEBHOOK_URL` — set both in `.env`. An Owner may also opt their organization into a copy of
+**critical** alerts (Audit screen → Alerts → "Email the Owners"; slice 22). One page per tenant, kind and UTC day;
+acknowledging on the Audit screen marks it handled and is audited.
 
 | Kind | Severity | Means | First |
 |------|----------|-------|-------|

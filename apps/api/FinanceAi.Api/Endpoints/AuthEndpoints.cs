@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using FinanceAi.Api.Authorization;
 using FinanceAi.Api.Contracts;
 using FinanceAi.Api.Http;
@@ -25,25 +26,25 @@ public static class AuthEndpoints
 
         var auth = api.MapGroup("/auth").RequireRateLimiting(RateLimitPolicies.Auth);
 
-        auth.MapPost("/register", RegisterAsync).Produces<RegisterResponse>(202).AllowAnonymousEndpoint().WithName("Register");
-        auth.MapPost("/login", LoginAsync).Produces<SessionResponse>(200).AllowAnonymousEndpoint().WithName("Login");
-        auth.MapPost("/refresh", RefreshAsync).Produces<SessionResponse>(200).AllowAnonymousEndpoint().WithName("Refresh");
+        auth.MapPost("/register", RegisterAsync).AllowAnonymousEndpoint().WithName("Register");
+        auth.MapPost("/login", LoginAsync).AllowAnonymousEndpoint().WithName("Login");
+        auth.MapPost("/refresh", RefreshAsync).AllowAnonymousEndpoint().WithName("Refresh");
         // Slice 12: the invitee has no session yet. Anonymous by design, rate limited with the rest of the group.
-        auth.MapPost("/accept-invitation", AcceptInvitationAsync).Produces<AcceptInvitationResponse>(200).AllowAnonymousEndpoint().WithName("AcceptInvitation");
+        auth.MapPost("/accept-invitation", AcceptInvitationAsync).AllowAnonymousEndpoint().WithName("AcceptInvitation");
         // Slice 13: password reset is anonymous by nature; MFA enrolment and re-authentication need a session but not a second factor yet.
-        auth.MapPost("/forgot-password", ForgotPasswordAsync).Produces<AcceptedResponse>(202).AllowAnonymousEndpoint().WithName("ForgotPassword");
-        auth.MapPost("/reset-password", ResetPasswordAsync).Produces<AcceptedResponse>(200).AllowAnonymousEndpoint().WithName("ResetPassword");
-        auth.MapPost("/mfa/enroll", MfaEnrollAsync).Produces<MfaEnrolmentResponse>(200).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("MfaEnroll");
-        auth.MapPost("/mfa/verify", MfaVerifyAsync).Produces<MfaActivatedResponse>(200).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("MfaVerify");
-        auth.MapPost("/reauthenticate", ReauthenticateAsync).Produces<ReauthenticateResponse>(200).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("Reauthenticate");
-        auth.MapPost("/logout", LogoutAsync).Produces(204).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("Logout");
-        auth.MapGet("/tenants", ListTenantsAsync).Produces<TenantListResponse>(200).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("ListTenants");
-        auth.MapPost("/switch-tenant", SwitchTenantAsync).Produces<SessionResponse>(200).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("SwitchTenant");
+        auth.MapPost("/forgot-password", ForgotPasswordAsync).AllowAnonymousEndpoint().WithName("ForgotPassword");
+        auth.MapPost("/reset-password", ResetPasswordAsync).AllowAnonymousEndpoint().WithName("ResetPassword");
+        auth.MapPost("/mfa/enroll", MfaEnrollAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("MfaEnroll");
+        auth.MapPost("/mfa/verify", MfaVerifyAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("MfaVerify");
+        auth.MapPost("/reauthenticate", ReauthenticateAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("Reauthenticate");
+        auth.MapPost("/logout", LogoutAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("Logout");
+        auth.MapGet("/tenants", ListTenantsAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("ListTenants");
+        auth.MapPost("/switch-tenant", SwitchTenantAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("SwitchTenant");
 
         return api;
     }
 
-    private static async Task<IResult> RegisterAsync(
+    private static async Task<Results<Accepted<RegisterResponse>, ProblemHttpResult>> RegisterAsync(
         RegisterRequest request,
         HttpContext context,
         PlatformIdentityStore identity,
@@ -87,7 +88,7 @@ public static class AuthEndpoints
         return TypedResults.Accepted((string?)null, RegisterResponse.Accepted);
     }
 
-    private static async Task<IResult> LoginAsync(
+    private static async Task<Results<Ok<SessionResponse>, ProblemHttpResult>> LoginAsync(
         LoginRequest request,
         HttpContext context,
         PlatformIdentityStore identity,
@@ -137,7 +138,7 @@ public static class AuthEndpoints
         }
     }
 
-    private static async Task<IResult> RefreshAsync(
+    private static async Task<Results<Ok<SessionResponse>, ProblemHttpResult>> RefreshAsync(
         HttpContext context,
         PlatformIdentityStore identity,
         IAccessTokenIssuer tokens,
@@ -165,7 +166,7 @@ public static class AuthEndpoints
         return TypedResults.Ok(ToSessionResponse(session, tokens));
     }
 
-    private static async Task<IResult> LogoutAsync(
+    private static async Task<Results<NoContent, ProblemHttpResult>> LogoutAsync(
         HttpContext context,
         CurrentUser currentUser,
         PlatformIdentityStore identity,
@@ -178,7 +179,7 @@ public static class AuthEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<IResult> ListTenantsAsync(
+    private static async Task<Results<Ok<TenantListResponse>, ProblemHttpResult>> ListTenantsAsync(
         CurrentUser currentUser, PlatformIdentityStore identity, CancellationToken ct)
     {
         var memberships = await identity.ListMembershipsAsync(currentUser.UserId, ct);
@@ -189,7 +190,7 @@ public static class AuthEndpoints
                 .ToList()));
     }
 
-    private static async Task<IResult> SwitchTenantAsync(
+    private static async Task<Results<Ok<SessionResponse>, ProblemHttpResult>> SwitchTenantAsync(
         SwitchTenantRequest request,
         HttpContext context,
         CurrentUser currentUser,
@@ -259,7 +260,7 @@ public static class AuthEndpoints
     /// Every failure is <c>400 invitation_invalid</c> with the same body: an unknown, expired, revoked or used token is
     /// not distinguished (SEC-07). A valid token for an address without a user needs a name and a password.
     /// </summary>
-    private static async Task<IResult> AcceptInvitationAsync(AcceptInvitationRequest request, HttpContext context, PlatformIdentityStore identity, ILoggerFactory loggerFactory, CancellationToken ct)
+    private static async Task<Results<Ok<AcceptInvitationResponse>, ProblemHttpResult>> AcceptInvitationAsync(AcceptInvitationRequest request, HttpContext context, PlatformIdentityStore identity, ILoggerFactory loggerFactory, CancellationToken ct)
     {
         var validation = new Validation().Require("token", request.Token).MaxLength("fullName", request.FullName, 200).MaxLength("password", request.Password, 512);
         if (request.Password is { Length: > 0 }) validation.MinLength("password", request.Password, Argon2idPasswordHasher.MinimumPasswordLength, "too_short");
@@ -280,7 +281,7 @@ public static class AuthEndpoints
     // Slice 13 — MFA, re-authentication, password reset
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> MfaEnrollAsync(HttpContext context, CurrentUser user, PlatformIdentityStore identity, CancellationToken ct)
+    private static async Task<Results<Ok<MfaEnrolmentResponse>, ProblemHttpResult>> MfaEnrollAsync(HttpContext context, CurrentUser user, PlatformIdentityStore identity, CancellationToken ct)
     {
         var enrolment = await identity.EnrollMfaAsync(user.UserId, ct);
         return enrolment is null
@@ -288,7 +289,7 @@ public static class AuthEndpoints
             : TypedResults.Ok(new MfaEnrolmentResponse(enrolment.SecretBase32, enrolment.ProvisioningUri));
     }
 
-    private static async Task<IResult> MfaVerifyAsync(MfaVerifyRequest request, HttpContext context, CurrentUser user, PlatformIdentityStore identity, CancellationToken ct)
+    private static async Task<Results<Ok<MfaActivatedResponse>, ProblemHttpResult>> MfaVerifyAsync(MfaVerifyRequest request, HttpContext context, CurrentUser user, PlatformIdentityStore identity, CancellationToken ct)
     {
         if (request.Code is not { Length: 6 } || !request.Code.All(char.IsAsciiDigit)) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("code", "invalid", "errors.validation.code.invalid")]);
         var activation = await identity.VerifyMfaAsync(user.UserId, user.TenantId, request.Code, context.ClientIp(), context.RequestId(), ct);
@@ -297,7 +298,7 @@ public static class AuthEndpoints
             : ApiProblems.Create(context, StatusCodes.Status400BadRequest, "mfa_code_invalid", "The code did not match. Enrol again if the secret was lost.", "errors.auth.mfa_code_invalid");
     }
 
-    private static async Task<IResult> ReauthenticateAsync(ReauthenticateRequest request, HttpContext context, CurrentUser user, PlatformIdentityStore identity, IAccessTokenIssuer tokens, CancellationToken ct)
+    private static async Task<Results<Ok<ReauthenticateResponse>, ProblemHttpResult>> ReauthenticateAsync(ReauthenticateRequest request, HttpContext context, CurrentUser user, PlatformIdentityStore identity, IAccessTokenIssuer tokens, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(request.Password)) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("password", "required", "errors.password.required")]);
         if (!await identity.ReauthenticateAsync(user.UserId, request.Password, request.Totp, ct))
@@ -309,7 +310,7 @@ public static class AuthEndpoints
         return TypedResults.Ok(new ReauthenticateResponse(proof, (int)RsaAccessTokenIssuer.ReauthLifetime.TotalSeconds));
     }
 
-    private static async Task<IResult> ForgotPasswordAsync(ForgotPasswordRequest request, HttpContext context, PlatformIdentityStore identity, FinanceAi.Infrastructure.Messaging.IMailTransport mail, ILoggerFactory loggerFactory, CancellationToken ct)
+    private static async Task<Results<Accepted<AcceptedResponse>, ProblemHttpResult>> ForgotPasswordAsync(ForgotPasswordRequest request, HttpContext context, PlatformIdentityStore identity, FinanceAi.Infrastructure.Messaging.IMailTransport mail, ILoggerFactory loggerFactory, CancellationToken ct)
     {
         var validation = new Validation().Require("email", request.Email).Email("email", request.Email);
         if (validation.HasErrors) return ApiProblems.ValidationProblem(context, validation.Errors);
@@ -329,7 +330,7 @@ public static class AuthEndpoints
         return TypedResults.Accepted((string?)null, new AcceptedResponse(true));
     }
 
-    private static async Task<IResult> ResetPasswordAsync(ResetPasswordRequest request, HttpContext context, PlatformIdentityStore identity, CancellationToken ct)
+    private static async Task<Results<Ok<AcceptedResponse>, ProblemHttpResult>> ResetPasswordAsync(ResetPasswordRequest request, HttpContext context, PlatformIdentityStore identity, CancellationToken ct)
     {
         var validation = new Validation().Require("token", request.Token).Require("password", request.Password)
             .MinLength("password", request.Password, Argon2idPasswordHasher.MinimumPasswordLength, "too_short").MaxLength("password", request.Password, 512);

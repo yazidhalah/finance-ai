@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Globalization;
 using FinanceAi.Api.Authorization;
 using FinanceAi.Api.Contracts;
@@ -22,11 +23,11 @@ public static class ReportEndpoints
         ArgumentNullException.ThrowIfNull(api);
 
         var reports = api.MapGroup("/reports");
-        reports.MapGet("/aging", AgingAsync).Produces<AgingReportResponse>(200).RequiresPermission(Permissions.AgingRead).WithName("AgingReport");
-        reports.MapGet("/aging/customers/{id:guid}", AgingCustomerAsync).Produces<AgingCustomerDetailResponse>(200).RequiresPermission(Permissions.AgingRead).WithName("AgingCustomerDetail");
+        reports.MapGet("/aging", AgingAsync).RequiresPermission(Permissions.AgingRead).WithName("AgingReport");
+        reports.MapGet("/aging/customers/{id:guid}", AgingCustomerAsync).RequiresPermission(Permissions.AgingRead).WithName("AgingCustomerDetail");
         reports.MapGet("/aging/export", ExportAsync).Produces(200, contentType: "application/octet-stream").RequiresPermission(Permissions.ExportRun).WithName("AgingExport");
-        reports.MapGet("/dso", DsoAsync).Produces<DsoResponse>(200).RequiresPermission(Permissions.AgingRead).WithName("Dso");
-        reports.MapGet("/reconciliation", ReconciliationAsync).Produces<ReconciliationResponse>(200).RequiresPermission(Permissions.AuditRead).WithName("Reconciliation");
+        reports.MapGet("/dso", DsoAsync).RequiresPermission(Permissions.AgingRead).WithName("Dso");
+        reports.MapGet("/reconciliation", ReconciliationAsync).RequiresPermission(Permissions.AuditRead).WithName("Reconciliation");
 
         return api;
     }
@@ -34,7 +35,7 @@ public static class ReportEndpoints
     private sealed record Query(DateOnly? AsOf, string? Basis, string? Currency, Guid? CustomerId, bool ByCustomer);
 
     /// <summary>Query parsing shared by the report and the export. Invalid input is a 400 with the field named.</summary>
-    private static IResult? ParseQuery(HttpContext context, out Query query)
+    private static ProblemHttpResult? ParseQuery(HttpContext context, out Query query)
     {
         var q = context.Request.Query;
         var validation = new Validation();
@@ -65,7 +66,7 @@ public static class ReportEndpoints
         return validation.HasErrors ? ApiProblems.ValidationProblem(context, validation.Errors) : null;
     }
 
-    private static async Task<IResult> AgingAsync(HttpContext context, AgingService aging, CancellationToken ct)
+    private static async Task<Results<Ok<AgingReportResponse>, ProblemHttpResult>> AgingAsync(HttpContext context, AgingService aging, CancellationToken ct)
     {
         if (ParseQuery(context, out var query) is { } problem)
         {
@@ -76,7 +77,7 @@ public static class ReportEndpoints
         return TypedResults.Ok(ToDto(report));
     }
 
-    private static async Task<IResult> AgingCustomerAsync(Guid id, HttpContext context, AgingService aging, CancellationToken ct)
+    private static async Task<Results<Ok<AgingCustomerDetailResponse>, ProblemHttpResult>> AgingCustomerAsync(Guid id, HttpContext context, AgingService aging, CancellationToken ct)
     {
         if (ParseQuery(context, out var query) is { } problem)
         {
@@ -99,7 +100,7 @@ public static class ReportEndpoints
             detail.AverageDaysToPay?.ToString("0.0", CultureInfo.InvariantCulture), detail.AverageDaysToPaySampleSize));
     }
 
-    private static async Task<IResult> DsoAsync(HttpContext context, AgingService aging, CancellationToken ct)
+    private static async Task<Results<Ok<DsoResponse>, ProblemHttpResult>> DsoAsync(HttpContext context, AgingService aging, CancellationToken ct)
     {
         if (ParseQuery(context, out var query) is { } problem)
         {
@@ -114,7 +115,7 @@ public static class ReportEndpoints
             f.DaysInPeriod, Iso(f.PeriodStart), Iso(f.PeriodEnd))).ToList(), "reports.dso.disclaimer"));
     }
 
-    private static async Task<IResult> ReconciliationAsync(BalanceReconciliation reconciliation, TimeProvider time, CancellationToken ct)
+    private static async Task<Results<Ok<ReconciliationResponse>, ProblemHttpResult>> ReconciliationAsync(BalanceReconciliation reconciliation, TimeProvider time, CancellationToken ct)
     {
         var result = await reconciliation.CheckAsync(ct);
         return TypedResults.Ok(new ReconciliationResponse(
@@ -127,7 +128,7 @@ public static class ReportEndpoints
     /// SEC-45 escaping and RTL handling live in <see cref="AgingExport"/>. Headers are localized from the
     /// <c>locale</c> query (default: the user's preferred locale); the file name carries the as-of date.
     /// </summary>
-    private static async Task<IResult> ExportAsync(HttpContext context, CurrentUser user, TenantDbContext db, AgingService aging, CancellationToken ct)
+    private static async Task<Results<FileContentHttpResult, ProblemHttpResult>> ExportAsync(HttpContext context, CurrentUser user, TenantDbContext db, AgingService aging, CancellationToken ct)
     {
         if (ParseQuery(context, out var query) is { } problem)
         {

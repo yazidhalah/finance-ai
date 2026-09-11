@@ -220,7 +220,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     {
         var endpoints = this.Endpoints();
 
-        Assert.Equal(147, endpoints.Count);
+        Assert.Equal(148, endpoints.Count);
         Assert.All(endpoints, e => Assert.True(e.Permission is not null || e.Access is not null));
 
         // The anonymous set is exactly registration, login, refresh, accepting an invitation (slice 12) and the two

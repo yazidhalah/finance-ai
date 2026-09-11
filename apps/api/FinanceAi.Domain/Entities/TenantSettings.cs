@@ -48,4 +48,7 @@ public sealed class TenantSettings : ITenantScoped
 
     /// <summary>Members who receive the briefing email. Never a free address (slice 10 D-4).</summary>
     public Guid[] BriefingRecipientUserIds { get; set; } = [];
+
+    /// <summary>Slice 22: email the organization's active Owners on critical alerts (SEC-102), in addition to the operator.</summary>
+    public bool AlertOwnerEmailEnabled { get; set; }
 }

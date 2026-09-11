@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Text.Json;
 using FinanceAi.Api.Authorization;
 using FinanceAi.Api.Contracts;
@@ -24,8 +25,8 @@ public static class OrganizationEndpoints
     {
         ArgumentNullException.ThrowIfNull(api);
 
-        api.MapGet("/me", GetMeAsync).Produces<MeResponse>(200).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("GetMe");
-        api.MapPatch("/me", UpdateMeAsync).Produces<UserDto>(200).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("UpdateMe");
+        api.MapGet("/me", GetMeAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("GetMe");
+        api.MapPatch("/me", UpdateMeAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("UpdateMe");
 
         return api;
     }
@@ -36,22 +37,22 @@ public static class OrganizationEndpoints
 
         var organization = api.MapGroup("/organization");
 
-        organization.MapGet("/", GetOrganizationAsync).Produces<OrganizationResponse>(200)
+        organization.MapGet("/", GetOrganizationAsync)
             .RequiresPermission(Permissions.TenantRead).WithName("GetOrganization");
-        organization.MapPatch("/", UpdateOrganizationAsync).Produces<OrganizationResponse>(200)
+        organization.MapPatch("/", UpdateOrganizationAsync)
             .RequiresPermission(Permissions.TenantSettingsWrite).WithName("UpdateOrganization");
-        organization.MapGet("/members", ListMembersAsync).Produces<MemberListResponse>(200)
+        organization.MapGet("/members", ListMembersAsync)
             .RequiresPermission(Permissions.UsersRead).WithName("ListMembers");
-        organization.MapGet("/members/{id:guid}", GetMemberAsync).Produces<MemberDto>(200)
+        organization.MapGet("/members/{id:guid}", GetMemberAsync)
             .RequiresPermission(Permissions.UsersRead).WithName("GetMember");
         // Slice 12
-        organization.MapPost("/members/invite", InviteAsync).Produces<InviteAcceptedResponse>(202).RequiresPermission(Permissions.UsersInvite).WithName("InviteMember");
-        organization.MapGet("/invitations", ListInvitationsAsync).Produces<InvitationListResponse>(200).RequiresPermission(Permissions.UsersRead).WithName("ListInvitations");
-        organization.MapPost("/invitations/{id:guid}/revoke", RevokeInvitationAsync).Produces<InvitationDto>(200).RequiresPermission(Permissions.UsersInvite).WithName("RevokeInvitation");
-        organization.MapPatch("/members/{id:guid}", ChangeRoleAsync).Produces<MemberDto>(200).RequiresPermission(Permissions.UsersRoleWrite).WithName("ChangeMemberRole");
-        organization.MapPost("/members/{id:guid}/deactivate", DeactivateMemberAsync).Produces<MemberDto>(200).RequiresPermission(Permissions.UsersDeactivate).WithName("DeactivateMember");
+        organization.MapPost("/members/invite", InviteAsync).RequiresPermission(Permissions.UsersInvite).WithName("InviteMember");
+        organization.MapGet("/invitations", ListInvitationsAsync).RequiresPermission(Permissions.UsersRead).WithName("ListInvitations");
+        organization.MapPost("/invitations/{id:guid}/revoke", RevokeInvitationAsync).RequiresPermission(Permissions.UsersInvite).WithName("RevokeInvitation");
+        organization.MapPatch("/members/{id:guid}", ChangeRoleAsync).RequiresPermission(Permissions.UsersRoleWrite).WithName("ChangeMemberRole");
+        organization.MapPost("/members/{id:guid}/deactivate", DeactivateMemberAsync).RequiresPermission(Permissions.UsersDeactivate).WithName("DeactivateMember");
         // Slice 13 (SEC-09): ownership moves only with a fresh re-authentication.
-        organization.MapPost("/transfer-ownership", TransferOwnershipAsync).Produces<TransferOwnershipResponse>(200).RequiresPermission(Permissions.TenantTransferOwnership).RequiresReauth().WithName("TransferOwnership");
+        organization.MapPost("/transfer-ownership", TransferOwnershipAsync).RequiresPermission(Permissions.TenantTransferOwnership).RequiresReauth().WithName("TransferOwnership");
 
         return api;
     }
@@ -60,13 +61,13 @@ public static class OrganizationEndpoints
     {
         ArgumentNullException.ThrowIfNull(api);
 
-        api.MapGet("/audit", ListAuditAsync).Produces<AuditListResponse>(200)
+        api.MapGet("/audit", ListAuditAsync)
             .RequiresPermission(Permissions.AuditRead).WithName("ListAudit");
 
         return api;
     }
 
-    private static async Task<IResult> GetMeAsync(
+    private static async Task<Results<Ok<MeResponse>, ProblemHttpResult>> GetMeAsync(
         CurrentUser currentUser, TenantDbContext db, TimeProvider time, CancellationToken ct)
     {
         var user = await db.Users.FirstAsync(u => u.Id == currentUser.UserId, ct);
@@ -85,7 +86,7 @@ public static class OrganizationEndpoints
             FinanceAi.Domain.Security.MfaPolicy.Enforced(currentUser.Role, user.MfaEnrolled, membership.MfaGraceUntil, now)));
     }
 
-    private static async Task<IResult> UpdateMeAsync(
+    private static async Task<Results<Ok<UserDto>, ProblemHttpResult>> UpdateMeAsync(
         UpdateMeRequest request,
         HttpContext context,
         CurrentUser currentUser,
@@ -116,17 +117,17 @@ public static class OrganizationEndpoints
         return TypedResults.Ok(new UserDto(user.Id, user.FullName, user.PreferredLocale, user.Email));
     }
 
-    private static async Task<IResult> GetOrganizationAsync(
-        CurrentUser currentUser, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<OrganizationResponse>, ProblemHttpResult>> GetOrganizationAsync(
+        HttpContext context, CurrentUser currentUser, TenantDbContext db, CancellationToken ct)
     {
         var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == currentUser.TenantId, ct);
 
         return tenant is null
-            ? TypedResults.NotFound()
+            ? ApiProblems.NotFoundProblem(context)   // typed results (slice 22) caught a bare 404 here: every failure is a problem (doc 05 §0.2)
             : TypedResults.Ok(ToResponse(tenant));
     }
 
-    private static async Task<IResult> UpdateOrganizationAsync(
+    private static async Task<Results<Ok<OrganizationResponse>, ProblemHttpResult>> UpdateOrganizationAsync(
         UpdateOrganizationRequest request,
         HttpContext context,
         CurrentUser currentUser,
@@ -201,7 +202,7 @@ public static class OrganizationEndpoints
         return TypedResults.Ok(ToResponse(tenant));
     }
 
-    private static async Task<IResult> ListMembersAsync(TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<MemberListResponse>, ProblemHttpResult>> ListMembersAsync(TenantDbContext db, CancellationToken ct)
     {
         // No tenant predicate is written here on purpose: the global query filter supplies it, RLS
         // repeats it, and a member of another organization is not reachable through either.
@@ -231,7 +232,7 @@ public static class OrganizationEndpoints
         return TypedResults.Ok(new MemberListResponse(members, members.Count));
     }
 
-    private static async Task<IResult> GetMemberAsync(
+    private static async Task<Results<Ok<MemberDto>, ProblemHttpResult>> GetMemberAsync(
         Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var row = await db.TenantMemberships
@@ -256,7 +257,7 @@ public static class OrganizationEndpoints
                 row.Role.ToString(), row.Status.ToString(), row.CreatedAt));
     }
 
-    private static async Task<IResult> ListAuditAsync(
+    private static async Task<Results<Ok<AuditListResponse>, ProblemHttpResult>> ListAuditAsync(
         TenantDbContext db,
         CancellationToken ct,
         string? entityType = null,
@@ -337,7 +338,7 @@ public static class OrganizationEndpoints
     // Slice 12 — invitations, role change, deactivation
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> InviteAsync(InviteMemberRequest request, HttpContext context, CurrentUser user, FinanceAi.Infrastructure.Members.MembersService members, ILoggerFactory loggerFactory, CancellationToken ct)
+    private static async Task<Results<Accepted<InviteAcceptedResponse>, ProblemHttpResult>> InviteAsync(InviteMemberRequest request, HttpContext context, CurrentUser user, FinanceAi.Infrastructure.Members.MembersService members, ILoggerFactory loggerFactory, CancellationToken ct)
     {
         var validation = new Validation().Require("email", request.Email).Email("email", request.Email).MaxLength("email", request.Email, 254).Require("role", request.Role).Locale("locale", request.Locale);
         if (request.Role is not null && (!Enum.TryParse<TenantRole>(request.Role, out var parsed) || !RoleAssignment.CanAssign(parsed))) validation.Require("role", null, "invalid");
@@ -348,14 +349,14 @@ public static class OrganizationEndpoints
         return TypedResults.Accepted((string?)null, new InviteAcceptedResponse(true));
     }
 
-    private static async Task<IResult> ListInvitationsAsync(TenantDbContext db, TimeProvider time, CancellationToken ct)
+    private static async Task<Results<Ok<InvitationListResponse>, ProblemHttpResult>> ListInvitationsAsync(TenantDbContext db, TimeProvider time, CancellationToken ct)
     {
         var now = time.GetUtcNow();
         var rows = await db.MemberInvitations.AsNoTracking().OrderByDescending(i => i.CreatedAt).Take(200).ToListAsync(ct);
         return TypedResults.Ok(new InvitationListResponse(rows.Select(i => Invitation(i, now)).ToList()));
     }
 
-    private static async Task<IResult> RevokeInvitationAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, FinanceAi.Infrastructure.Members.MembersService members, TimeProvider time, CancellationToken ct)
+    private static async Task<Results<Ok<InvitationDto>, ProblemHttpResult>> RevokeInvitationAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, FinanceAi.Infrastructure.Members.MembersService members, TimeProvider time, CancellationToken ct)
     {
         if (!await db.MemberInvitations.AnyAsync(i => i.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         try
@@ -366,7 +367,7 @@ public static class OrganizationEndpoints
         catch (FinanceAi.Infrastructure.Cases.CaseException ex) { return MemberRule(context, ex); }
     }
 
-    private static async Task<IResult> ChangeRoleAsync(Guid id, ChangeRoleRequest request, HttpContext context, CurrentUser user, TenantDbContext db, FinanceAi.Infrastructure.Members.MembersService members, CancellationToken ct)
+    private static async Task<Results<Ok<MemberDto>, ProblemHttpResult>> ChangeRoleAsync(Guid id, ChangeRoleRequest request, HttpContext context, CurrentUser user, TenantDbContext db, FinanceAi.Infrastructure.Members.MembersService members, CancellationToken ct)
     {
         if (!await db.TenantMemberships.AnyAsync(m => m.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         if (request.Role is null || !Enum.TryParse<TenantRole>(request.Role, out var role) || !Enum.IsDefined(role)) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("role", "invalid", "errors.validation.role.invalid")]);
@@ -378,7 +379,7 @@ public static class OrganizationEndpoints
         catch (FinanceAi.Infrastructure.Cases.CaseException ex) { return MemberRule(context, ex); }
     }
 
-    private static async Task<IResult> DeactivateMemberAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, FinanceAi.Infrastructure.Members.MembersService members, CancellationToken ct)
+    private static async Task<Results<Ok<MemberDto>, ProblemHttpResult>> DeactivateMemberAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, FinanceAi.Infrastructure.Members.MembersService members, CancellationToken ct)
     {
         if (!await db.TenantMemberships.AnyAsync(m => m.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         try
@@ -399,13 +400,13 @@ public static class OrganizationEndpoints
         i.Id, i.Email, i.Role.ToString(), i.Locale, i.Status(now), i.InvitedBy, i.ExpiresAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
         i.CreatedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture), i.AcceptedAt?.ToString("O", System.Globalization.CultureInfo.InvariantCulture), i.RevokedAt?.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
 
-    private static IResult MemberRule(HttpContext context, FinanceAi.Infrastructure.Cases.CaseException ex) => ex.Code switch
+    private static ProblemHttpResult MemberRule(HttpContext context, FinanceAi.Infrastructure.Cases.CaseException ex) => ex.Code switch
     {
         "member_not_found" or "invitation_not_found" => ApiProblems.NotFoundProblem(context),
         _ => ApiProblems.BusinessRuleProblem(context, ex.Code, ex.Field, ex.Meta),
     };
 
-    private static async Task<IResult> TransferOwnershipAsync(TransferOwnershipRequest request, HttpContext context, CurrentUser user, TenantDbContext db, FinanceAi.Infrastructure.Members.MembersService members, CancellationToken ct)
+    private static async Task<Results<Ok<TransferOwnershipResponse>, ProblemHttpResult>> TransferOwnershipAsync(TransferOwnershipRequest request, HttpContext context, CurrentUser user, TenantDbContext db, FinanceAi.Infrastructure.Members.MembersService members, CancellationToken ct)
     {
         if (request.TargetMembershipId is not { } target) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("targetMembershipId", "required", "errors.validation.targetMembershipId.required")]);
         if (!await db.TenantMemberships.AnyAsync(m => m.Id == target, ct)) return ApiProblems.NotFoundProblem(context);

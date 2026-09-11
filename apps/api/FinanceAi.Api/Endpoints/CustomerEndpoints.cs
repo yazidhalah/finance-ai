@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Globalization;
 using System.Text.Json;
 using FinanceAi.Api.Authorization;
@@ -32,17 +33,17 @@ public static class CustomerEndpoints
 
         var customers = api.MapGroup("/customers");
 
-        customers.MapGet("/", ListAsync).Produces<CustomerListResponse>(200).RequiresPermission(Permissions.CustomersRead).WithName("ListCustomers");
-        customers.MapPost("/", CreateAsync).Produces<CustomerResponse>(201).RequiresPermission(Permissions.CustomersWrite).WithName("CreateCustomer");
-        customers.MapGet("/duplicates", DuplicatesAsync).Produces<DuplicateListResponse>(200).RequiresPermission(Permissions.CustomersRead).WithName("CustomerDuplicates");
-        customers.MapGet("/{id:guid}", GetAsync).Produces<CustomerResponse>(200).RequiresPermission(Permissions.CustomersRead).WithName("GetCustomer");
-        customers.MapPatch("/{id:guid}", UpdateAsync).Produces<CustomerResponse>(200).RequiresPermission(Permissions.CustomersWrite).WithName("UpdateCustomer");
-        customers.MapDelete("/{id:guid}", DeleteAsync).Produces(204).RequiresPermission(Permissions.CustomersWrite).WithName("DeleteCustomer");
+        customers.MapGet("/", ListAsync).RequiresPermission(Permissions.CustomersRead).WithName("ListCustomers");
+        customers.MapPost("/", CreateAsync).RequiresPermission(Permissions.CustomersWrite).WithName("CreateCustomer");
+        customers.MapGet("/duplicates", DuplicatesAsync).RequiresPermission(Permissions.CustomersRead).WithName("CustomerDuplicates");
+        customers.MapGet("/{id:guid}", GetAsync).RequiresPermission(Permissions.CustomersRead).WithName("GetCustomer");
+        customers.MapPatch("/{id:guid}", UpdateAsync).RequiresPermission(Permissions.CustomersWrite).WithName("UpdateCustomer");
+        customers.MapDelete("/{id:guid}", DeleteAsync).RequiresPermission(Permissions.CustomersWrite).WithName("DeleteCustomer");
 
-        customers.MapGet("/{id:guid}/contacts", ListContactsAsync).Produces<ContactListResponse>(200).RequiresPermission(Permissions.CustomersRead).WithName("ListContacts");
-        customers.MapPost("/{id:guid}/contacts", CreateContactAsync).Produces<ContactResponse>(201).RequiresPermission(Permissions.CustomersWrite).WithName("CreateContact");
-        customers.MapPatch("/{id:guid}/contacts/{contactId:guid}", UpdateContactAsync).Produces<ContactResponse>(200).RequiresPermission(Permissions.CustomersWrite).WithName("UpdateContact");
-        customers.MapDelete("/{id:guid}/contacts/{contactId:guid}", DeleteContactAsync).Produces(204).RequiresPermission(Permissions.CustomersWrite).WithName("DeleteContact");
+        customers.MapGet("/{id:guid}/contacts", ListContactsAsync).RequiresPermission(Permissions.CustomersRead).WithName("ListContacts");
+        customers.MapPost("/{id:guid}/contacts", CreateContactAsync).RequiresPermission(Permissions.CustomersWrite).WithName("CreateContact");
+        customers.MapPatch("/{id:guid}/contacts/{contactId:guid}", UpdateContactAsync).RequiresPermission(Permissions.CustomersWrite).WithName("UpdateContact");
+        customers.MapDelete("/{id:guid}/contacts/{contactId:guid}", DeleteContactAsync).RequiresPermission(Permissions.CustomersWrite).WithName("DeleteContact");
 
         return api;
     }
@@ -51,7 +52,7 @@ public static class CustomerEndpoints
     // Customers
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> ListAsync(
+    private static async Task<Results<Ok<CustomerListResponse>, ProblemHttpResult>> ListAsync(
         TenantDbContext db,
         CurrentUser currentUser,
         CancellationToken ct,
@@ -113,7 +114,7 @@ public static class CustomerEndpoints
             totalCount));
     }
 
-    private static async Task<IResult> CreateAsync(
+    private static async Task<Results<Created<CustomerResponse>, ProblemHttpResult>> CreateAsync(
         CustomerRequest request,
         HttpContext context,
         CurrentUser currentUser,
@@ -158,7 +159,7 @@ public static class CustomerEndpoints
         return TypedResults.Created($"/api/v1/customers/{customer.Id}", ToResponse(customer));
     }
 
-    private static async Task<IResult> GetAsync(Guid id, HttpContext context, TenantDbContext db, FinanceAi.Infrastructure.Ledger.LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Ok<CustomerResponse>, ProblemHttpResult>> GetAsync(Guid id, HttpContext context, TenantDbContext db, FinanceAi.Infrastructure.Ledger.LedgerService ledger, CancellationToken ct)
     {
         var customer = await db.Customers.FirstOrDefaultAsync(c => c.Id == id, ct);
 
@@ -180,7 +181,7 @@ public static class CustomerEndpoints
         });
     }
 
-    private static async Task<IResult> UpdateAsync(
+    private static async Task<Results<Ok<CustomerResponse>, ProblemHttpResult>> UpdateAsync(
         Guid id,
         CustomerRequest request,
         HttpContext context,
@@ -250,7 +251,7 @@ public static class CustomerEndpoints
         return TypedResults.Ok(ToResponse(customer));
     }
 
-    private static async Task<IResult> DeleteAsync(
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteAsync(
         Guid id,
         HttpContext context,
         CurrentUser currentUser,
@@ -289,7 +290,7 @@ public static class CustomerEndpoints
     /// A pairwise self-join is not expressible through the EF filter, so this is raw SQL with an
     /// explicit tenant predicate (layer 1 restated by hand) under the RLS policy (layer 2).
     /// </summary>
-    private static async Task<IResult> DuplicatesAsync(
+    private static async Task<Results<Ok<DuplicateListResponse>, ProblemHttpResult>> DuplicatesAsync(
         TenantDbContext db, CurrentUser currentUser, CancellationToken ct, int limit = 50)
     {
         var pageSize = Math.Clamp(limit, 1, 200);
@@ -319,7 +320,7 @@ public static class CustomerEndpoints
     // Contacts
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> ListContactsAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<ContactListResponse>, ProblemHttpResult>> ListContactsAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         if (!await db.Customers.AnyAsync(c => c.Id == id, ct))
         {
@@ -334,7 +335,7 @@ public static class CustomerEndpoints
         return TypedResults.Ok(new ContactListResponse(contacts.Select(ToResponse).ToList()));
     }
 
-    private static async Task<IResult> CreateContactAsync(
+    private static async Task<Results<Created<ContactResponse>, ProblemHttpResult>> CreateContactAsync(
         Guid id,
         ContactRequest request,
         HttpContext context,
@@ -379,7 +380,7 @@ public static class CustomerEndpoints
         return TypedResults.Created($"/api/v1/customers/{id}/contacts/{contact.Id}", ToResponse(contact));
     }
 
-    private static async Task<IResult> UpdateContactAsync(
+    private static async Task<Results<Ok<ContactResponse>, ProblemHttpResult>> UpdateContactAsync(
         Guid id,
         Guid contactId,
         ContactRequest request,
@@ -432,7 +433,7 @@ public static class CustomerEndpoints
         return TypedResults.Ok(ToResponse(contact));
     }
 
-    private static async Task<IResult> DeleteContactAsync(
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteContactAsync(
         Guid id,
         Guid contactId,
         HttpContext context,

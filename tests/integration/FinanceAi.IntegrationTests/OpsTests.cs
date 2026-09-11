@@ -205,6 +205,38 @@ public sealed class OpsTests(ApiTestFixture fixture)
         Assert.Equal(mailBefore + 1, fixture.Api.Mail.Sent);
     }
 
+    /// <summary>Slice 22: an Owner who asked for it is emailed on critical alerts — never on warnings, never another tenant's.</summary>
+    [Fact]
+    public async Task OwnerEmail_OnCriticalAlerts_WhenEnabled()
+    {
+        var s = await fixture.Api.NewCustomerAsync("Owner Mail Co.");
+        var other = await fixture.Api.NewCustomerAsync("Other Co.");
+        Assert.False((await AlertsAsync(s.Client)).GetProperty("ownerEmailEnabled").GetBoolean());
+        var patched = await s.Client.PatchAsJsonAsync("/api/v1/organization/alert-settings", new { ownerEmailEnabled = true }, ApiScenario.Json);
+        Assert.Equal(HttpStatusCode.OK, patched.StatusCode);
+        Assert.True((await AlertsAsync(s.Client)).GetProperty("ownerEmailEnabled").GetBoolean());
+
+        // A warning: the operator only.
+        for (var i = 0; i < 10; i++) await SeedSuggestionAsync(s.Organization.TenantId, i < 6 ? "rejected_by_guard" : "valid");
+        var mailBefore = fixture.Api.Mail.Sent;
+        await RunAsync(s.Client);
+        Assert.Equal(mailBefore + 1, fixture.Api.Mail.Sent);
+
+        // A critical alert: the operator and the Owner. The other tenant's Owner is untouched.
+        var invoice = await fixture.Database.OpenInvoiceAsync(s.Organization.TenantId, s.CustomerId, "OWN-1", 100.000m, dueDate: D(-10), issueDate: D(-40));
+        await fixture.Database.ExecuteAsync("UPDATE invoices SET balance_cache = balance_cache - 1 WHERE id = @i", ("i", invoice));
+        mailBefore = fixture.Api.Mail.Sent;
+        await RunAsync(s.Client);
+        Assert.Equal(mailBefore + 2, fixture.Api.Mail.Sent);
+        var alertId = (await AlertsAsync(s.Client)).GetProperty("items").EnumerateArray().First(a => a.GetProperty("kind").GetString() == "invariant_violation").GetProperty("id").GetGuid();
+        var ownerMail = await MailAsync(s.Organization.OwnerEmail, alertId);
+        Assert.Contains("invariant_violation", ownerMail, StringComparison.Ordinal);
+        Assert.Equal(0, (await AlertsAsync(other.Client, all: true)).GetProperty("items").GetArrayLength());
+
+        var audit = await s.Client.GetFromJsonAsync<JsonElement>("/api/v1/audit?eventType=tenant.alert_settings_changed", ApiScenario.Json);
+        Assert.Equal(1, audit.GetProperty("items").GetArrayLength());
+    }
+
     /// <summary>AC-07: the sweep runs the job; a Collector can neither run it nor read it.</summary>
     [Fact]
     public async Task Sweep_RunsTheJob_AndPermissionsHold()

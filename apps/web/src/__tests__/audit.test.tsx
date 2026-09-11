@@ -53,7 +53,8 @@ describe('Audit screen (slice 15 AC-10)', () => {
       if (url.includes('/organization/invariants/run')) { ran = true; return [200, run('violations')] }
       if (url.includes('/organization/invariants')) return [200, { run: run('violations') }]
       if (url.includes('/acknowledge')) { acknowledged = true; return [200, alert({ acknowledgedAt: '2026-09-11T03:00:00Z', acknowledgedBy: 'u1' })] }
-      if (url.includes('/organization/alerts')) return [200, acknowledged ? { items: [], openCount: 0 } : { items: [alert()], openCount: 1 }]
+      if (url.includes('/organization/alert-settings')) return [200, { ownerEmailEnabled: true }]
+      if (url.includes('/organization/alerts')) return [200, acknowledged ? { items: [], openCount: 0, ownerEmailEnabled: false } : { items: [alert()], openCount: 1, ownerEmailEnabled: false }]
       if (url.includes('/audit')) return [200, { items: [event(2, 'invoice.imported', { changes: { creditLimitAmount: { old: '1000.000', new: '12500.500' }, status: { old: null, new: 'Active' } }, note: 'raised by the owner' }), event(1, 'tenant.created')], nextCursor: method === 'GET' && url.includes('cursor') ? null : '1' }]
       return [200, {}]
     })
@@ -97,18 +98,25 @@ describe('Audit screen (slice 15 AC-10)', () => {
 
     fireEvent.click(screen.getByTestId('integrity-run'))
     await waitFor(() => expect(ran).toBe(true))
+
+    // Slice 22: the Owners' copy of critical alerts is a setting on the card.
+    expect(screen.getByTestId('alerts-owner-email')).not.toBeChecked()
+    fireEvent.click(screen.getByTestId('alerts-owner-email'))
+    await waitFor(() => expect(calls.some((c) => c.method === 'PATCH' && c.url.includes('/organization/alert-settings'))).toBe(true))
+    await waitFor(() => expect(screen.getByTestId('alerts-owner-email')).toBeChecked())
   })
 
   it('hides Run now and Acknowledge from a reader without tenant.settings.write, and renders Arabic', async () => {
     stubFetch((url) => {
       if (url.includes('/organization/invariants')) return [200, { run: null }]
-      if (url.includes('/organization/alerts')) return [200, { items: [alert()], openCount: 1 }]
+      if (url.includes('/organization/alerts')) return [200, { items: [alert()], openCount: 1, ownerEmailEnabled: false }]
       return [200, { items: [], nextCursor: null }]
     })
     render(wrap(<AuditPage />, ['audit.read'], 'ar-JO'))
     expect(await screen.findByTestId('integrity-none')).toHaveTextContent('لا يوجد فحص بعد')
     expect(screen.queryByTestId('integrity-run')).toBeNull()
     expect(screen.queryByTestId('alert-acknowledge')).toBeNull()
+    expect(screen.queryByTestId('alerts-owner-email')).toBeNull()
     expect(screen.getByTestId('alert-row')).toHaveTextContent('مخالفة ثابت')
     expect(await screen.findByTestId('audit-empty')).toBeInTheDocument()
   })

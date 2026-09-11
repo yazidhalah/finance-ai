@@ -59,12 +59,17 @@ export function AlertsCard({ onProblem }: { onProblem: (p: Problem | null) => vo
   const { can } = useSession()
   const [alerts, setAlerts] = useState<Alert[] | null>(null)
   const [openCount, setOpenCount] = useState(0)
+  const [ownerEmail, setOwnerEmail] = useState(false)
   const [all, setAll] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
-    try { const r = await opsApi.alerts(all); setAlerts(r.items); setOpenCount(r.openCount) } catch (e) { onProblem(toProblem(e)) }
+    try { const r = await opsApi.alerts(all); setAlerts(r.items); setOpenCount(r.openCount); setOwnerEmail(r.ownerEmailEnabled) } catch (e) { onProblem(toProblem(e)) }
   }, [all, onProblem])
+  async function toggleOwnerEmail(enabled: boolean) {
+    setBusy(true); onProblem(null)
+    try { setOwnerEmail((await opsApi.alertSettings(enabled)).ownerEmailEnabled) } catch (e) { onProblem(toProblem(e)) } finally { setBusy(false) }
+  }
   useEffect(() => { void load() }, [load])
 
   async function acknowledge(id: string) {
@@ -79,6 +84,9 @@ export function AlertsCard({ onProblem }: { onProblem: (p: Problem | null) => vo
         <span className="text-xs text-slate-600" data-testid="alerts-open">{t('audit.alerts.open', { count: String(openCount) })}</span>
         <label className="ms-auto flex items-center gap-2 text-xs"><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} data-testid="alerts-all" />{t('audit.alerts.showAll')}</label>
       </div>
+      {can('tenant.settings.write') ? (
+        <label className="mt-2 flex items-center gap-2 text-xs"><input type="checkbox" checked={ownerEmail} disabled={busy} onChange={(e) => void toggleOwnerEmail(e.target.checked)} data-testid="alerts-owner-email" />{t('audit.alerts.ownerEmail')}</label>
+      ) : null}
       {alerts === null ? null : alerts.length === 0 ? (
         <p className="mt-3 text-sm text-slate-600" data-testid="alerts-none">{t('audit.alerts.none')}</p>
       ) : (

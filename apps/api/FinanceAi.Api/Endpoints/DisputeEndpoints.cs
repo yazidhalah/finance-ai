@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Globalization;
 using FinanceAi.Api.Authorization;
 using FinanceAi.Api.Contracts;
@@ -21,22 +22,22 @@ public static class DisputeEndpoints
     {
         ArgumentNullException.ThrowIfNull(api);
 
-        api.MapPost("/invoices/{id:guid}/disputes", RaiseAsync).Produces<DisputeResponse>(201).RequiresPermission(Permissions.DisputesWrite).WithName("RaiseDispute");
+        api.MapPost("/invoices/{id:guid}/disputes", RaiseAsync).RequiresPermission(Permissions.DisputesWrite).WithName("RaiseDispute");
         var disputes = api.MapGroup("/disputes");
-        disputes.MapGet("/", ListAsync).Produces<DisputeListResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("ListDisputes");
-        disputes.MapGet("/{id:guid}", GetAsync).Produces<DisputeResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("GetDispute");
-        disputes.MapPost("/{id:guid}/transitions", TransitionAsync).Produces<DisputeResponse>(200).RequiresPermission(Permissions.DisputesWrite).WithName("DisputeTransition");
-        disputes.MapPost("/{id:guid}/resolve", ResolveAsync).Produces<DisputeResponse>(200).RequiresPermission(Permissions.DisputesResolve).WithName("ResolveDispute");
-        disputes.MapPost("/{id:guid}/evidence", EvidenceUploadAsync).Produces<DisputeEvidenceDto>(201).RequiresPermission(Permissions.DisputesWrite).DisableAntiforgery().WithName("AttachEvidence");
+        disputes.MapGet("/", ListAsync).RequiresPermission(Permissions.CasesRead).WithName("ListDisputes");
+        disputes.MapGet("/{id:guid}", GetAsync).RequiresPermission(Permissions.CasesRead).WithName("GetDispute");
+        disputes.MapPost("/{id:guid}/transitions", TransitionAsync).RequiresPermission(Permissions.DisputesWrite).WithName("DisputeTransition");
+        disputes.MapPost("/{id:guid}/resolve", ResolveAsync).RequiresPermission(Permissions.DisputesResolve).WithName("ResolveDispute");
+        disputes.MapPost("/{id:guid}/evidence", EvidenceUploadAsync).RequiresPermission(Permissions.DisputesWrite).DisableAntiforgery().WithName("AttachEvidence");
         disputes.MapGet("/{id:guid}/evidence/{evidenceId:guid}", EvidenceDownloadAsync).Produces(200, contentType: "application/octet-stream").RequiresPermission(Permissions.CasesRead).WithName("DownloadEvidence");
-        api.MapGet("/cases/{id:guid}/dunning-eligibility", DunningEligibilityAsync).Produces<DunningEligibilityResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("DunningEligibility");
-        api.MapGet("/tasks/payment-verification", ListTasksAsync).Produces<VerificationTaskListResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("ListVerificationTasks");
-        api.MapPost("/tasks/payment-verification/{id:guid}/resolve", ResolveTaskAsync).Produces<VerificationTaskDto>(200).RequiresPermission(Permissions.PaymentsWrite).WithName("ResolveVerificationTask");
+        api.MapGet("/cases/{id:guid}/dunning-eligibility", DunningEligibilityAsync).RequiresPermission(Permissions.CasesRead).WithName("DunningEligibility");
+        api.MapGet("/tasks/payment-verification", ListTasksAsync).RequiresPermission(Permissions.PaymentsRead).WithName("ListVerificationTasks");
+        api.MapPost("/tasks/payment-verification/{id:guid}/resolve", ResolveTaskAsync).RequiresPermission(Permissions.PaymentsWrite).WithName("ResolveVerificationTask");
 
         return api;
     }
 
-    private static async Task<IResult> RaiseAsync(Guid id, RaiseDisputeRequest request, HttpContext context, CurrentUser user, TenantDbContext db, DisputeService disputes, TimeProvider time, CancellationToken ct)
+    private static async Task<Results<Created<DisputeResponse>, ProblemHttpResult>> RaiseAsync(Guid id, RaiseDisputeRequest request, HttpContext context, CurrentUser user, TenantDbContext db, DisputeService disputes, TimeProvider time, CancellationToken ct)
     {
         if (!await db.Invoices.AnyAsync(i => i.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         var validation = new Validation().Require("reasonCode", request.ReasonCode).Currency("disputedAmount.currency", request.DisputedAmount?.Currency);
@@ -54,7 +55,7 @@ public static class DisputeEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> ListAsync(HttpContext context, TenantDbContext db, TimeProvider time, CancellationToken ct)
+    private static async Task<Results<Ok<DisputeListResponse>, ProblemHttpResult>> ListAsync(HttpContext context, TenantDbContext db, TimeProvider time, CancellationToken ct)
     {
         var q = context.Request.Query;
         var query = db.Disputes.AsQueryable();
@@ -78,13 +79,13 @@ public static class DisputeEndpoints
         return TypedResults.Ok(new DisputeListResponse(shaped, shaped.Count));
     }
 
-    private static async Task<IResult> GetAsync(Guid id, HttpContext context, TenantDbContext db, TimeProvider time, CancellationToken ct)
+    private static async Task<Results<Ok<DisputeResponse>, ProblemHttpResult>> GetAsync(Guid id, HttpContext context, TenantDbContext db, TimeProvider time, CancellationToken ct)
     {
         var d = await db.Disputes.FirstOrDefaultAsync(x => x.Id == id, ct);
         return d is null ? ApiProblems.NotFoundProblem(context) : TypedResults.Ok(await ToResponseAsync(d, db, time, ct));
     }
 
-    private static async Task<IResult> TransitionAsync(Guid id, DisputeTransitionRequest request, HttpContext context, CurrentUser user, TenantDbContext db, DisputeService disputes, TimeProvider time, CancellationToken ct)
+    private static async Task<Results<Ok<DisputeResponse>, ProblemHttpResult>> TransitionAsync(Guid id, DisputeTransitionRequest request, HttpContext context, CurrentUser user, TenantDbContext db, DisputeService disputes, TimeProvider time, CancellationToken ct)
     {
         if (!await db.Disputes.AnyAsync(d => d.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         if (request.Event is null || !DisputeMachine.UpdateEvents.TryGetValue(request.Event, out var @event))
@@ -100,7 +101,7 @@ public static class DisputeEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> ResolveAsync(Guid id, ResolveDisputeRequest request, HttpContext context, CurrentUser user, TenantDbContext db, DisputeService disputes, TimeProvider time, CancellationToken ct)
+    private static async Task<Results<Ok<DisputeResponse>, ProblemHttpResult>> ResolveAsync(Guid id, ResolveDisputeRequest request, HttpContext context, CurrentUser user, TenantDbContext db, DisputeService disputes, TimeProvider time, CancellationToken ct)
     {
         if (!await db.Disputes.AnyAsync(d => d.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         if (request.Outcome is null || !DisputeMachine.ResolutionOutcomes.TryGetValue(request.Outcome, out var outcome))
@@ -130,7 +131,7 @@ public static class DisputeEndpoints
         catch (LedgerException ex) { return ApiProblems.BusinessRuleProblem(context, ex.Code, ex.Field, ex.Meta); }   // SM-46 from the ledger unwinds the whole request
     }
 
-    private static async Task<IResult> EvidenceUploadAsync(Guid id, IFormFile? file, HttpContext context, CurrentUser user, TenantDbContext db, DisputeService disputes, CancellationToken ct)
+    private static async Task<Results<Created<DisputeEvidenceDto>, ProblemHttpResult>> EvidenceUploadAsync(Guid id, IFormFile? file, HttpContext context, CurrentUser user, TenantDbContext db, DisputeService disputes, CancellationToken ct)
     {
         if (!await db.Disputes.AnyAsync(d => d.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         if (file is null || file.Length == 0) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("file", "required", "errors.validation.file.required")]);
@@ -147,7 +148,7 @@ public static class DisputeEndpoints
     }
 
     /// <summary>SEC-40: served as an attachment with nosniff; the bytes are never rendered inline and never parsed.</summary>
-    private static async Task<IResult> EvidenceDownloadAsync(Guid id, Guid evidenceId, HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<FileContentHttpResult, ProblemHttpResult>> EvidenceDownloadAsync(Guid id, Guid evidenceId, HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var e = await db.DisputeEvidence.FirstOrDefaultAsync(x => x.Id == evidenceId && x.DisputeId == id, ct);
         if (e is null) return ApiProblems.NotFoundProblem(context);
@@ -155,7 +156,7 @@ public static class DisputeEndpoints
         return TypedResults.File(e.Content, e.ContentType, e.FileName);
     }
 
-    private static async Task<IResult> DunningEligibilityAsync(Guid id, HttpContext context, TenantDbContext db, DisputeService disputes, CancellationToken ct)
+    private static async Task<Results<Ok<DunningEligibilityResponse>, ProblemHttpResult>> DunningEligibilityAsync(Guid id, HttpContext context, TenantDbContext db, DisputeService disputes, CancellationToken ct)
     {
         try
         {
@@ -166,7 +167,7 @@ public static class DisputeEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> ListTasksAsync(HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<VerificationTaskListResponse>, ProblemHttpResult>> ListTasksAsync(HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var status = context.Request.Query["status"].ToString();
         var query = db.VerificationTasks.AsQueryable();
@@ -183,7 +184,7 @@ public static class DisputeEndpoints
         }).ToList(), items.Count));
     }
 
-    private static async Task<IResult> ResolveTaskAsync(Guid id, ResolveVerificationRequest request, HttpContext context, CurrentUser user, TenantDbContext db, DisputeService disputes, CancellationToken ct)
+    private static async Task<Results<Ok<VerificationTaskDto>, ProblemHttpResult>> ResolveTaskAsync(Guid id, ResolveVerificationRequest request, HttpContext context, CurrentUser user, TenantDbContext db, DisputeService disputes, CancellationToken ct)
     {
         if (!await db.VerificationTasks.AnyAsync(t => t.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         var outcome = request.Outcome switch
@@ -228,11 +229,11 @@ public static class DisputeEndpoints
 
     private static DisputeEvidenceDto Evidence(DisputeEvidence e) => new(e.Id, e.FileName, e.ContentType, e.SizeBytes, e.Sha256, e.UploadedBy, e.UploadedAt.ToString("O", CultureInfo.InvariantCulture));
 
-    private static IResult Invalid(HttpContext context, InvalidTransitionException ex) =>
+    private static ProblemHttpResult Invalid(HttpContext context, InvalidTransitionException ex) =>
         ApiProblems.Create(context, StatusCodes.Status409Conflict, "invalid_transition", $"No transition from {ex.From} on {ex.Event}.", "errors.invalid_transition",
             [new ApiProblems.FieldError("event", "invalid_transition", "errors.invalid_transition", new Dictionary<string, string> { ["from"] = ex.From, ["event"] = ex.Event })]);
 
-    private static IResult Rule(HttpContext context, CaseException ex) => ex.Code switch
+    private static ProblemHttpResult Rule(HttpContext context, CaseException ex) => ex.Code switch
     {
         "invoice_not_found" or "dispute_not_found" or "case_not_found" or "task_not_found" or "member_not_found" or "payment_not_found" => ApiProblems.NotFoundProblem(context),
         "duplicate" => ApiProblems.Create(context, StatusCodes.Status409Conflict, "duplicate", "An open dispute already exists on this invoice.", "errors.duplicate_dispute"),

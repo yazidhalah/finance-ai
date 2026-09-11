@@ -1101,5 +1101,6 @@
   "audit.log.field": "الحقل",
   "audit.log.before": "قبل",
   "audit.log.after": "بعد",
-  "audit.log.value": "القيمة"
+  "audit.log.value": "القيمة",
+  "audit.alerts.ownerEmail": "إرسال بريد إلى المالكين عند التنبيهات الحرجة (المشغّل يُبلَّغ دائمًا)"
 }

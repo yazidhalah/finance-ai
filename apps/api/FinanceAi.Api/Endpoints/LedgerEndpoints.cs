@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -25,38 +26,38 @@ public static class LedgerEndpoints
         ArgumentNullException.ThrowIfNull(api);
 
         var payments = api.MapGroup("/payments");
-        payments.MapPost("/", RecordPaymentAsync).Produces<PaymentResponse>(201).RequiresPermission(Permissions.PaymentsWrite).WithName("RecordPayment");
-        payments.MapGet("/", ListPaymentsAsync).Produces<PaymentListResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("ListPayments");
-        payments.MapGet("/{id:guid}", GetPaymentAsync).Produces<PaymentResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("GetPayment");
-        payments.MapGet("/{id:guid}/allocation-proposal", ProposeAsync).Produces<AllocationProposalResponse>(200).RequiresPermission(Permissions.PaymentsAllocate).WithName("AllocationProposal");
-        payments.MapPost("/{id:guid}/allocations", AllocateAsync).Produces<AllocationResultResponse>(200).RequiresPermission(Permissions.PaymentsAllocate).WithName("Allocate");
-        payments.MapPost("/{id:guid}/reverse", ReversePaymentAsync).Produces<PaymentResponse>(200).RequiresPermission(Permissions.PaymentsWrite).WithName("ReversePayment");
+        payments.MapPost("/", RecordPaymentAsync).RequiresPermission(Permissions.PaymentsWrite).WithName("RecordPayment");
+        payments.MapGet("/", ListPaymentsAsync).RequiresPermission(Permissions.PaymentsRead).WithName("ListPayments");
+        payments.MapGet("/{id:guid}", GetPaymentAsync).RequiresPermission(Permissions.PaymentsRead).WithName("GetPayment");
+        payments.MapGet("/{id:guid}/allocation-proposal", ProposeAsync).RequiresPermission(Permissions.PaymentsAllocate).WithName("AllocationProposal");
+        payments.MapPost("/{id:guid}/allocations", AllocateAsync).RequiresPermission(Permissions.PaymentsAllocate).WithName("Allocate");
+        payments.MapPost("/{id:guid}/reverse", ReversePaymentAsync).RequiresPermission(Permissions.PaymentsWrite).WithName("ReversePayment");
 
-        api.MapPost("/allocations/{id:guid}/reverse", ReverseAllocationAsync).Produces<AllocationDto>(200).RequiresPermission(Permissions.PaymentsAllocate).WithName("ReverseAllocation");
+        api.MapPost("/allocations/{id:guid}/reverse", ReverseAllocationAsync).RequiresPermission(Permissions.PaymentsAllocate).WithName("ReverseAllocation");
 
         var cheques = api.MapGroup("/cheques");
-        cheques.MapPost("/", RecordChequeAsync).Produces<ChequeResponse>(201).RequiresPermission(Permissions.PaymentsWrite).WithName("RecordCheque");
-        cheques.MapGet("/", ListChequesAsync).Produces<ChequeListResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("ListCheques");
-        cheques.MapGet("/{id:guid}", GetChequeAsync).Produces<ChequeResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("GetCheque");
-        cheques.MapPost("/{id:guid}/transitions", TransitionChequeAsync).Produces<ChequeTransitionResponse>(200).RequiresPermission(Permissions.PaymentsWrite).WithName("TransitionCheque");
+        cheques.MapPost("/", RecordChequeAsync).RequiresPermission(Permissions.PaymentsWrite).WithName("RecordCheque");
+        cheques.MapGet("/", ListChequesAsync).RequiresPermission(Permissions.PaymentsRead).WithName("ListCheques");
+        cheques.MapGet("/{id:guid}", GetChequeAsync).RequiresPermission(Permissions.PaymentsRead).WithName("GetCheque");
+        cheques.MapPost("/{id:guid}/transitions", TransitionChequeAsync).RequiresPermission(Permissions.PaymentsWrite).WithName("TransitionCheque");
 
-        api.MapPost("/invoices/{id:guid}/withholding", RecordWithholdingAsync).Produces<WithholdingDto>(201).RequiresPermission(Permissions.PaymentsWrite).WithName("RecordWithholding");
-        api.MapPost("/invoices/{id:guid}/write-off", ProposeWriteOffAsync).Produces<WriteOffResponse>(201).RequiresPermission(Permissions.WriteoffPropose).WithName("ProposeWriteOff");
-        api.MapPost("/invoices/{id:guid}/void", VoidInvoiceAsync).Produces<InvoiceResponse>(200).RequiresPermission(Permissions.InvoicesVoid).WithName("VoidInvoice");
+        api.MapPost("/invoices/{id:guid}/withholding", RecordWithholdingAsync).RequiresPermission(Permissions.PaymentsWrite).WithName("RecordWithholding");
+        api.MapPost("/invoices/{id:guid}/write-off", ProposeWriteOffAsync).RequiresPermission(Permissions.WriteoffPropose).WithName("ProposeWriteOff");
+        api.MapPost("/invoices/{id:guid}/void", VoidInvoiceAsync).RequiresPermission(Permissions.InvoicesVoid).WithName("VoidInvoice");
 
         var creditNotes = api.MapGroup("/credit-notes");
-        creditNotes.MapPost("/", CreateCreditNoteAsync).Produces<CreditNoteResponse>(201).RequiresPermission(Permissions.CreditNotesWrite).WithName("CreateCreditNote");
-        creditNotes.MapGet("/", ListCreditNotesAsync).Produces<CreditNoteListResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("ListCreditNotes");
-        creditNotes.MapGet("/{id:guid}", GetCreditNoteAsync).Produces<CreditNoteResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("GetCreditNote");
-        creditNotes.MapPost("/{id:guid}/applications", ApplyCreditNoteAsync).Produces<CreditNoteResponse>(200).RequiresPermission(Permissions.CreditNotesWrite).WithName("ApplyCreditNote");
-        creditNotes.MapPost("/{id:guid}/void", VoidCreditNoteAsync).Produces<CreditNoteResponse>(200).RequiresPermission(Permissions.CreditNotesWrite).WithName("VoidCreditNote");
+        creditNotes.MapPost("/", CreateCreditNoteAsync).RequiresPermission(Permissions.CreditNotesWrite).WithName("CreateCreditNote");
+        creditNotes.MapGet("/", ListCreditNotesAsync).RequiresPermission(Permissions.PaymentsRead).WithName("ListCreditNotes");
+        creditNotes.MapGet("/{id:guid}", GetCreditNoteAsync).RequiresPermission(Permissions.PaymentsRead).WithName("GetCreditNote");
+        creditNotes.MapPost("/{id:guid}/applications", ApplyCreditNoteAsync).RequiresPermission(Permissions.CreditNotesWrite).WithName("ApplyCreditNote");
+        creditNotes.MapPost("/{id:guid}/void", VoidCreditNoteAsync).RequiresPermission(Permissions.CreditNotesWrite).WithName("VoidCreditNote");
 
         var writeOffs = api.MapGroup("/write-offs");
-        writeOffs.MapGet("/", ListWriteOffsAsync).Produces<WriteOffListResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("ListWriteOffs");
-        writeOffs.MapGet("/{id:guid}", GetWriteOffAsync).Produces<WriteOffResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("GetWriteOff");
-        writeOffs.MapPost("/{id:guid}/approve", ApproveWriteOffAsync).Produces<WriteOffResponse>(200).RequiresPermission(Permissions.WriteoffApprove).RequiresReauth().WithName("ApproveWriteOff");   // SEC-09, slice 13 closes slice 3b D-6
-        writeOffs.MapPost("/{id:guid}/reject", RejectWriteOffAsync).Produces<WriteOffResponse>(200).RequiresPermission(Permissions.WriteoffApprove).WithName("RejectWriteOff");
-        writeOffs.MapPost("/{id:guid}/reverse", ReverseWriteOffAsync).Produces<WriteOffResponse>(200).RequiresPermission(Permissions.WriteoffApprove).WithName("ReverseWriteOff");
+        writeOffs.MapGet("/", ListWriteOffsAsync).RequiresPermission(Permissions.PaymentsRead).WithName("ListWriteOffs");
+        writeOffs.MapGet("/{id:guid}", GetWriteOffAsync).RequiresPermission(Permissions.PaymentsRead).WithName("GetWriteOff");
+        writeOffs.MapPost("/{id:guid}/approve", ApproveWriteOffAsync).RequiresPermission(Permissions.WriteoffApprove).RequiresReauth().WithName("ApproveWriteOff");   // SEC-09, slice 13 closes slice 3b D-6
+        writeOffs.MapPost("/{id:guid}/reject", RejectWriteOffAsync).RequiresPermission(Permissions.WriteoffApprove).WithName("RejectWriteOff");
+        writeOffs.MapPost("/{id:guid}/reverse", ReverseWriteOffAsync).RequiresPermission(Permissions.WriteoffApprove).WithName("ReverseWriteOff");
 
         return api;
     }
@@ -65,7 +66,7 @@ public static class LedgerEndpoints
     // Payments
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> RecordPaymentAsync(PaymentRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Created<PaymentResponse>, Ok<PaymentResponse>, ProblemHttpResult>> RecordPaymentAsync(PaymentRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
     {
         // API-08: every POST that creates money requires an Idempotency-Key.
         var key = context.Request.Headers["Idempotency-Key"].ToString().Trim();
@@ -134,7 +135,7 @@ public static class LedgerEndpoints
         }
     }
 
-    private static async Task<IResult> ListPaymentsAsync(TenantDbContext db, CancellationToken ct, Guid? customerId = null, int limit = 50, Guid? cursor = null)
+    private static async Task<Results<Ok<PaymentListResponse>, ProblemHttpResult>> ListPaymentsAsync(TenantDbContext db, CancellationToken ct, Guid? customerId = null, int limit = 50, Guid? cursor = null)
     {
         var pageSize = Math.Clamp(limit, 1, 200);
         var query = db.Payments.AsQueryable();
@@ -148,13 +149,13 @@ public static class LedgerEndpoints
         return TypedResults.Ok(new PaymentListResponse(items, hasMore ? items[^1].Id.ToString() : null, total));
     }
 
-    private static async Task<IResult> GetPaymentAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<PaymentResponse>, ProblemHttpResult>> GetPaymentAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var payment = await db.Payments.FirstOrDefaultAsync(p => p.Id == id, ct);
         return payment is null ? ApiProblems.NotFoundProblem(context) : TypedResults.Ok(await ToResponseAsync(payment, db, ct));
     }
 
-    private static async Task<IResult> ProposeAsync(Guid id, HttpContext context, TenantDbContext db, LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Ok<AllocationProposalResponse>, ProblemHttpResult>> ProposeAsync(Guid id, HttpContext context, TenantDbContext db, LedgerService ledger, CancellationToken ct)
     {
         var payment = await db.Payments.FirstOrDefaultAsync(p => p.Id == id, ct);
         if (payment is null) return ApiProblems.NotFoundProblem(context);
@@ -171,7 +172,7 @@ public static class LedgerEndpoints
             MoneyDto.From(available - lines.Sum(l => l.Amount), payment.Currency)));
     }
 
-    private static async Task<IResult> AllocateAsync(Guid id, AllocationRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Ok<AllocationResultResponse>, ProblemHttpResult>> AllocateAsync(Guid id, AllocationRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
     {
         var payment = await db.Payments.FirstOrDefaultAsync(p => p.Id == id, ct);
         if (payment is null) return ApiProblems.NotFoundProblem(context);
@@ -191,7 +192,7 @@ public static class LedgerEndpoints
         }
     }
 
-    private static async Task<IResult> ReversePaymentAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Ok<PaymentResponse>, ProblemHttpResult>> ReversePaymentAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
     {
         var payment = await db.Payments.FirstOrDefaultAsync(p => p.Id == id, ct);
         if (payment is null) return ApiProblems.NotFoundProblem(context);
@@ -208,7 +209,7 @@ public static class LedgerEndpoints
         }
     }
 
-    private static async Task<IResult> ReverseAllocationAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Ok<AllocationDto>, ProblemHttpResult>> ReverseAllocationAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
     {
         var allocation = await db.PaymentAllocations.FirstOrDefaultAsync(a => a.Id == id, ct);
         if (allocation is null) return ApiProblems.NotFoundProblem(context);
@@ -229,7 +230,7 @@ public static class LedgerEndpoints
     // Cheques
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> RecordChequeAsync(ChequeRequest request, HttpContext context, CurrentUser user, LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Created<ChequeResponse>, ProblemHttpResult>> RecordChequeAsync(ChequeRequest request, HttpContext context, CurrentUser user, LedgerService ledger, CancellationToken ct)
     {
         var validation = new Validation().Require("chequeNumber", request.ChequeNumber).MaxLength("chequeNumber", request.ChequeNumber, 50).Currency("amount.currency", request.Amount?.Currency);
         if (request.CustomerId is null) validation.Require("customerId", null);
@@ -261,7 +262,7 @@ public static class LedgerEndpoints
         }
     }
 
-    private static async Task<IResult> ListChequesAsync(TenantDbContext db, CancellationToken ct, Guid? customerId = null, string? status = null, int limit = 50, Guid? cursor = null)
+    private static async Task<Results<Ok<ChequeListResponse>, ProblemHttpResult>> ListChequesAsync(TenantDbContext db, CancellationToken ct, Guid? customerId = null, string? status = null, int limit = 50, Guid? cursor = null)
     {
         var pageSize = Math.Clamp(limit, 1, 200);
         var query = db.Cheques.AsQueryable();
@@ -275,13 +276,13 @@ public static class LedgerEndpoints
         return TypedResults.Ok(new ChequeListResponse(items, hasMore ? items[^1].Id.ToString() : null, total));
     }
 
-    private static async Task<IResult> GetChequeAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<ChequeResponse>, ProblemHttpResult>> GetChequeAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var cheque = await db.Cheques.FirstOrDefaultAsync(c => c.Id == id, ct);
         return cheque is null ? ApiProblems.NotFoundProblem(context) : TypedResults.Ok(ToDto(cheque));
     }
 
-    private static async Task<IResult> TransitionChequeAsync(Guid id, ChequeTransitionRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Ok<ChequeTransitionResponse>, ProblemHttpResult>> TransitionChequeAsync(Guid id, ChequeTransitionRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
     {
         var cheque = await db.Cheques.FirstOrDefaultAsync(c => c.Id == id, ct);
         if (cheque is null) return ApiProblems.NotFoundProblem(context);
@@ -308,7 +309,7 @@ public static class LedgerEndpoints
     // Withholding, write-off, void (on an invoice)
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> RecordWithholdingAsync(Guid id, WithholdingRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Created<WithholdingDto>, ProblemHttpResult>> RecordWithholdingAsync(Guid id, WithholdingRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
     {
         var invoice = await db.Invoices.FirstOrDefaultAsync(i => i.Id == id, ct);
         if (invoice is null) return ApiProblems.NotFoundProblem(context);
@@ -343,7 +344,7 @@ public static class LedgerEndpoints
         }
     }
 
-    private static async Task<IResult> ProposeWriteOffAsync(Guid id, WriteOffProposeRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Created<WriteOffResponse>, ProblemHttpResult>> ProposeWriteOffAsync(Guid id, WriteOffProposeRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
     {
         if (!await db.Invoices.AnyAsync(i => i.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         if (string.IsNullOrWhiteSpace(request.ReasonCode)) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("reasonCode", "required", "errors.reasonCode.required")]);
@@ -359,7 +360,7 @@ public static class LedgerEndpoints
         }
     }
 
-    private static async Task<IResult> VoidInvoiceAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Ok<InvoiceResponse>, ProblemHttpResult>> VoidInvoiceAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
     {
         if (!await db.Invoices.AnyAsync(i => i.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         if (string.IsNullOrWhiteSpace(request.Reason)) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("reason", "required", "errors.reason.required")]);
@@ -379,7 +380,7 @@ public static class LedgerEndpoints
     // Credit notes
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> CreateCreditNoteAsync(CreditNoteRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Created<CreditNoteResponse>, ProblemHttpResult>> CreateCreditNoteAsync(CreditNoteRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
     {
         var validation = new Validation().Currency("amount.currency", request.Amount?.Currency).Require("reasonCode", request.ReasonCode);
         if (request.CustomerId is null) validation.Require("customerId", null);
@@ -418,7 +419,7 @@ public static class LedgerEndpoints
         }
     }
 
-    private static async Task<IResult> ListCreditNotesAsync(TenantDbContext db, CancellationToken ct, Guid? customerId = null, int limit = 50, Guid? cursor = null)
+    private static async Task<Results<Ok<CreditNoteListResponse>, ProblemHttpResult>> ListCreditNotesAsync(TenantDbContext db, CancellationToken ct, Guid? customerId = null, int limit = 50, Guid? cursor = null)
     {
         var pageSize = Math.Clamp(limit, 1, 200);
         var query = db.CreditNotes.AsQueryable();
@@ -432,13 +433,13 @@ public static class LedgerEndpoints
         return TypedResults.Ok(new CreditNoteListResponse(items, hasMore ? items[^1].Id.ToString() : null, total));
     }
 
-    private static async Task<IResult> GetCreditNoteAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<CreditNoteResponse>, ProblemHttpResult>> GetCreditNoteAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var note = await db.CreditNotes.FirstOrDefaultAsync(n => n.Id == id, ct);
         return note is null ? ApiProblems.NotFoundProblem(context) : TypedResults.Ok(await ToResponseAsync(note, db, ct));
     }
 
-    private static async Task<IResult> ApplyCreditNoteAsync(Guid id, AllocationRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Ok<CreditNoteResponse>, ProblemHttpResult>> ApplyCreditNoteAsync(Guid id, AllocationRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
     {
         var note = await db.CreditNotes.FirstOrDefaultAsync(n => n.Id == id, ct);
         if (note is null) return ApiProblems.NotFoundProblem(context);
@@ -458,7 +459,7 @@ public static class LedgerEndpoints
         }
     }
 
-    private static async Task<IResult> VoidCreditNoteAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Ok<CreditNoteResponse>, ProblemHttpResult>> VoidCreditNoteAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
     {
         var note = await db.CreditNotes.FirstOrDefaultAsync(n => n.Id == id, ct);
         if (note is null) return ApiProblems.NotFoundProblem(context);
@@ -479,7 +480,7 @@ public static class LedgerEndpoints
     // Write-offs
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> ListWriteOffsAsync(TenantDbContext db, CancellationToken ct, string? status = null, int limit = 50, Guid? cursor = null)
+    private static async Task<Results<Ok<WriteOffListResponse>, ProblemHttpResult>> ListWriteOffsAsync(TenantDbContext db, CancellationToken ct, string? status = null, int limit = 50, Guid? cursor = null)
     {
         var pageSize = Math.Clamp(limit, 1, 200);
         var query = db.WriteOffs.AsQueryable();
@@ -492,13 +493,13 @@ public static class LedgerEndpoints
         return TypedResults.Ok(new WriteOffListResponse(items, hasMore ? items[^1].Id.ToString() : null, total));
     }
 
-    private static async Task<IResult> GetWriteOffAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<WriteOffResponse>, ProblemHttpResult>> GetWriteOffAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var writeOff = await db.WriteOffs.FirstOrDefaultAsync(w => w.Id == id, ct);
         return writeOff is null ? ApiProblems.NotFoundProblem(context) : TypedResults.Ok(ToDto(writeOff));
     }
 
-    private static async Task<IResult> ApproveWriteOffAsync(Guid id, WriteOffApproveRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Ok<WriteOffResponse>, ProblemHttpResult>> ApproveWriteOffAsync(Guid id, WriteOffApproveRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
     {
         var writeOff = await db.WriteOffs.FirstOrDefaultAsync(w => w.Id == id, ct);
         if (writeOff is null) return ApiProblems.NotFoundProblem(context);
@@ -514,7 +515,7 @@ public static class LedgerEndpoints
         }
     }
 
-    private static async Task<IResult> RejectWriteOffAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Ok<WriteOffResponse>, ProblemHttpResult>> RejectWriteOffAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
     {
         var writeOff = await db.WriteOffs.FirstOrDefaultAsync(w => w.Id == id, ct);
         if (writeOff is null) return ApiProblems.NotFoundProblem(context);
@@ -529,7 +530,7 @@ public static class LedgerEndpoints
         }
     }
 
-    private static async Task<IResult> ReverseWriteOffAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Ok<WriteOffResponse>, ProblemHttpResult>> ReverseWriteOffAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, LedgerService ledger, CancellationToken ct)
     {
         var writeOff = await db.WriteOffs.FirstOrDefaultAsync(w => w.Id == id, ct);
         if (writeOff is null) return ApiProblems.NotFoundProblem(context);
@@ -586,7 +587,7 @@ public static class LedgerEndpoints
     // Mapping
     // ---------------------------------------------------------------------------------------
 
-    private static IReadOnlyList<LedgerService.AllocationLine> ParseLines(IReadOnlyList<AllocationLineInput>? inputs, HttpContext context, out IResult? problem)
+    private static IReadOnlyList<LedgerService.AllocationLine> ParseLines(IReadOnlyList<AllocationLineInput>? inputs, HttpContext context, out ProblemHttpResult? problem)
     {
         problem = null;
         var lines = new List<LedgerService.AllocationLine>();
@@ -609,7 +610,7 @@ public static class LedgerEndpoints
         return lines;
     }
 
-    private static IResult Rule(HttpContext context, LedgerException ex) => ex.Code switch
+    private static ProblemHttpResult Rule(HttpContext context, LedgerException ex) => ex.Code switch
     {
         "invoice_not_found" or "customer_not_found" => ApiProblems.NotFoundProblem(context),
         _ => ApiProblems.BusinessRuleProblem(context, ex.Code, ex.Field, ex.Meta),

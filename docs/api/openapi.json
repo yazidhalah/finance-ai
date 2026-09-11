@@ -1088,6 +1088,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1190,6 +1200,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1496,6 +1516,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1670,6 +1700,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1997,6 +2037,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -2754,6 +2804,87 @@
           },
           "404": {
             "description": "No such row in this tenant — the same answer whether it exists elsewhere or not at all (SEC-14).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is malformed or fails validation; `errors` names each field.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A business rule refused the request; `errors[0].code` is the rule (doc 03, doc 02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited (API-13); `Retry-After` is set.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "tenant.settings.write"
+      }
+    },
+    "/api/v1/organization/alert-settings": {
+      "patch": {
+        "tags": [
+          "OpsEndpoints"
+        ],
+        "operationId": "UpdateAlertSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertSettingsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session (SEC-03), or MFA enrolment is required (403 mfa_enrollment_required is also possible).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role does not hold 'tenant.settings.write', or the session is not strong enough (mfa_enrollment_required, reauthentication_required).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3666,6 +3797,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -4129,6 +4270,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -4418,6 +4569,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -5186,6 +5347,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -5523,6 +5694,26 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -6032,6 +6223,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -6374,6 +6575,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -7597,6 +7808,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -8108,6 +8329,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -9073,6 +9304,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -9295,6 +9536,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -9508,6 +9759,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -10486,6 +10747,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -12420,6 +12691,37 @@
               "string"
             ],
             "format": "int32"
+          },
+          "ownerEmailEnabled": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "AlertSettingsRequest": {
+        "required": [
+          "ownerEmailEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "ownerEmailEnabled": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "AlertSettingsResponse": {
+        "required": [
+          "ownerEmailEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "ownerEmailEnabled": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
