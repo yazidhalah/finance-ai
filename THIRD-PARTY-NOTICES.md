@@ -9,7 +9,7 @@ source-available license is a blocking review finding, not a discussion.
 
 Versions are pinned; lockfiles (`package-lock.json`, `packages.lock.json`) are committed.
 
-Last updated: slice 3b — Payments & Allocation (no dependency added: the randomized invariant tests use a seeded `System.Random`, not FsCheck).
+Last updated: slice 4 — Aging (no dependency added: the XLSX/CSV export writers are in-house, like the readers).
 
 ---
 

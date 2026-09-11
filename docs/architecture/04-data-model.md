@@ -1,6 +1,6 @@
 # 04 — PostgreSQL Entity Model
 
-Status: DRAFT, amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), slice 3 (DM-23a) and slice 3b (DM-24a). The DDL below is **illustrative
+Status: DRAFT, amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), slice 3 (DM-23a), slice 3b (DM-24a) and slice 4 (DM-31a). The DDL below is **illustrative
 specification**, not a migration.
 Migrations are written inside their vertical slice (doc 10) and must match this
 document or amend it.
@@ -941,6 +941,16 @@ used by the nightly reconciliation against `balance_cache`.
 **DM-31** `fn_aging(tenant uuid, as_of date, basis text)` — returns one row per
 invoice with `days_past_due`, `bucket`, `open_balance_as_of`, `disputed_amount`.
 As-of correctness comes from `effective_date` on allocations/applications (FIN-57).
+
+> **Amended in slice 4 (DM-31a).** As built (`database/migrations/0005_aging.sql`):
+> `fn_aging(p_tenant uuid, p_as_of date, p_basis text, p_tz text)` — the fourth parameter is the
+> tenant timezone, used to convert `write_offs.approved_at` / `reversed_at` and
+> `withholding_deductions.created_at` to calendar dates. It returns `open_balance` (as of the date),
+> `days_past_due` and the document rate; **bucketing is done in C# from `tenant_settings`**, not in
+> SQL, so the function has no knowledge of bucket boundaries. `v_invoice_balances` (DM-30) exists
+> and backs the reconciliation. Three tenant-leading history indexes were added to
+> `payment_allocations`, `credit_note_applications` and `withholding_deductions` because the 0004
+> partial indexes exclude reversed rows, which an as-of read must include.
 
 **DM-32** `v_collection_queue` — cases joined to derived aggregates, filtered for
 queue eligibility (not suppressed, not escalated-and-quiet), ordered by

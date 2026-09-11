@@ -79,4 +79,20 @@ public static class DirectSeeder
         var result = await command.ExecuteScalarAsync();
         return result is null or DBNull ? default : (T)result;
     }
+
+    /// <summary>Runs a statement as the superuser — for seeding and for corrupting state on purpose.</summary>
+    public static async Task<int> ExecuteAsync(this DatabaseFixture fixture, string sql, params (string Name, object Value)[] parameters)
+    {
+        ArgumentNullException.ThrowIfNull(fixture);
+
+        await using var connection = fixture.OpenAdmin();
+        await using var command = new NpgsqlCommand(sql, connection);
+
+        foreach (var (name, value) in parameters ?? [])
+        {
+            command.Parameters.AddWithValue(name, value);
+        }
+
+        return await command.ExecuteNonQueryAsync();
+    }
 }

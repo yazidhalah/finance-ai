@@ -501,8 +501,7 @@ public sealed class LedgerRuleTests(ApiTestFixture fixture)
         tenant.Set(tenantId, null);
         await using var db = new FinanceAi.Infrastructure.Database.TenantDbContext(options, tenant);
         await using var scope = await FinanceAi.Infrastructure.Database.DatabaseScope.EnterTenantAsync(db, tenantId, null);
-        var ledger = new FinanceAi.Infrastructure.Ledger.LedgerService(db, new FinanceAi.Infrastructure.Audit.AuditWriter(db), TimeProvider.System);
-        var result = await new FinanceAi.Infrastructure.Ledger.BalanceReconciliation(db, ledger).RunAsync();
+        var result = await new FinanceAi.Infrastructure.Ledger.BalanceReconciliation(db).RunAsync();
         await scope.CompleteAsync();
         return result;
     }

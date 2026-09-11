@@ -8,6 +8,7 @@ import { ImportsPage } from './pages/Imports'
 import { InvoicesPage } from './pages/Invoices'
 import { ChequesPage, CreditNotesPage, InvoiceDetailPage, WriteOffsPage } from './pages/Ledger'
 import { PaymentsPage } from './pages/Payments'
+import { AgingPage } from './pages/Aging'
 import { CustomersPage } from './pages/Customers'
 import { OrganizationPage } from './pages/Organization'
 import { RegisterOrganization } from './pages/RegisterOrganization'
@@ -27,6 +28,7 @@ type Screen =
   | { kind: 'cheques' }
   | { kind: 'creditNotes' }
   | { kind: 'writeOffs' }
+  | { kind: 'aging' }
 
 /**
  * A screen switch driven by the URL path, not a routing library: three authenticated destinations
@@ -47,6 +49,7 @@ function screenFromPath(path: string): Screen {
   if (path.startsWith('/payments/credit-notes')) return { kind: 'creditNotes' }
   if (path.startsWith('/payments/write-offs')) return { kind: 'writeOffs' }
   if (path.startsWith('/payments')) return { kind: 'payments' }
+  if (path.startsWith('/aging')) return { kind: 'aging' }
   return { kind: 'organization' }
 }
 
@@ -121,6 +124,8 @@ function Routes() {
       <CreditNotesPage />
     ) : screen.kind === 'writeOffs' ? (
       <WriteOffsPage />
+    ) : screen.kind === 'aging' ? (
+      <AgingPage />
     ) : (
       <OrganizationPage />
     )
