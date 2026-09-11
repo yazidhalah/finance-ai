@@ -19,6 +19,7 @@ Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), sl
 | 8 | [slices/slice-08-email-reminders.md](slices/slice-08-email-reminders.md) · [review](slices/slice-08-review.md) | Implemented and tested; SMTP is the `.env` host for every tenant (D-1); the review names the four send paths |
 | 9 | [slices/slice-09-ai-reply-classification.md](slices/slice-09-ai-reply-classification.md) · [review](slices/slice-09-review.md) · [evaluation](decisions/0006-ai-evaluation-2026-09-11-qwen3-4b-classify-v1.md) | Implemented and tested; the corpus is author-written and small (D-5); the model is steerable by injection, the backend is not |
 | 10 | [slices/slice-10-daily-briefing.md](slices/slice-10-daily-briefing.md) · [review](slices/slice-10-review.md) | Implemented and tested; metrics reuse the aging and queue computations; the guard drops any untraceable numeral; Arabic prose quality is flagged |
+| 11 | [slices/slice-11-v1-acceptance.md](slices/slice-11-v1-acceptance.md) · [review](slices/slice-11-review.md) | The E2E suite (T-121…T-132, en + ar) and the CI workflow; the fake-model mode of the AI service is test-only |
 
 **Open questions still outstanding.** Q-01, Q-02, Q-04 and Q-06 in document 00 remain unanswered.
 Slices 1–10 proceeded on the documented defaults (A-01…A-05, A-11, A-12). **Slice 3b built E1 on a

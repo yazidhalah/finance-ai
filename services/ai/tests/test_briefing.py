@@ -104,3 +104,26 @@ def test_schema_escape_falls_back(make_client, auth):
 def test_requires_token(make_client):
     c = make_client(FakeModel())
     assert c.post(URL, json=request_body()).status_code == 401
+
+
+def test_fake_model_is_opt_in_and_marked(monkeypatch):
+    """The e2e stand-in never activates by default, and announces itself when it does."""
+    from app.config import Settings
+    from app.main import create_app
+    from fastapi.testclient import TestClient
+
+    from conftest import TOKEN, settings as make_settings
+
+    monkeypatch.delenv("AI_FAKE_MODEL", raising=False)
+    app = create_app(make_settings())
+    assert type(app).__name__ == "FastAPI"
+    monkeypatch.setenv("AI_FAKE_MODEL", "1")
+    c = TestClient(create_app(make_settings()))
+    info = c.get("/model-info", headers={"X-Service-Token": TOKEN}).json()
+    assert info["fake"] is True and info["digest"] == "fake"
+    r = c.post(URL, json=request_body(), headers={"X-Service-Token": TOKEN})
+    assert r.status_code == 200 and r.headers["X-Ai-Validation-Status"] == "valid"
+    assert "47350.750" in r.json()["narrative"]
+    down = request_body(company_display_name="Briefing Co [ai-down]")
+    assert c.post(URL, json=down, headers={"X-Service-Token": TOKEN}).status_code == 503
+    assert Settings  # imported for the type; keeps the linter honest

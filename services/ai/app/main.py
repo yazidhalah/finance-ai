@@ -6,6 +6,7 @@ import asyncio
 import hmac
 import json
 import logging
+import os
 import sys
 import time
 import uuid
@@ -53,7 +54,16 @@ def _confidence_bucket(c: float) -> str:
 
 def create_app(settings: Settings, client: ModelClient | None = None) -> FastAPI:
     _configure_logging()
-    model_client: ModelClient = client or OllamaClient(settings.ollama_url, settings.model, settings.timeout_seconds)
+    model_client: ModelClient
+    if client is not None:
+        model_client = client
+    elif os.environ.get("AI_FAKE_MODEL") == "1":
+        from .fake_model import FakeOllama
+
+        log.warning("fake_model_enabled", extra={"fields": {"note": "AI_FAKE_MODEL=1: deterministic stand-in for end-to-end tests; never production"}})
+        model_client = FakeOllama()
+    else:
+        model_client = OllamaClient(settings.ollama_url, settings.model, settings.timeout_seconds)
     slots = asyncio.Semaphore(settings.max_concurrency)
 
     @asynccontextmanager

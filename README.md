@@ -54,6 +54,7 @@ dotnet format --verify-no-changes     # formatting
 dotnet build --configuration Release  # build
 dotnet test  --configuration Release  # unit + integration + tenant-isolation, against real PostgreSQL
 npm --prefix apps/web run test        # web units: i18n parity, RTL, permission-filtered navigation
+npm --prefix tests/e2e test           # Playwright journeys T-121…T-132 in en and ar (see tests/e2e/README.md)
 services/ai/.venv/bin/python -m pytest -c services/ai/pytest.ini   # the AI service, with a fake model
 AI_LIVE_TESTS=1 services/ai/.venv/bin/python -m pytest -c services/ai/pytest.ini   # + the injection corpus against Ollama (slow)
 ```
@@ -89,7 +90,7 @@ apps/worker       Scheduled jobs (case creation, PTP evaluation, invariants, bri
 services/ai       Python + FastAPI, Qwen3 via Ollama; prompts, schemas, evaluations (classify_customer_reply, daily_briefing)
 database          bootstrap (roles) and forward-only SQL migrations (PostgreSQL 16 + pgvector)
 infrastructure    Podman Compose and deployment
-tests             unit · integration · security · support (e2e not yet built; the AI evaluation lives in services/ai/evaluations)
+tests             unit · integration · security · e2e (Playwright, en + ar) · support; the AI evaluation lives in services/ai/evaluations
 docs              The specification, plus a per-slice acceptance record under docs/slices
 ```
 

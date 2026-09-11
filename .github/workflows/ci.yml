@@ -1,0 +1,117 @@
+# Doc 09 §9 item 2: unit, integration, E2E (both locales) and the tenant-isolation suite pass in CI.
+# Every job runs against real PostgreSQL (pgvector image) and Mailpit — nothing is stubbed that the product uses.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      refresh_snapshots:
+        description: "Re-render the Arabic visual baselines on this runner and upload them as an artifact to commit"
+        type: boolean
+        default: false
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  api:
+    name: format · build · unit · integration · security
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env: { POSTGRES_USER: finance, POSTGRES_PASSWORD: ci_only, POSTGRES_DB: finance_ai }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U finance" --health-interval 5s --health-timeout 5s --health-retries 20
+      mailpit:
+        image: axllent/mailpit:latest
+        ports: ["1025:1025", "8025:8025"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { global-json-file: global.json }
+      - name: Write .env
+        run: |
+          cp .env.example .env
+          sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci_only/; s/^POSTGRES_APP_PASSWORD=.*/POSTGRES_APP_PASSWORD=ci_app/; s/^POSTGRES_MIGRATOR_PASSWORD=.*/POSTGRES_MIGRATOR_PASSWORD=ci_migrator/; s/^POSTGRES_REPORTING_PASSWORD=.*/POSTGRES_REPORTING_PASSWORD=ci_reporting/' .env
+          # The loader keeps the first value it sees for a key, so replace the example's empty lines rather than append.
+          sed -i "s|^JWT_SIGNING_KEY_PEM_BASE64=.*|JWT_SIGNING_KEY_PEM_BASE64=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null | base64 -w0)|" .env
+          sed -i "s|^AI_SERVICE_TOKEN=.*|AI_SERVICE_TOKEN=$(openssl rand -hex 24)|" .env
+          grep -c "JWT_SIGNING_KEY_PEM_BASE64=." .env
+      - run: dotnet format --verify-no-changes
+      - run: dotnet build --configuration Release
+      - run: dotnet test tests/unit/FinanceAi.UnitTests --configuration Release --no-build
+      - run: dotnet test tests/integration/FinanceAi.IntegrationTests --configuration Release --no-build --filter "Category!=Performance"
+      - run: dotnet test tests/security/FinanceAi.SecurityTests --configuration Release --no-build
+
+  web:
+    name: web · vitest · build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: apps/web/package-lock.json }
+      - run: npm --prefix apps/web ci
+      - run: npm --prefix apps/web test
+      - run: npm --prefix apps/web run build
+
+  ai-service:
+    name: ai service · pytest (fake model)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - run: python -m venv services/ai/.venv && services/ai/.venv/bin/pip install -r services/ai/requirements.txt
+      - run: services/ai/.venv/bin/python -m pytest -c services/ai/pytest.ini
+
+  e2e:
+    name: e2e · Playwright · en + ar
+    runs-on: ubuntu-24.04
+    needs: [api, web, ai-service]
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env: { POSTGRES_USER: finance, POSTGRES_PASSWORD: ci_only, POSTGRES_DB: finance_ai }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U finance" --health-interval 5s --health-timeout 5s --health-retries 20
+      mailpit:
+        image: axllent/mailpit:latest
+        ports: ["1025:1025", "8025:8025"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { global-json-file: global.json }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - name: Write .env
+        run: |
+          cp .env.example .env
+          sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci_only/; s/^POSTGRES_APP_PASSWORD=.*/POSTGRES_APP_PASSWORD=ci_app/; s/^POSTGRES_MIGRATOR_PASSWORD=.*/POSTGRES_MIGRATOR_PASSWORD=ci_migrator/; s/^POSTGRES_REPORTING_PASSWORD=.*/POSTGRES_REPORTING_PASSWORD=ci_reporting/' .env
+          # The loader keeps the first value it sees for a key, so replace the example's empty lines rather than append.
+          sed -i "s|^JWT_SIGNING_KEY_PEM_BASE64=.*|JWT_SIGNING_KEY_PEM_BASE64=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null | base64 -w0)|" .env
+          sed -i "s|^AI_SERVICE_TOKEN=.*|AI_SERVICE_TOKEN=$(openssl rand -hex 24)|" .env
+          grep -c "JWT_SIGNING_KEY_PEM_BASE64=." .env
+      - run: dotnet build --configuration Release apps/api/FinanceAi.Api && dotnet build --configuration Release apps/api/FinanceAi.Migrator
+      - run: python -m venv services/ai/.venv && services/ai/.venv/bin/pip install -r services/ai/requirements.txt
+      - run: npm --prefix apps/web ci
+      - run: npm --prefix tests/e2e ci
+      - run: npx --prefix tests/e2e playwright install --with-deps chromium
+      - run: sudo apt-get install -y -q postgresql-client fonts-noto-core fonts-noto-color-emoji
+      - run: npm --prefix tests/e2e test
+        if: ${{ !inputs.refresh_snapshots }}
+      # Visual baselines are machine-specific (fonts); this input renders them here so they can be committed from the canonical environment.
+      - run: PLAYWRIGHT_SNAPSHOTS=1 npm --prefix tests/e2e test -- --project=ar --update-snapshots
+        if: ${{ inputs.refresh_snapshots }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.refresh_snapshots }}
+        with: { name: arabic-snapshots, path: tests/e2e/specs/journeys.spec.ts-snapshots, retention-days: 30 }
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: playwright-report, path: tests/e2e/playwright-report, retention-days: 7 }

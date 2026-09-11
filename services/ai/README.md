@@ -25,7 +25,8 @@ ollama pull qwen3:4b
 .venv/bin/python -m pytest    # 75 tests with a fake model; AI_LIVE_TESTS=1 adds the injection corpus against Ollama
 ```
 
-Environment: `AI_SERVICE_TOKEN` (≥16 chars, shared with the backend), `OLLAMA_URL` (default
+Environment: `AI_FAKE_MODEL=1` swaps Ollama for a deterministic keyword stand-in — end-to-end tests only, never
+production (`/model-info` reports `fake: true`). `AI_SERVICE_TOKEN` (≥16 chars, shared with the backend), `OLLAMA_URL` (default
 `http://127.0.0.1:11434`), `AI_MODEL` (`qwen3:4b`), `AI_TIMEOUT_SECONDS` (20 by spec; raise on a
 CPU-only machine), `AI_SEED` (42), `AI_NUM_PREDICT` (700), `AI_NUM_CTX` (8192), `AI_MAX_CONCURRENCY` (5),
 `AI_QUEUE_WAIT_SECONDS` (2), `AI_DEFAULT_MIN_CONFIDENCE` (0.70).

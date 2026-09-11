@@ -33,7 +33,7 @@ function stubFetch(responses: (() => [number, unknown])[]) {
   return calls
 }
 afterEach(() => vi.unstubAllGlobals())
-const wrap = (node: React.ReactNode, locale = 'en-JO') => <LocaleProvider initial={locale}><SessionProvider initial={identity}>{node}</SessionProvider></LocaleProvider>
+const wrap = (node: React.ReactNode, locale: 'en-JO' | 'ar-JO' = 'en-JO') => <LocaleProvider initial={locale}><SessionProvider initial={identity}>{node}</SessionProvider></LocaleProvider>
 
 describe('Today (slice 10 AC-11)', () => {
   it('shows the figures from the briefing and the AI card labelled with the model', async () => {
