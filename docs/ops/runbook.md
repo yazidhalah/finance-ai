@@ -97,12 +97,12 @@ Only the SQL step needs the database; everything else is the product's own API a
 
 | Key | Procedure | Effect |
 |-----|-----------|--------|
-| `JWT_SIGNING_KEY_PEM_BASE64` | generate a new key, replace it in `.env`, `stack.sh --profile full up -d --no-build api` | all access tokens and re-auth proofs are invalid at once; refresh tokens survive, so signed-in users get a new access token on their next call without noticing. There is no dual-key grace window in v1 (flagged). |
+| `JWT_SIGNING_KEY_PEM_BASE64` | 1. `JWT_SIGNING_KEY_PEM_BASE64_PREVIOUS=<the current value>`; 2. generate a new key into `JWT_SIGNING_KEY_PEM_BASE64`; 3. `stack.sh --profile full up -d --no-build api`; 4. after 15 minutes remove `_PREVIOUS` and recreate `api` again (optional — the window closes by itself). | Every new token carries the new key's `kid`. Tokens the old process issued keep working until they expire (15 min; re-auth proofs 5 min): the previous key verifies **only tokens issued before the new process started**, so a leaked old key cannot mint anything the API accepts. Refresh tokens are unaffected; nobody is signed out. |
+| `MFA_KEK_BASE64` | 1. `MFA_KEK_BASE64_PREVIOUS=<the current value>`; 2. `openssl rand -base64 32` into `MFA_KEK_BASE64`; 3. `stack.sh --profile full up -d --no-build api` — from here every successful sign-in re-seals that user's secret under the new key; 4. `stack.sh --profile full run --rm api rotate-mfa-kek` (or `dotnet FinanceAi.Migrator.dll rotate-mfa-kek`) re-seals everyone else and prints the counts; 5. remove `_PREVIOUS`, recreate `api`. | The command **refuses to run** while any row is under a key it does not hold, so step 5 is safe once it has reported. Envelopes carry the key id (`FKEK1 · kid`); rows written before slice 17 have none and are re-sealed the same way. If the old key is already lost, the affected users must re-enrol (`UPDATE users SET mfa_enabled_at = NULL, mfa_secret_enc = NULL, mfa_pending_secret_enc = NULL WHERE id = …`) within their grace period. |
 | `AI_SERVICE_TOKEN` | replace in `.env`, `up -d --no-build ai api` | a few seconds of `ai_unavailable` while both restart |
-| `POSTGRES_*_PASSWORD` | `ALTER ROLE app PASSWORD '…'` (etc.) as the superuser, then update `.env`, `up -d --no-build api` | the migrator re-applies the role passwords from `.env` on its next run |
-| `MFA_KEK_BASE64` | **cannot be rotated in place in v1.** TOTP secrets are AES-256-GCM under this key with no key id; changing it makes every enrolment undecryptable and every Owner/Admin unable to sign in. Keep a copy in the secret store. If it is compromised: disable MFA for affected users in SQL (`UPDATE users SET mfa_enabled_at = NULL, mfa_secret_enc = NULL, mfa_pending_secret_enc = NULL …`), change the key, ask them to re-enrol within their 7-day grace period. Flagged in `docs/slices/slice-14-review.md`. |
+| `POSTGRES_*_PASSWORD` | `ALTER ROLE finance_app PASSWORD '…'` (etc.) as the superuser, then update `.env`, `up -d --no-build api` | the migrator re-applies the role passwords from `.env` on its next run |
 
----
+Both signing and KEK rotations are exercised by `KeyRotationTests` (slice 17) on every CI run.
 
 ## 5. Backups and the restore drill (PRD-23, T-150)
 
