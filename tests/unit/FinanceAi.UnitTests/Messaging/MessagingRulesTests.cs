@@ -83,8 +83,10 @@ public sealed class MessagingRulesTests
             var ar = Assert.Single(g, s => s.Language == "ar");
             var en = Assert.Single(g, s => s.Language == "en");
             Assert.Equal(Placeholders.Used(en.Body + (en.Subject ?? "")).Order(), Placeholders.Used(ar.Body + (ar.Subject ?? "")).Order());
-            Assert.Null(Placeholders.FirstUnknown(ar.Body + (ar.Subject ?? "")));
-            Assert.Null(Placeholders.FirstUnknown(en.Body + (en.Subject ?? "")));
+            // Slice 10: the staff briefing template validates against its own closed set (D-3).
+            Func<string, string?> firstUnknown = BriefingPlaceholders.IsBriefingKey(g.Key.Key) ? BriefingPlaceholders.FirstUnknown : Placeholders.FirstUnknown;
+            Assert.Null(firstUnknown(ar.Body + (ar.Subject ?? "")));
+            Assert.Null(firstUnknown(en.Body + (en.Subject ?? "")));
             Assert.Matches("[؀-ۿ]", ar.Body);
             Assert.DoesNotMatch("[؀-ۿ]", en.Body);
             Assert.Equal(g.Key.Channel == "email", en.Subject is not null);

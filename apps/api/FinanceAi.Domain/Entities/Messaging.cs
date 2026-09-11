@@ -322,5 +322,10 @@ public static class SystemTemplates
             "مرحبًا {{contact_name}}، معكم {{company_name}}. الرصيد المستحق على حسابكم {{amount_due}} متأخر منذ {{days_past_due}} يومًا. نرجو التواصل معنا لترتيب السداد."),
         new("dunning_30", "whatsapp", "en", "firm", null,
             "Hello {{contact_name}}, this is {{company_name}}. Your account has {{amount_due}} outstanding, {{days_past_due}} days past due. Please contact us to arrange payment."),
+        // Slice 10: the staff briefing email. Its own placeholder set (BriefingPlaceholders); approved by a human before any send.
+        new("daily_briefing", "email", "en", "neutral", "{{company_name}} — collections briefing for {{briefing_date}}",
+            "Good morning,\n\nCollections at a glance for {{briefing_date}}:\n\n- Total overdue: {{total_overdue}}\n- Collected yesterday: {{collected_yesterday}}\n- Promises due today: {{promises_due_today}} ({{promises_due_amount}})\n- Promises broken yesterday: {{promises_broken_yesterday}}\n- New disputes: {{new_disputes}}; breaching SLA: {{disputes_breaching_sla}}\n- Cases in the queue: {{queue_size}}\n- Payment claims to verify: {{unverified_payment_claims}}; replies waiting for a person: {{replies_needing_a_human}}\n\nTop cases:\n{{top_cases}}\n\n{{narrative}}\n\n{{company_name}} — finance-ai"),
+        new("daily_briefing", "email", "ar", "neutral", "{{company_name}} — موجز التحصيل ليوم {{briefing_date}}",
+            "صباح الخير،\n\nموجز التحصيل ليوم {{briefing_date}}:\n\n- إجمالي المتأخر: {{total_overdue}}\n- المحصَّل أمس: {{collected_yesterday}}\n- وعود الدفع المستحقة اليوم: {{promises_due_today}} ({{promises_due_amount}})\n- وعود أُخلفت أمس: {{promises_broken_yesterday}}\n- نزاعات جديدة: {{new_disputes}}؛ متجاوزة لمهلة الرد: {{disputes_breaching_sla}}\n- الملفات في قائمة التحصيل: {{queue_size}}\n- ادعاءات دفع بانتظار التحقق: {{unverified_payment_claims}}؛ ردود بانتظار شخص: {{replies_needing_a_human}}\n\nأهم الملفات:\n{{top_cases}}\n\n{{narrative}}\n\n{{company_name}} — finance-ai"),
     ];
 }

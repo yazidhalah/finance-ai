@@ -9,7 +9,7 @@ source-available license is a blocking review finding, not a discussion.
 
 Versions are pinned; lockfiles (`package-lock.json`, `packages.lock.json`) are committed.
 
-Last updated: slice 9 — Local AI: reply classification (the Python AI service and its dependency tree, the Qwen3 model weights and the Ollama runtime; see the flagged `certifi` entry).
+Last updated: slice 10 — Daily briefing (no dependency added; LangGraph deliberately not adopted, slice 10 D-1). Slice 9 added the Python AI service and its dependency tree, the Qwen3 model weights and the Ollama runtime; see the flagged `certifi` entry.
 
 ---
 

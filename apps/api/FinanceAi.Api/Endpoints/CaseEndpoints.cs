@@ -77,9 +77,7 @@ public static class CaseEndpoints
         var limit = int.TryParse(q["limit"], out var l) ? Math.Clamp(l, 1, 200) : 50;
         var now = time.GetUtcNow();
 
-        var query = db.Cases.Where(c => c.Status != CaseStatus.Resolved && c.Status != CaseStatus.Abandoned
-            && c.Status != CaseStatus.OnHold && c.Status != CaseStatus.Escalated
-            && (c.NextActionAt == null || c.NextActionAt <= now));
+        var query = cases.QueueQuery(now);
         if (scope.AssignedTo is { } assignee) query = query.Where(c => c.AssignedTo == assignee);
         if (minAmount > 0m) query = query.Where(c => c.OverdueBalanceBase >= minAmount);
 

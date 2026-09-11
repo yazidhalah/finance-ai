@@ -1238,3 +1238,64 @@ export const aiApi = {
   settings: () => request<AiSettings>('/organization/ai-settings'),
   updateSettings: (body: { aiEnabled?: boolean; aiMinConfidence?: string }) => request<AiSettings>('/organization/ai-settings', { method: 'PATCH', body }),
 }
+
+// ---------------------------------------------------------------------------------------------
+// Slice 10 — daily briefing (doc 05 slice 10). Every number here was computed in C# (FIN-62).
+// ---------------------------------------------------------------------------------------------
+
+export interface BriefingMetrics {
+  totalOverdue: Money
+  overdueByCurrency: { currency: string; amount: string; invoiceCount: number }[]
+  overdueChange: Money | null
+  collectedYesterday: Money
+  promisesDueToday: { count: number; amount: Money }
+  promisesBrokenYesterday: { count: number }
+  newDisputes: { count: number }
+  disputesBreachingSla: { count: number }
+  queueSize: number
+  unverifiedPaymentClaims: { count: number }
+  unmatchedReplies: { count: number }
+  repliesNeedingAHuman: { count: number }
+  pendingAiSuggestions: { count: number }
+  topCases: { caseId: string; caseNumber: number; customerName: string; amount: Money; daysPastDue: number; status: string }[]
+}
+
+export interface Briefing {
+  id: string
+  date: string
+  language: 'ar' | 'en'
+  metrics: BriefingMetrics
+  narrative: string | null
+  highlights: string[]
+  narrativeAvailable: boolean
+  narrativeStatus: 'available' | 'unavailable' | 'rejected_by_guard' | 'schema_invalid' | 'disabled'
+  aiSuggestionId: string | null
+  modelName: string | null
+  promptVersion: string | null
+  confidence: string | null
+  generatedAt: string
+  generatedBy: string | null
+  sentAt: string | null
+  sentToCount: number
+  deliveryStatus: string | null
+  isToday: boolean
+  availableDates: string[]
+}
+
+export interface BriefingSettings {
+  briefingSendAt: string
+  briefingLanguage: 'ar' | 'en'
+  briefingEmailEnabled: boolean
+  recipientUserIds: string[]
+  members: { id: string; userId: string; email: string; fullName: string; role: string; status: string }[]
+  templateApproved: boolean
+}
+
+export const briefingsApi = {
+  today: (language: 'ar' | 'en') => request<Briefing>(`/briefings/today?language=${language}`),
+  byDate: (date: string, language: 'ar' | 'en') => request<Briefing>(`/briefings/${date}?language=${language}`),
+  regenerate: (language: 'ar' | 'en') => request<Briefing>(`/briefings/regenerate?language=${language}`, { method: 'POST', body: {} }),
+  settings: () => request<BriefingSettings>('/organization/briefing-settings'),
+  updateSettings: (body: { briefingSendAt?: string; briefingLanguage?: 'ar' | 'en'; briefingEmailEnabled?: boolean; recipientUserIds?: string[] }) =>
+    request<BriefingSettings>('/organization/briefing-settings', { method: 'PATCH', body }),
+}

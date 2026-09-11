@@ -684,3 +684,17 @@ public sealed record AiHealthResponse(bool Configured, bool Reachable, bool Read
 public sealed record AiSettingsResponse(bool AiEnabled, string AiMinConfidence, string ServiceUrlHost);
 
 public sealed record AiSettingsRequest(bool? AiEnabled, string? AiMinConfidence);
+
+// ---------------------------------------------------------------------------------------------
+// Slice 10 — daily briefing (doc 05 slice 10)
+// ---------------------------------------------------------------------------------------------
+
+/// <summary><c>metrics</c> is the stored document verbatim (FIN-62): every number the screen shows came from C#.</summary>
+public sealed record BriefingResponse(
+    Guid Id, string Date, string Language, FinanceAi.Domain.Entities.BriefingMetrics Metrics, string? Narrative, IReadOnlyList<string> Highlights, bool NarrativeAvailable,
+    string NarrativeStatus, Guid? AiSuggestionId, string? ModelName, string? PromptVersion, string? Confidence, string GeneratedAt, Guid? GeneratedBy,
+    string? SentAt, int SentToCount, string? DeliveryStatus, bool IsToday, IReadOnlyList<string> AvailableDates);
+
+public sealed record BriefingSettingsResponse(string BriefingSendAt, string BriefingLanguage, bool BriefingEmailEnabled, IReadOnlyList<Guid> RecipientUserIds, IReadOnlyList<MemberDto> Members, bool TemplateApproved);
+
+public sealed record BriefingSettingsRequest(string? BriefingSendAt, string? BriefingLanguage, bool? BriefingEmailEnabled, IReadOnlyList<Guid>? RecipientUserIds);

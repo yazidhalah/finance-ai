@@ -121,6 +121,21 @@ public sealed class AgingService(TenantDbContext db, TimeProvider time)
             context.Buckets.All.Select(b => b.Key).ToList(), sections, context.BaseCurrency, baseTotal, DisputedAvailable: true);
     }
 
+    public sealed record OverdueTotals(DateOnly AsOf, string BaseCurrency, decimal BaseTotal, IReadOnlyList<(string Currency, decimal Total, int InvoiceCount)> ByCurrency);
+
+    /// <summary>
+    /// Slice 10: the overdue position the briefing quotes. The same rows and the same per-invoice
+    /// <see cref="AgingRules.ToBaseIndicative"/> as the aging report (FIN-55) — only rows past due are summed.
+    /// </summary>
+    public async Task<OverdueTotals> OverdueAsync(DateOnly? asOf, CancellationToken ct)
+    {
+        var context = await ContextAsync(asOf, null, ct);
+        var rows = (await AgedInvoicesAsync(context, null, null, ct)).Where(r => r.DaysPastDue > 0).ToList();
+        var byCurrency = rows.GroupBy(r => r.Currency).OrderBy(g => g.Key, StringComparer.Ordinal)
+            .Select(g => (Currency: g.Key, Total: g.Sum(r => r.OpenBalance), InvoiceCount: g.Count())).ToList();
+        return new OverdueTotals(context.AsOf, context.BaseCurrency, rows.Sum(r => AgingRules.ToBaseIndicative(r.OpenBalance, r.FxRateToBase)), byCurrency);
+    }
+
     /// <summary>FIN-52 by construction: every row is classified once; a bucket with nothing in it is still present.</summary>
     public static IReadOnlyList<BucketTotal> Bucketize(AgingBuckets buckets, IReadOnlyList<AgedInvoice> rows, IReadOnlyDictionary<Guid, decimal>? disputedByInvoice = null)
     {

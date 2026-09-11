@@ -83,6 +83,8 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
 
     public DbSet<AiSuggestion> AiSuggestions => this.Set<AiSuggestion>();
 
+    public DbSet<DailyBriefing> DailyBriefings => this.Set<DailyBriefing>();
+
     public override int SaveChanges()
     {
         this.StampTenant();
@@ -113,6 +115,7 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
         ConfigureDisputes(model);
         ConfigureMessaging(model);
         ConfigureAi(model);
+        ConfigureBriefings(model);
 
         this.ApplyTenantQueryFilters(model);
 
@@ -227,6 +230,9 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.CollectorSeesOnlyAssigned).HasColumnName("collector_sees_only_assigned");
             e.Property(x => x.AiEnabled).HasColumnName("ai_enabled");
             e.Property(x => x.AiMinConfidence).HasColumnName("ai_min_confidence");
+            e.Property(x => x.BriefingLanguage).HasColumnName("briefing_language").HasColumnType("char(2)");
+            e.Property(x => x.BriefingEmailEnabled).HasColumnName("briefing_email_enabled");
+            e.Property(x => x.BriefingRecipientUserIds).HasColumnName("briefing_recipient_user_ids");
             e.Property(x => x.DunningCadenceDays).HasColumnName("dunning_cadence_days");
             e.Property(x => x.QuietHoursStart).HasColumnName("quiet_hours_start");
             e.Property(x => x.QuietHoursEnd).HasColumnName("quiet_hours_end");
@@ -916,6 +922,32 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.DecidedAt).HasColumnName("decided_at");
             e.Property(x => x.DecisionReason).HasColumnName("decision_reason");
             e.Property(x => x.HumanCorrection).HasColumnName("human_correction").HasColumnType("jsonb");
+        });
+    }
+
+    private static void ConfigureBriefings(ModelBuilder model)
+    {
+        model.Entity<DailyBriefing>(e =>
+        {
+            e.ToTable("daily_briefings");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.BriefingDate).HasColumnName("briefing_date");
+            e.Property(x => x.Language).HasColumnName("language").HasColumnType("char(2)");
+            e.Property(x => x.MetricsJson).HasColumnName("metrics").HasColumnType("jsonb");
+            e.Property(x => x.Narrative).HasColumnName("narrative");
+            e.Property(x => x.HighlightsJson).HasColumnName("highlights").HasColumnType("jsonb");
+            e.Property(x => x.NarrativeStatusValue).HasColumnName("narrative_status");
+            e.Property(x => x.AiSuggestionId).HasColumnName("ai_suggestion_id");
+            e.Property(x => x.GeneratedAt).HasColumnName("generated_at");
+            e.Property(x => x.GeneratedBy).HasColumnName("generated_by");
+            e.Property(x => x.SentAt).HasColumnName("sent_at");
+            e.Property(x => x.SentToCount).HasColumnName("sent_to_count");
+            e.Property(x => x.TemplateId).HasColumnName("template_id");
+            e.Property(x => x.TemplateVersion).HasColumnName("template_version");
+            e.Property(x => x.DeliveryStatus).HasColumnName("delivery_status");
+            e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
         });
     }
 }

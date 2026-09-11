@@ -6,6 +6,7 @@ import { Button, Card, ErrorNotice, Field, Isolate, Select, TextInput } from '..
 import { useLocale } from '../i18n/LocaleProvider'
 import { locales } from '../i18n'
 import { AiSettingsPanel } from './Inbox'
+import { BriefingSettingsPanel } from './Today'
 
 type Organization = Awaited<ReturnType<typeof api.organization>>
 type Member = Awaited<ReturnType<typeof api.members>>['items'][number]
@@ -68,6 +69,7 @@ export function OrganizationPage() {
       <OrganizationForm organization={organization} onSaved={setOrganization} />
       <MembersCard members={members} forbidden={membersForbidden} />
       <AiSettingsPanel />
+      <BriefingSettingsPanel />
       <PermissionsCard />
     </div>
   )

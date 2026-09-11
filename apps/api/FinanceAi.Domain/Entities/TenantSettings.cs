@@ -40,4 +40,12 @@ public sealed class TenantSettings : ITenantScoped
 
     /// <summary>SEC-86: messages per tenant day; the dispatcher stops at the cap.</summary>
     public int DailySendCap { get; set; } = 200;
+
+    /// <summary>Slice 10: the language the briefing email goes out in; both languages are always generated (AI-83).</summary>
+    public string BriefingLanguage { get; set; } = "ar";
+
+    public bool BriefingEmailEnabled { get; set; }
+
+    /// <summary>Members who receive the briefing email. Never a free address (slice 10 D-4).</summary>
+    public Guid[] BriefingRecipientUserIds { get; set; } = [];
 }

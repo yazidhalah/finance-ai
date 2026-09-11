@@ -56,9 +56,20 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
 
     private FinanceAi.Infrastructure.Messaging.IMessagingHooks Messaging => (FinanceAi.Infrastructure.Messaging.IMessagingHooks)services.GetService(typeof(FinanceAi.Infrastructure.Messaging.IMessagingHooks))!;
 
+    private IBriefingHooks Briefings => (IBriefingHooks)services.GetService(typeof(IBriefingHooks))!;
+
     public sealed record Context(DateOnly Today, string Timezone, TenantSettings Settings, PriorityWeights Weights, DateTimeOffset Now);
 
     public sealed record SweepResult(int Created, int Resolved, int Resumed, int FollowedUp, int Rescored);
+
+    /// <summary>
+    /// The queue predicate (doc 02 §2.5): open, not on hold, not escalated, and not suppressed by a future next action.
+    /// One definition, used by the queue endpoint, its summary and the daily briefing — never re-derived.
+    /// </summary>
+    public IQueryable<CollectionCase> QueueQuery(DateTimeOffset now) =>
+        db.Cases.Where(c => c.Status != CaseStatus.Resolved && c.Status != CaseStatus.Abandoned
+            && c.Status != CaseStatus.OnHold && c.Status != CaseStatus.Escalated
+            && (c.NextActionAt == null || c.NextActionAt <= now));
 
     public async Task<Context> ContextAsync(CancellationToken ct)
     {
@@ -139,6 +150,9 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
         var cadence = await Messaging.RunCadenceAsync(ct);
         var dispatch = await Messaging.DispatchAsync(ct);
 
+        // Slice 10: after everything above has settled, the day's figures are final enough to brief on.
+        var briefed = await Briefings.RunScheduledAsync(ct);
+
         await audit.WriteAsync(new AuditEvent
         {
             TenantId = db.CurrentTenantId,
@@ -147,7 +161,7 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
             EventType = "collection_case.sweep_run",
             EntityType = "tenant",
             EntityId = db.CurrentTenantId,
-            Changes = JsonSerializer.Serialize(new { created, resolved, resumed, followedUp, rescored, drafted = cadence.Drafted, queued = cadence.Queued, sent = dispatch.Sent, day = context.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) }, JsonOptions),
+            Changes = JsonSerializer.Serialize(new { created, resolved, resumed, followedUp, rescored, drafted = cadence.Drafted, queued = cadence.Queued, sent = dispatch.Sent, briefed, day = context.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) }, JsonOptions),
         }, ct);
 
         return new SweepResult(created, resolved, resumed, followedUp, rescored);
@@ -579,4 +593,11 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
         Note = note,
         Changes = JsonSerializer.Serialize(new { @event }, JsonOptions),
     };
+}
+
+/// <summary>Slice 10's hook into the sweep, resolved at call time like the others.</summary>
+public interface IBriefingHooks
+{
+    /// <summary>Generates and delivers today's briefing once tenant-local time has passed <c>briefing_send_at</c>. Returns true when a briefing was created.</summary>
+    Task<bool> RunScheduledAsync(CancellationToken ct);
 }

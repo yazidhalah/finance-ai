@@ -1,7 +1,7 @@
 # finance-ai — local AI service
 
-The Python side of doc 07. One operation in slice 9, `classify_customer_reply`, served by FastAPI and
-answered by Qwen3 4B through the local Ollama. The service is stateless, has no database and no tools,
+The Python side of doc 07. Two operations — `classify_customer_reply` (slice 9) and `daily_briefing`
+(slice 10) — served by FastAPI and answered by Qwen3 4B through the local Ollama. The service is stateless, has no database and no tools,
 and the only thing it can return is an object that validates against
 `schemas/classify_customer_reply.response.v1.json`. What happens next is decided in C#.
 
@@ -34,7 +34,8 @@ CPU-only machine), `AI_SEED` (42), `AI_NUM_PREDICT` (700), `AI_NUM_CTX` (8192), 
 
 | Route | Auth | What |
 |-------|------|------|
-| `POST /internal/ai/v1/classify_customer_reply` | `X-Service-Token` | The operation. Headers on the answer: `X-Ai-Validation-Status` (`valid` / `repaired` / `schema_invalid`), `X-Ai-Input-Hash`, `X-Ai-Truncated`, `X-Ai-Attempts`. |
+| `POST /internal/ai/v1/daily_briefing` | `X-Service-Token` | Narrates already-computed figures (AI-80); the numeral check runs here first and again in C# (AI-81). Header `X-Ai-Validation-Status` adds `rejected_by_guard`. |
+| `POST /internal/ai/v1/classify_customer_reply` | `X-Service-Token` | The classification operation. Headers on the answer: `X-Ai-Validation-Status` (`valid` / `repaired` / `schema_invalid`), `X-Ai-Input-Hash`, `X-Ai-Truncated`, `X-Ai-Attempts`. |
 | `GET /health` | none | Liveness; no model call. |
 | `GET /ready` | none | 200 when the model is pulled, 503 otherwise. |
 | `GET /model-info` | `X-Service-Token` | Name, digest, quantization, prompt version + sha, schema version, decoding options. |
