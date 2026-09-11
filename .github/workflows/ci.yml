@@ -92,13 +92,14 @@ jobs:
           sed -i "s|^MFA_KEK_BASE64=.*|MFA_KEK_BASE64=$(openssl rand -base64 32)|" .env
           sed -i "s|^WEB_ORIGINS=.*|WEB_ORIGINS=http://localhost:8080|" .env
       - run: pipx install podman-compose==1.5.0
+      # Staged with --no-deps: the runner's Podman 4.9 cannot start podman-compose's --requires chains (see the script).
       - name: Build images and start the stack (fake AI model, no Ollama)
-        run: infrastructure/stack.sh -f infrastructure/compose.ci.yml --profile full up -d --build postgres mailpit migrate api ai web
+        run: infrastructure/stack-staged.sh -f infrastructure/compose.ci.yml -- --build
       - name: Smoke test
         run: infrastructure/smoke.sh
       - name: Container logs
         if: always()
-        run: infrastructure/stack.sh -f infrastructure/compose.ci.yml --profile full logs --no-color migrate api ai web | tail -200
+        run: for c in migrate api ai web; do echo "== $c"; podman logs "infrastructure_${c}_1" 2>&1 | tail -80; done
 
   ops:
     name: ops · restore drill (T-150)
