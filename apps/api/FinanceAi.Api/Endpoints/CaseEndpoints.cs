@@ -204,6 +204,10 @@ public static class CaseEndpoints
         var balances = await db.Invoices.Where(i => invoiceIds.Contains(i.Id) && i.Status == InvoiceStatus.Open)
             .Select(i => new { i.Id, i.Currency, i.BalanceCache }).ToDictionaryAsync(i => i.Id, ct);
         var now = ctx.Today;
+        // Slice 7: open disputes per case, and whether any breaches its SLA (SM-48) — visible on every row.
+        var utcNow = ctx.Now;
+        var disputes = await db.Disputes.Where(d => d.CaseId != null && caseIds.Contains(d.CaseId.Value)
+                && (d.Status == DisputeStatus.Open || d.Status == DisputeStatus.UnderReview || d.Status == DisputeStatus.PendingCustomer)).ToListAsync(ct);
 
         return list.Select(c =>
         {
@@ -213,7 +217,7 @@ public static class CaseEndpoints
                 .GroupBy(b => b!.Currency).OrderBy(g => g.Key, StringComparer.Ordinal)
                 .Select(g => new CustomerPositionDto(g.Key, MoneyDto.From(g.Sum(b => b!.BalanceCache), g.Key), g.Count(), MoneyDto.From(0m, g.Key), MoneyDto.From(0m, g.Key)))
                 .ToList();
-            var sinceContact = c.LastContactAt is { } last ? (int?)Math.Max(0, (int)(DateTimeOffset.UtcNow - last).TotalDays) : null;
+            var sinceContact = c.LastContactAt is { } last ? (int?)Math.Max(0, (int)(ctx.Now - last).TotalDays) : null;
             var language = cu?.PreferredLanguage ?? "ar";
             return new QueueItemDto(
                 c.Id, c.CaseNumber,
@@ -223,7 +227,8 @@ public static class CaseEndpoints
                 overdue, c.MaxDaysPastDue, buckets.Classify(c.MaxDaysPastDue).Key, c.InvoiceCount, c.AssignedTo,
                 c.NextActionAt?.ToString("O", CultureInfo.InvariantCulture), c.LastContactAt?.ToString("O", CultureInfo.InvariantCulture),
                 c.AutomationDisabled,
-                Suggested(SuggestedActions.For(c.Status, c.MaxDaysPastDue, sinceContact, ctx.Settings.DunningCadenceDays, language)));
+                Suggested(SuggestedActions.For(c.Status, c.MaxDaysPastDue, sinceContact, ctx.Settings.DunningCadenceDays, language)),
+                disputes.Count(d => d.CaseId == c.Id), disputes.Any(d => d.CaseId == c.Id && d.IsSlaBreached(utcNow)));
         }).ToList();
     }
 

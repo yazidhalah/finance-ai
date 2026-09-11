@@ -163,7 +163,8 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
 
         foreach (var endpoint in withIdParameter)
         {
-            var secondary = endpoint.Template.Contains("{rowId", StringComparison.Ordinal) ? idsInB.RowId : idsInB.ContactId;
+            var secondary = endpoint.Template.Contains("{rowId", StringComparison.Ordinal) ? idsInB.RowId
+                : endpoint.Template.Contains("{evidenceId", StringComparison.Ordinal) ? idsInB.EvidenceId : idsInB.ContactId;
             var response = await SendAsync(clientA, endpoint, IdFor(endpoint, idsInB), secondary);
 
             Assert.True(
@@ -216,7 +217,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     {
         var endpoints = this.Endpoints();
 
-        Assert.Equal(83, endpoints.Count);
+        Assert.Equal(93, endpoints.Count);
         Assert.All(endpoints, e => Assert.True(e.Permission is not null || e.Access is not null));
 
         // The anonymous set is exactly registration, login and refresh — nothing has drifted into it.
@@ -255,7 +256,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     private static string Normalize(string? template) =>
         (template ?? string.Empty).Trim('/');
 
-    private sealed record ForeignIds(Guid MembershipId, Guid CustomerId, Guid ContactId, Guid BatchId, Guid RowId, Guid MappingId, Guid InvoiceId, Guid PaymentId, Guid AllocationId, Guid ChequeId, Guid CreditNoteId, Guid WriteOffId, Guid CaseId, Guid PromiseId);
+    private sealed record ForeignIds(Guid MembershipId, Guid CustomerId, Guid ContactId, Guid BatchId, Guid RowId, Guid MappingId, Guid InvoiceId, Guid PaymentId, Guid AllocationId, Guid ChequeId, Guid CreditNoteId, Guid WriteOffId, Guid CaseId, Guid PromiseId, Guid DisputeId, Guid EvidenceId, Guid TaskId);
 
     /// <summary>One real row of every {id}-addressed entity, inside organization B.</summary>
     private async Task<ForeignIds> CreateEntitiesInAsync(ApiScenario.Organization organization)
@@ -326,11 +327,19 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
         var overdueInvoice = collectionCase.GetProperty("caseId").GetGuid();
         var overdueId = await fixture.Database.ScalarAsync<Guid>("SELECT invoice_id FROM case_invoices WHERE case_id = @c", ("c", overdueInvoice));
         var promise = Post($"/api/v1/cases/{overdueInvoice}/promises", new { invoiceIds = new[] { overdueId }, promisedAmount = new { amount = "1.000", currency = "JOD" }, promisedDate = "2030-01-01", source = "call" });
+        // Slice 7: an already_paid dispute (which also opens a verification task) with one piece of evidence.
+        var dispute = Post($"/api/v1/invoices/{overdueId}/disputes", new { reasonCode = "already_paid", disputedAmount = new { amount = "1.000", currency = "JOD" }, customerClaim = "paid last week" });
+        var evidenceForm = new MultipartFormDataContent();
+        var pdf = new ByteArrayContent(Encoding.ASCII.GetBytes("%PDF-1.4\n%sweep\n"));
+        pdf.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+        evidenceForm.Add(pdf, "file", "sweep.pdf");
+        var evidence = await (await client.PostAsync($"/api/v1/disputes/{dispute.GetProperty("id").GetGuid()}/evidence", evidenceForm)).Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(ApiScenario.Json);
+        var taskId = dispute.GetProperty("verificationTaskId").GetGuid();
 
         Assert.NotEqual(Guid.Empty, membershipId);
         return new ForeignIds(membershipId, customerId, contact.GetProperty("id").GetGuid(), batchId, rowId, mappingId, invoiceId,
             payment.GetProperty("id").GetGuid(), payment.GetProperty("allocations")[0].GetProperty("id").GetGuid(),
-            cheque.GetProperty("id").GetGuid(), note.GetProperty("id").GetGuid(), writeOff.GetProperty("id").GetGuid(), collectionCase.GetProperty("caseId").GetGuid(), promise.GetProperty("id").GetGuid());
+            cheque.GetProperty("id").GetGuid(), note.GetProperty("id").GetGuid(), writeOff.GetProperty("id").GetGuid(), collectionCase.GetProperty("caseId").GetGuid(), promise.GetProperty("id").GetGuid(), dispute.GetProperty("id").GetGuid(), evidence.GetProperty("id").GetGuid(), taskId);
     }
 
     /// <summary>Which of B's real ids a route is addressed with. A new entity with an {id} route registers here.</summary>
@@ -338,6 +347,8 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     {
         var t when t.Contains("import-mappings", StringComparison.Ordinal) => ids.MappingId,
         var t when t.Contains("promises/{id", StringComparison.Ordinal) => ids.PromiseId,
+        var t when t.Contains("disputes/{id", StringComparison.Ordinal) => ids.DisputeId,
+        var t when t.Contains("payment-verification", StringComparison.Ordinal) => ids.TaskId,
         var t when t.Contains("cases", StringComparison.Ordinal) => ids.CaseId,
         var t when t.Contains("payments", StringComparison.Ordinal) => ids.PaymentId,
         var t when t.Contains("allocations/{id", StringComparison.Ordinal) => ids.AllocationId,
@@ -357,7 +368,8 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
             .Replace("{id:guid}", id.ToString(), StringComparison.Ordinal)
             .Replace("{id}", id.ToString(), StringComparison.Ordinal)
             .Replace("{contactId:guid}", (secondaryId ?? Guid.CreateVersion7()).ToString(), StringComparison.Ordinal)
-            .Replace("{rowId:guid}", (secondaryId ?? Guid.CreateVersion7()).ToString(), StringComparison.Ordinal);
+            .Replace("{rowId:guid}", (secondaryId ?? Guid.CreateVersion7()).ToString(), StringComparison.Ordinal)
+            .Replace("{evidenceId:guid}", (secondaryId ?? Guid.CreateVersion7()).ToString(), StringComparison.Ordinal);
 
         var request = new HttpRequestMessage(new HttpMethod(endpoint.Method), path);
 

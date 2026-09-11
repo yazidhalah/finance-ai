@@ -1,6 +1,6 @@
 # 04 — PostgreSQL Entity Model
 
-Status: DRAFT, amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), slice 3 (DM-23a), slice 3b (DM-24a), slice 4 (DM-31a), slice 5 (DM-25a) and slice 6 (DM-24a). The DDL below is **illustrative
+Status: DRAFT, amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), slice 3 (DM-23a), slice 3b (DM-24a), slice 4 (DM-31a), slice 5 (DM-25a), slice 6 (DM-24a) and slice 7 (DM-26a). The DDL below is **illustrative
 specification**, not a migration.
 Migrations are written inside their vertical slice (doc 10) and must match this
 document or amend it.
@@ -761,6 +761,17 @@ CREATE TABLE disputes (
 CREATE INDEX disputes_open_idx ON disputes (tenant_id, status)
   WHERE status IN ('Open','UnderReview','PendingCustomer');
 ```
+
+> **Amended in slice 7 (DM-26a).** As built (`database/migrations/0008_disputes.sql`):
+> - `disputes` additionally carries `customer_id` (composite FK to `customers`), `first_response_at`,
+>   `close_reason`, the §3.1 timestamps and `row_version`; the SLA columns are `NOT NULL`; three CHECKs
+>   (`accepted_has_credit_note`, `resolved_by_a_human`, `pending_has_since`) and a partial unique index
+>   `one_open_dispute_per_invoice`.
+> - `dispute_evidence` holds the file inside RLS (`bytea`, ≤ 10 MB, `content_type` limited to PDF / PNG /
+>   JPEG by CHECK) — doc 04 had no table for SM-40's evidence.
+> - `payment_verification_tasks` is new (SM-44): the task has its own status, outcome and a composite FK to
+>   the payment it found; a CHECK ties `payment_found` to a payment id. Slice 9 opens the same tasks.
+> - SLA lengths are constants in code (2 / 10 / timeout 5 business days), not tenant settings (slice 7 D-1).
 
 **DM-24** The "one active PTP per invoice" rule (INV-07) is enforced by a `BEFORE
 INSERT/UPDATE` trigger that checks for an existing `Active` PTP covering the same

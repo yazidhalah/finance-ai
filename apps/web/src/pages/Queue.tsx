@@ -145,7 +145,10 @@ export function QueuePage({ onOpen }: { onOpen: (id: string) => void }) {
                     <td className="px-3 py-2 text-slate-500"><Isolate>{String(item.caseNumber)}</Isolate></td>
                     <td className="px-3 py-2">
                       <button type="button" className="text-sky-800 hover:underline" onClick={() => onOpen(item.caseId)} data-testid="open-case"><CustomerName nameAr={item.customer.nameAr} nameEn={item.customer.nameEn} /></button>
-                      <div className="mt-0.5"><StatusChip status={item.status} /></div>
+                      <div className="mt-0.5 flex flex-wrap gap-1"><StatusChip status={item.status} />
+                        {item.openDisputes > 0 ? <span className="rounded bg-amber-100 px-1 text-xs text-amber-900" data-testid="queue-disputed">{t('disputes.flagCount', { count: item.openDisputes })}{item.disputeSlaBreached ? ` · ${t('disputes.sla.breached')}` : ''}</span> : null}
+                        {item.customer.brokenPromiseCount12m > 0 ? <span className="rounded bg-red-50 px-1 text-xs text-red-900" data-testid="queue-broken-promise">{t('queue.brokenPromises', { count: item.customer.brokenPromiseCount12m })}</span> : null}
+                      </div>
                     </td>
                     <td className="px-3 py-2 text-end">{item.overdueBalances.map((b) => <div key={b.currency}><MoneyText value={b.openBalance} /></div>)}</td>
                     <td className="px-3 py-2 text-end tabular"><Isolate>{t('queue.days', { count: item.maxDaysPastDue })}</Isolate></td>

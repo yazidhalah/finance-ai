@@ -25,6 +25,7 @@ const item = (id: string, score: number, name: string): QueueItem => ({
   overdueBalances: [{ currency: 'JOD', openBalance: M('8200.000'), openInvoiceCount: 3, unappliedCash: M('0.000'), unappliedCredit: M('0.000') }],
   maxDaysPastDue: 62, bucket: 'Days61To90', invoiceCount: 3, assignedTo: null, nextActionAt: null, lastContactAt: null, automationDisabled: false,
   suggestedAction: { kind: 'send_reminder', templateKey: 'dunning_30', language: 'ar' },
+  openDisputes: 0, disputeSlaBreached: false,
 })
 const summary: QueueSummary = { byStatus: { InProgress: 2 }, byBucket: { Current: 0, Days1To30: 0, Days31To60: 0, Days61To90: 2, Days90Plus: 0 }, queueSize: 2, suppressed: 1, scopedToAssignee: false }
 
@@ -82,7 +83,7 @@ describe('collection queue (slice 5 AC-17)', () => {
       invoices: [{ invoiceId: 'i1', invoiceNumber: 'INV-1', currency: 'JOD', issueDate: '2026-06-01', dueDate: '2026-07-01', totalAmount: M('8200.000'), openBalance: M('8200.000'), daysPastDue: 62, status: 'Open', addedAt: '2026-09-01T00:00:00Z', removedAt: null, removedReason: null }],
       timeline: [{ id: 'x', kind: 'status_change', occurredAt: '2026-09-01T00:00:00Z', actorKind: 'system', actorUserId: null, summary: 'Case #1 opened', detail: null }],
     }
-    const calls = stubFetch([() => detail, () => ({ items: [], totalCount: 0, today: '' }), () => ({ items: [] }), () => ({ ...item('a', 78, 'Alpha'), status: 'Escalated', automationDisabled: true }), () => ({ ...detail, case: { ...detail.case, status: 'Escalated', automationDisabled: true } }), () => ({ items: [], totalCount: 0, today: '' })])
+    const calls = stubFetch([() => detail, () => ({ items: [], totalCount: 0, today: '' }), () => ({ items: [], totalCount: 0 }), () => ({ caseId: 'a', allowSplitDunningDuringDispute: false, invoices: [] }), () => ({ items: [] }), () => ({ ...item('a', 78, 'Alpha'), status: 'Escalated', automationDisabled: true }), () => ({ ...detail, case: { ...detail.case, status: 'Escalated', automationDisabled: true } }), () => ({ items: [], totalCount: 0, today: '' }), () => ({ items: [], totalCount: 0 }), () => ({ caseId: 'a', allowSplitDunningDuringDispute: false, invoices: [] })])
     render(wrap(<CaseDetailPage id="a" onBack={() => {}} />))
 
     expect(await screen.findByTestId('priority-score')).toHaveTextContent('78')

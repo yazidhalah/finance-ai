@@ -478,7 +478,7 @@ public sealed record AgingReportResponse(
     string AsOf, string Basis, string Timezone, IReadOnlyList<int> BucketBoundaries, IReadOnlyList<string> BucketKeys,
     IReadOnlyList<AgingCurrencyDto> Currencies, IndicativeMoneyDto BaseCurrencyTotal, bool DisputedAvailable, string ExplanationKey);
 
-public sealed record AgedInvoiceDto(Guid InvoiceId, string InvoiceNumber, string Currency, string IssueDate, string DueDate, MoneyDto TotalAmount, MoneyDto OpenBalance, int DaysPastDue, string Bucket);
+public sealed record AgedInvoiceDto(Guid InvoiceId, string InvoiceNumber, string Currency, string IssueDate, string DueDate, MoneyDto TotalAmount, MoneyDto OpenBalance, int DaysPastDue, string Bucket, MoneyDto DisputedAmount);
 
 /// <summary>FIN-61: advisory, with its sample size. <c>averageDaysToPay</c> is days, one decimal, or null.</summary>
 public sealed record AgingCustomerDetailResponse(Guid CustomerId, string AsOf, string Basis, IReadOnlyList<AgedInvoiceDto> Invoices, string? AverageDaysToPay, int AverageDaysToPaySampleSize);
@@ -505,7 +505,8 @@ public sealed record CaseCustomerDto(Guid Id, string? Code, string? NameAr, stri
 public sealed record QueueItemDto(
     Guid CaseId, long CaseNumber, CaseCustomerDto Customer, string Status, int PriorityScore, int WeightsVersion,
     IReadOnlyList<PriorityFactorDto> PriorityFactors, IReadOnlyList<CustomerPositionDto> OverdueBalances, int MaxDaysPastDue, string Bucket,
-    int InvoiceCount, Guid? AssignedTo, string? NextActionAt, string? LastContactAt, bool AutomationDisabled, SuggestedActionDto SuggestedAction);
+    int InvoiceCount, Guid? AssignedTo, string? NextActionAt, string? LastContactAt, bool AutomationDisabled, SuggestedActionDto SuggestedAction,
+    int OpenDisputes, bool DisputeSlaBreached);
 
 public sealed record QueueResponse(IReadOnlyList<QueueItemDto> Items, int TotalCount, string AsOf, bool ScopedToAssignee);
 
@@ -557,3 +558,37 @@ public sealed record PromiseListResponse(IReadOnlyList<PromiseResponse> Items, i
 public sealed record ReliabilityDto(int Kept, int PartiallyKept, int Broken, int Denominator, string? Ratio);
 
 public sealed record PromiseHistoryResponse(Guid CustomerId, ReliabilityDto Reliability, IReadOnlyList<PromiseResponse> Promises);
+
+
+// ---------------------------------------------------------------------------------------
+// Slice 7 — Disputes (doc 05 slice 7). A dispute never carries a balance; amounts are descriptive.
+// ---------------------------------------------------------------------------------------
+
+public sealed record RaiseDisputeRequest(string? ReasonCode, MoneyInput? DisputedAmount, string? CustomerClaim);
+
+public sealed record DisputeTransitionRequest(string? Event, string? Reason, Guid? AssignedTo);
+
+public sealed record ResolveDisputeRequest(string? Outcome, MoneyInput? ResolutionAmount, string? Reason);
+
+public sealed record DisputeEvidenceDto(Guid Id, string FileName, string ContentType, int SizeBytes, string Sha256, Guid? UploadedBy, string UploadedAt);
+
+public sealed record DisputeResponse(
+    Guid Id, Guid InvoiceId, string InvoiceNumber, Guid CustomerId, Guid? CaseId, long? CaseNumber, string Status, string ReasonCode,
+    MoneyDto DisputedAmount, MoneyDto InvoiceOpenBalance, string? CustomerClaim, string RaisedAt, Guid? RaisedBy, string Source, Guid? AssignedTo,
+    string FirstResponseDueAt, string? FirstResponseAt, string ResolutionDueAt, string? PendingSince, bool SlaBreached, string SlaState,
+    string? ResolvedAt, Guid? ResolvedBy, MoneyDto? ResolutionAmount, string? ResolutionNote, Guid? CreditNoteId, string? CloseReason,
+    long RowVersion, IReadOnlyList<DisputeEvidenceDto> Evidence, Guid? VerificationTaskId);
+
+public sealed record DisputeListResponse(IReadOnlyList<DisputeResponse> Items, int TotalCount);
+
+public sealed record DunningEligibilityDto(Guid InvoiceId, bool Allowed, string? Reason);
+
+public sealed record DunningEligibilityResponse(Guid CaseId, bool AllowSplitDunningDuringDispute, IReadOnlyList<DunningEligibilityDto> Invoices);
+
+public sealed record VerificationTaskDto(
+    Guid Id, Guid InvoiceId, string InvoiceNumber, Guid CustomerId, Guid? DisputeId, string Source, string Status, string? Claim,
+    MoneyDto InvoiceOpenBalance, string InvoiceStatus, string? Outcome, Guid? PaymentId, string? Notes, string CreatedAt, string? ResolvedAt, Guid? ResolvedBy);
+
+public sealed record VerificationTaskListResponse(IReadOnlyList<VerificationTaskDto> Items, int TotalCount);
+
+public sealed record ResolveVerificationRequest(string? Outcome, Guid? PaymentId, string? Notes);

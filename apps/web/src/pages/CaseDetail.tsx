@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ApiError, api, casesApi, promisesApi } from '../api/client'
-import type { CaseDetail, PromiseToPay } from '../api/client'
+import { ApiError, api, casesApi, disputesApi, promisesApi } from '../api/client'
+import type { CaseDetail, CaseInvoice, Dispute, DunningEligibility, PromiseToPay } from '../api/client'
 import { useSession } from '../auth/SessionProvider'
 import { CustomerName } from '../components/CustomerName'
 import { Button, Card, ErrorNotice, Field, Isolate, Select, TextInput } from '../components/ui'
@@ -9,6 +9,7 @@ import { useLocale } from '../i18n/LocaleProvider'
 import { bucketLabel } from './Aging'
 import { FactorBreakdown, SnoozeDialog, StatusChip } from './Queue'
 import { PromiseCard, RecordPromiseDialog } from './Promises'
+import { DisputeCard, RaiseDisputeDialog } from './Disputes'
 
 type Problem = { messageKey: string; traceId?: string }
 const toProblem = (e: unknown): Problem => (e instanceof ApiError ? { messageKey: e.problem.messageKey, traceId: e.problem.traceId } : { messageKey: 'errors.unknown' })
@@ -26,13 +27,16 @@ export function CaseDetailPage({ id, onBack }: { id: string; onBack: () => void 
   const [busy, setBusy] = useState(false)
   const [panel, setPanel] = useState<'none' | 'contact' | 'hold' | 'escalate' | 'abandon' | 'snooze' | 'assign' | 'promise'>('none')
   const [promises, setPromises] = useState<PromiseToPay[]>([])
+  const [disputes, setDisputes] = useState<Dispute[]>([])
+  const [eligibility, setEligibility] = useState<DunningEligibility | null>(null)
+  const [disputing, setDisputing] = useState<CaseInvoice | null>(null)
   const [members, setMembers] = useState<{ userId: string; fullName: string; status: string }[]>([])
   const [form, setForm] = useState({ kind: 'call', summary: '', reasonCode: '', note: '', holdUntil: '', userId: '' })
 
   const load = useCallback(async () => {
     try {
-      const [d, p] = await Promise.all([casesApi.get(id), promisesApi.list({ caseId: id })])
-      setDetail(d); setPromises(p.items)
+      const [d, p, ds, el] = await Promise.all([casesApi.get(id), promisesApi.list({ caseId: id }), disputesApi.list({ caseId: id }), disputesApi.dunningEligibility(id).catch(() => null)])
+      setDetail(d); setPromises(p.items); setDisputes(ds.items); setEligibility(el)
     } catch (e) { setProblem(toProblem(e)) }
   }, [id])
   useEffect(() => { void load() }, [load])
@@ -80,9 +84,10 @@ export function CaseDetailPage({ id, onBack }: { id: string; onBack: () => void 
         <Card>
           <div className="flex flex-wrap gap-2" data-testid="action-rail">
             {can('cases.write') ? <Button onClick={() => setPanel('contact')} data-testid="log-contact">{t('cases.logContact')}</Button> : null}
-            <Button variant="ghost" disabled title={t('cases.comingLater')}>{t('cases.sendMessage')}</Button>
+            {/* SM-25 / T-127: the control is disabled with the server's reason while any in-scope invoice is blocked. */}
+            <Button variant="ghost" disabled data-testid="send-message" title={eligibility?.invoices.some((i) => !i.allowed) ? t('disputes.blocksSend') : t('cases.comingLater')}>{t('cases.sendMessage')}{eligibility?.invoices.some((i) => !i.allowed) ? <span className="ms-1 text-xs text-red-800" data-testid="send-blocked">{t('disputes.blocksSend')}</span> : null}</Button>
             {can('ptp.write') ? <Button variant="ghost" onClick={() => setPanel('promise')} data-testid="record-promise">{t('cases.recordPromise')}</Button> : null}
-            <Button variant="ghost" disabled title={t('cases.comingLater')}>{t('cases.raiseDispute')}</Button>
+            {can('disputes.write') && detail.invoices.some((i) => i.removedAt === null && i.status === 'Open') ? <Button variant="ghost" onClick={() => setDisputing(detail.invoices.find((i) => i.removedAt === null && i.status === 'Open')!)} data-testid="raise-dispute">{t('cases.raiseDispute')}</Button> : null}
             {can('cases.write') && !c.automationDisabled ? <Button variant="ghost" onClick={() => setPanel('snooze')}>{t('cases.snooze')}</Button> : null}
             {can('cases.write') && c.status !== 'OnHold' && c.status !== 'Escalated' ? <Button variant="ghost" onClick={() => setPanel('hold')} data-testid="hold">{t('cases.hold')}</Button> : null}
             {can('cases.write') && c.status === 'OnHold' ? <Button variant="ghost" busy={busy} onClick={() => void act(() => casesApi.transition(c.caseId, { event: 'resume' }))}>{t('cases.resume')}</Button> : null}
@@ -130,8 +135,16 @@ export function CaseDetailPage({ id, onBack }: { id: string; onBack: () => void 
               <div className="flex items-end gap-2"><Button busy={busy} onClick={() => void act(() => casesApi.assign(c.caseId, form.userId || null))}>{t('cases.assign')}</Button><Button variant="ghost" onClick={() => setPanel('none')}>{t('state.cancel')}</Button></div>
             </div>
           ) : null}
+          {disputing ? <div className="mt-3"><RaiseDisputeDialog invoiceId={disputing.invoiceId} invoiceNumber={disputing.invoiceNumber} openBalance={disputing.openBalance} onClose={() => setDisputing(null)} onDone={() => { setDisputing(null); void load() }} /></div> : null}
           {panel === 'promise' ? <div className="mt-3"><RecordPromiseDialog caseId={c.caseId} invoices={detail.invoices} onClose={() => setPanel('none')} onDone={() => { setPanel('none'); void load() }} /></div> : null}
           {panel === 'snooze' ? <div className="mt-3"><SnoozeDialog item={c} onClose={() => setPanel('none')} onDone={() => { setPanel('none'); void load() }} /></div> : null}
+        </Card>
+      ) : null}
+
+      {disputes.length > 0 ? (
+        <Card>
+          <h2 className="font-semibold">{t('disputes.title')} <span className="text-sm font-normal text-slate-500"><Isolate>{String(c.openDisputes)}</Isolate> {t('disputes.openCount')}</span></h2>
+          <div className="mt-2 space-y-2" data-testid="case-disputes">{disputes.map((d) => <DisputeCard key={d.id} dispute={d} onChanged={() => void load()} />)}</div>
         </Card>
       ) : null}
 
@@ -161,7 +174,9 @@ export function CaseDetailPage({ id, onBack }: { id: string; onBack: () => void 
                 <td className="px-3 py-2 text-end tabular"><Isolate>{String(i.daysPastDue)}</Isolate></td>
                 <td className="px-3 py-2 text-end"><MoneyText value={i.totalAmount} /></td>
                 <td className="px-3 py-2 text-end"><MoneyText value={i.openBalance} className="font-medium" /></td>
-                <td className="px-3 py-2">{t(`invoices.status.${i.status}`)}{i.removedReason ? <span className="ms-1 text-xs">({t('cases.leftScope')})</span> : null}</td>
+                <td className="px-3 py-2">{t(`invoices.status.${i.status}`)}{i.removedReason ? <span className="ms-1 text-xs">({t('cases.leftScope')})</span> : null}
+                  {disputes.some((d) => d.invoiceId === i.invoiceId && (d.status === 'Open' || d.status === 'UnderReview' || d.status === 'PendingCustomer')) ? <span className="ms-1 rounded bg-amber-100 px-1 text-xs text-amber-900" data-testid="disputed-flag">{t('disputes.flag')}</span> : null}
+                  {can('disputes.write') && i.removedAt === null && i.status === 'Open' && !disputes.some((d) => d.invoiceId === i.invoiceId && (d.status === 'Open' || d.status === 'UnderReview' || d.status === 'PendingCustomer')) ? <button type="button" className="ms-2 text-xs text-sky-800 hover:underline" onClick={() => setDisputing(i)}>{t('cases.raiseDispute')}</button> : null}</td>
               </tr>
             ))}
           </tbody>

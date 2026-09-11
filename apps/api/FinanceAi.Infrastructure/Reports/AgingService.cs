@@ -29,7 +29,7 @@ public sealed class AgingService(TenantDbContext db, TimeProvider time)
         DateOnly AsOf, AgingBasis Basis, string Timezone, IReadOnlyList<int> BucketBoundaries, IReadOnlyList<string> BucketKeys,
         IReadOnlyList<CurrencySection> Currencies, string BaseCurrency, decimal BaseCurrencyTotal, bool DisputedAvailable);
 
-    public sealed record AgedInvoiceDetail(AgedInvoice Invoice, string Bucket);
+    public sealed record AgedInvoiceDetail(AgedInvoice Invoice, string Bucket, decimal DisputedAmount);
 
     public sealed record CustomerDetail(
         Guid CustomerId, DateOnly AsOf, AgingBasis Basis, IReadOnlyList<AgedInvoiceDetail> Invoices,
@@ -73,6 +73,7 @@ public sealed class AgingService(TenantDbContext db, TimeProvider time)
         var context = await ContextAsync(asOf, basis, ct);
         var rows = await AgedInvoicesAsync(context, customerId, currency, ct);
         var unapplied = await UnappliedAsync(context.AsOf, customerId, ct);
+        var disputed = await DisputedByInvoiceAsync(ct);
 
         var customerIds = rows.Select(r => r.CustomerId).Distinct().ToList();
         var customers = byCustomer
@@ -93,7 +94,7 @@ public sealed class AgingService(TenantDbContext db, TimeProvider time)
                     .Select(g =>
                     {
                         customers.TryGetValue(g.Key, out var c);
-                        var buckets = Bucketize(context.Buckets, g.ToList());
+                        var buckets = Bucketize(context.Buckets, g.ToList(), disputed);
                         return new CustomerRow(g.Key, c?.Code, c?.NameAr, c?.NameEn, buckets, g.Sum(r => r.OpenBalance), buckets.Sum(b => b.DisputedAmount), g.Count());
                     })
                     .OrderByDescending(r => r.Total)
@@ -101,7 +102,7 @@ public sealed class AgingService(TenantDbContext db, TimeProvider time)
             }
 
             unapplied.TryGetValue(group.Key, out var lines);
-            var sectionBuckets = Bucketize(context.Buckets, list);
+            var sectionBuckets = Bucketize(context.Buckets, list, disputed);
             sections.Add(new CurrencySection(group.Key, sectionBuckets, list.Sum(r => r.OpenBalance), sectionBuckets.Sum(b => b.DisputedAmount), list.Count,
                 lines.Cash, lines.Credit, customerRows));
         }
@@ -117,23 +118,33 @@ public sealed class AgingService(TenantDbContext db, TimeProvider time)
         var baseTotal = rows.Sum(r => AgingRules.ToBaseIndicative(r.OpenBalance, r.FxRateToBase));
 
         return new Report(context.AsOf, context.Basis, context.Timezone, context.Buckets.Boundaries,
-            context.Buckets.All.Select(b => b.Key).ToList(), sections, context.BaseCurrency, baseTotal, DisputedAvailable: false);
+            context.Buckets.All.Select(b => b.Key).ToList(), sections, context.BaseCurrency, baseTotal, DisputedAvailable: true);
     }
 
     /// <summary>FIN-52 by construction: every row is classified once; a bucket with nothing in it is still present.</summary>
-    public static IReadOnlyList<BucketTotal> Bucketize(AgingBuckets buckets, IReadOnlyList<AgedInvoice> rows)
+    public static IReadOnlyList<BucketTotal> Bucketize(AgingBuckets buckets, IReadOnlyList<AgedInvoice> rows, IReadOnlyDictionary<Guid, decimal>? disputedByInvoice = null)
     {
-        var totals = buckets.All.ToDictionary(b => b.Key, _ => (Amount: 0m, Count: 0), StringComparer.Ordinal);
+        var totals = buckets.All.ToDictionary(b => b.Key, _ => (Amount: 0m, Count: 0, Disputed: 0m), StringComparer.Ordinal);
         foreach (var row in rows)
         {
             var key = buckets.Classify(row.DaysPastDue).Key;
             var current = totals[key];
-            totals[key] = (current.Amount + row.OpenBalance, current.Count + 1);
+            // FIN-56 / SM-41: the disputed figure is a separate column and is *also* inside the bucket amount;
+            // it is capped at what is still owed so a payment since raising cannot show a dispute larger than the debt.
+            var disputed = disputedByInvoice is not null && disputedByInvoice.TryGetValue(row.InvoiceId, out var d) ? DisputeRules.DisputedForAging(d, row.OpenBalance) : 0m;
+            totals[key] = (current.Amount + row.OpenBalance, current.Count + 1, current.Disputed + disputed);
         }
 
-        // FIN-56: disputed is a separate column, included in the bucket amount. Zero until slice 7.
-        return buckets.All.Select(b => new BucketTotal(b.Key, totals[b.Key].Amount, totals[b.Key].Count, 0m)).ToList();
+        return buckets.All.Select(b => new BucketTotal(b.Key, totals[b.Key].Amount, totals[b.Key].Count, totals[b.Key].Disputed)).ToList();
     }
+
+    /// <summary>Open disputes per invoice, today. As-of history for disputes is not kept (slice 7 §2).</summary>
+    public async Task<IReadOnlyDictionary<Guid, decimal>> DisputedByInvoiceAsync(CancellationToken ct) =>
+        await db.Disputes
+            .Where(d => d.Status == DisputeStatus.Open || d.Status == DisputeStatus.UnderReview || d.Status == DisputeStatus.PendingCustomer)
+            .GroupBy(d => d.InvoiceId)
+            .Select(g => new { g.Key, Sum = g.Sum(d => d.DisputedAmount) })
+            .ToDictionaryAsync(x => x.Key, x => x.Sum, ct);
 
     /// <summary>The invoices behind every cell for one customer (UI-44), plus FIN-61's average days to pay.</summary>
     public async Task<CustomerDetail?> CustomerAsync(Guid customerId, DateOnly? asOf, string? basis, string? bucket, CancellationToken ct)
@@ -145,8 +156,9 @@ public sealed class AgingService(TenantDbContext db, TimeProvider time)
 
         var context = await ContextAsync(asOf, basis, ct);
         var rows = await AgedInvoicesAsync(context, customerId, null, ct);
+        var disputed = await DisputedByInvoiceAsync(ct);
         var detail = rows
-            .Select(r => new AgedInvoiceDetail(r, context.Buckets.Classify(r.DaysPastDue).Key))
+            .Select(r => new AgedInvoiceDetail(r, context.Buckets.Classify(r.DaysPastDue).Key, disputed.TryGetValue(r.InvoiceId, out var d) ? DisputeRules.DisputedForAging(d, r.OpenBalance) : 0m))
             .Where(d => bucket is null || d.Bucket == bucket)
             .OrderBy(d => d.Invoice.DueDate).ThenBy(d => d.Invoice.InvoiceNumber, StringComparer.Ordinal)
             .ToList();
