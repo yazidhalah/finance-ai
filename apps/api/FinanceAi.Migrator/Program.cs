@@ -8,6 +8,7 @@ using FinanceAi.Infrastructure.Database;
 //   dotnet run --project apps/api/FinanceAi.Migrator -- migrate     apply pending migrations (migrator)
 //   dotnet run --project apps/api/FinanceAi.Migrator -- up          both, in order
 //   dotnet run --project apps/api/FinanceAi.Migrator -- rotate-mfa-kek   re-seal every TOTP secret under MFA_KEK_BASE64 (slice 17)
+//   dotnet run --project apps/api/FinanceAi.Migrator -- review-pack [path]   the native-speaker template review pack (slice 21; no database)
 DotEnv.Load();
 
 var command = args.Length > 0 ? args[0] : "up";
@@ -35,8 +36,15 @@ try
             Console.WriteLine($"MFA KEK rotation: {outcome.Resealed} re-sealed, {outcome.AlreadyCurrent} already under the current key. MFA_KEK_BASE64_PREVIOUS can be removed.");
             break;
 
+        case "review-pack":
+            var target = args.Length > 1 ? args[1] : "docs/review/arabic-review-pack.md";
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(target))!);
+            await File.WriteAllTextAsync(target, FinanceAi.Infrastructure.Messaging.ReviewPack.Render(DateOnly.FromDateTime(DateTime.UtcNow)));
+            Console.WriteLine($"Review pack written to {target} ({FinanceAi.Domain.Entities.SystemTemplates.All.Count} templates).");
+            break;
+
         default:
-            Console.Error.WriteLine($"Unknown command '{command}'. Expected: bootstrap | migrate | up | rotate-mfa-kek.");
+            Console.Error.WriteLine($"Unknown command '{command}'. Expected: bootstrap | migrate | up | rotate-mfa-kek | review-pack.");
             return 2;
     }
 

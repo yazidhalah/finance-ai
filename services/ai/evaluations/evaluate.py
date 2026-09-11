@@ -183,7 +183,7 @@ def render(report: dict) -> str:
         f"# {report['title']}",
         "",
         f"Date: {report['date']} · Model: `{env['name']}` (digest `{env['digest']}`, {env.get('quantization')}) · Prompt: `{env['prompt_version']}` (sha `{env['prompt_sha256']}`) · Schema: `{env['schema_version']}`",
-        f"Options: temperature 0, top_p 1, seed {env['seed']}, num_predict {env['num_predict']}, num_ctx {env['num_ctx']} · Runtime: Ollama {env.get('ollama_version', '?')} on {env['hardware']}",
+        f"Options: temperature 0, top_p 1, seed {env['seed']}, num_predict {env['num_predict']}, num_ctx {env['num_ctx']} · Runtime: Ollama {env.get('ollama_version', '?')} on {env['hardware']} · Corpus: {env.get('corpus', 'labelled.jsonl')} ({env.get('corpus_size', '?')} items)",
         "",
         "## Caveat (read first)",
         "",
@@ -244,6 +244,7 @@ async def main() -> int:
     parser.add_argument("--title", default="AI evaluation — classify_customer_reply v1 on Qwen3 4B")
     parser.add_argument("--hardware", default=os.environ.get("AI_EVAL_HARDWARE", "unspecified"))
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument("--corpus", default="labelled.jsonl", help="labelled corpus file under evaluations/corpus (slice 21: e.g. pilot.jsonl)")
     args = parser.parse_args()
 
     os.environ.setdefault("AI_SERVICE_TOKEN", "evaluation-only-token-0123456789")
@@ -257,7 +258,7 @@ async def main() -> int:
     except Exception:  # noqa: BLE001 — version is informational
         ollama_version = None
 
-    labelled = load("labelled.jsonl")
+    labelled = load(args.corpus)
     injection = load("injection.jsonl")
     if args.limit:
         labelled, injection = labelled[: args.limit], injection[: max(1, args.limit // 4)]
@@ -281,6 +282,8 @@ async def main() -> int:
             "num_ctx": settings.num_ctx,
             "ollama_version": ollama_version,
             "hardware": args.hardware,
+            "corpus": args.corpus,
+            "corpus_size": len(labelled),
         },
         "labelled": metrics(labelled, rows),
         "injection": injection_metrics(inj_rows),
