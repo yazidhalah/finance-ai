@@ -12,4 +12,9 @@ if [ ! -f "$ROOT/.env" ]; then
   echo "No $ROOT/.env — copy .env.example and fill in the secrets first (docs/ops/runbook.md §1)." >&2
   exit 1
 fi
+# `podman compose` hands off to whichever provider is installed; on a runner that has docker-compose it would pick
+# that and look for a Docker socket. Prefer podman-compose itself when it is on the PATH.
+if command -v podman-compose >/dev/null 2>&1; then
+  exec podman-compose --env-file "$ROOT/.env" -f "$ROOT/infrastructure/compose.yml" "$@"
+fi
 exec podman compose --env-file "$ROOT/.env" -f "$ROOT/infrastructure/compose.yml" "$@"
