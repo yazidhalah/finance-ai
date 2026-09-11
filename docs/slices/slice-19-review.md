@@ -11,5 +11,5 @@ Per `CLAUDE.md` → Slice Self-Review. Risk tier: **low**.
 
 ## Flagged
 
-- **Coverage floor not enforced** — decision 0007 proposes Domain 95 / Infrastructure 90 / Api 85 (today 97.8 / 94.4 / 93.4); one CI line turns it on once the owner accepts.
+- **Coverage floor** Domain 95 / Infrastructure 90 / Api 85 is enforced (today 97.8 / 94.4 / 93.4 — 2.8 / 4.4 / 8.4 points of headroom). A slice that ships code without tests now fails the `api` job.
 - **`changes` can be large** for an import commit (thousands of rows are separate events, but a template version can carry a body); the viewer renders it as text without truncation.

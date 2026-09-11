@@ -45,9 +45,12 @@ jobs:
           grep -c "JWT_SIGNING_KEY_PEM_BASE64=." .env
       - run: dotnet format --verify-no-changes
       - run: dotnet build --configuration Release
-      - run: dotnet test tests/unit/FinanceAi.UnitTests --configuration Release --no-build
-      - run: dotnet test tests/integration/FinanceAi.IntegrationTests --configuration Release --no-build --filter "Category!=Performance"
-      - run: dotnet test tests/security/FinanceAi.SecurityTests --configuration Release --no-build
+      - run: dotnet test tests/unit/FinanceAi.UnitTests --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults/unit
+      - run: dotnet test tests/integration/FinanceAi.IntegrationTests --configuration Release --no-build --filter "Category!=Performance" --collect:"XPlat Code Coverage" --results-directory TestResults/integration
+      - run: dotnet test tests/security/FinanceAi.SecurityTests --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults/security
+      # Decision 0007: the coverage floor, per assembly, on the three suites merged (generated code excluded).
+      - name: Coverage floor (Domain 95 · Infrastructure 90 · Api 85)
+        run: infrastructure/coverage-report.py $(find TestResults -name coverage.cobertura.xml) Domain=95 Infrastructure=90 Api=85
       # SEC-68: a known-vulnerable package (any severity the advisory feed reports) fails the build.
       - name: NuGet vulnerability audit
         run: |

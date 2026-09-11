@@ -1,6 +1,6 @@
 # 0007 — Coverage: what the suites cover today, and the floor proposed for CI
 
-Date: 2026-09-12 · Status: **proposed** (measurement in `main`; enforcement awaits the owner's decision)
+Date: 2026-09-12 · Status: **accepted** by the owner on 2026-09-12; enforced in the `api` CI job from slice 19
 
 Doc 10 slice 0 lists "coverage" among the CI gates; slice 16 left it as the one unenforced item because a floor
 needs a baseline. This note is the baseline.
@@ -34,9 +34,9 @@ Line coverage, per assembly, on the merged result. The floors sit below today's 
 slice does not trip them, and high enough that a slice which ships a feature without tests does. T-02 (money,
 state machines, tenancy get the deepest coverage) is why Domain carries the highest floor.
 
-## How it would be enforced
+## How it is enforced
 
-One step in the `api` job after the three test runs:
+One step in the `api` job after the three test runs (each collecting `XPlat Code Coverage`):
 
 ```
 infrastructure/coverage-report.py $(find TestResults -name coverage.cobertura.xml) Domain=95 Infrastructure=90 Api=85

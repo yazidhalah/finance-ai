@@ -12,7 +12,7 @@ strings) · doc 10 slice 0 "coverage" — the last unenforced CI item after slic
 |---|-----------|
 | S1 | `AuditEventDto` gains `changes` (the stored JSON, verbatim), `note` and `aiSuggestionId`; `GET /audit` returns them. No new endpoint. |
 | S2 | The Audit screen expands a row with recorded values into a before/after table (or a flat snapshot when the event stored one state), the note, and the suggestion id. Rows without values do not expand. |
-| S3 | `infrastructure/coverage-report.py` merges coverlet's cobertura output per assembly (generated code excluded) and can enforce floors; `docs/decisions/0007-coverage-floor.md` records today's numbers and **proposes** Domain 95 / Infrastructure 90 / Api 85. Not enforced in this slice. |
+| S3 | `infrastructure/coverage-report.py` merges coverlet's cobertura output per assembly (generated code excluded) and can enforce floors; `docs/decisions/0007-coverage-floor.md` records today's numbers; the owner accepted Domain 95 / Infrastructure 90 / Api 85 and the `api` job enforces it. |
 
 ## 2. Acceptance criteria
 
@@ -28,4 +28,4 @@ strings) · doc 10 slice 0 "coverage" — the last unenforced CI item after slic
 | # | Decision | Why |
 |---|----------|-----|
 | D-1 | `changes` is returned as stored, not reshaped | DM-28 already fixes the shape; the viewer handles both the diff form and the flat snapshot some events write. Money stays a string. |
-| D-2 | The coverage floor is proposed, not enforced | A floor is a team commitment; the numbers are in the note for the owner to accept. Enforcement is one line in the `api` job. |
+| D-2 | The floor was proposed first, then enforced on acceptance | A floor is a team commitment; the owner accepted 95/90/85 the same day and the `api` job now fails below it. |
