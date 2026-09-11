@@ -55,6 +55,7 @@ dotnet build --configuration Release  # build
 dotnet test  --configuration Release  # unit + integration + tenant-isolation, against real PostgreSQL
 npm --prefix apps/web run test        # web units: i18n parity, RTL, permission-filtered navigation
 npm --prefix tests/e2e test           # Playwright journeys T-121…T-132 in en and ar (see tests/e2e/README.md)
+infrastructure/restore-drill.sh       # backup → restore into a fresh database → row counts match (T-150, PRD-23)
 services/ai/.venv/bin/python -m pytest -c services/ai/pytest.ini   # the AI service, with a fake model
 AI_LIVE_TESTS=1 services/ai/.venv/bin/python -m pytest -c services/ai/pytest.ini   # + the injection corpus against Ollama (slow)
 ```

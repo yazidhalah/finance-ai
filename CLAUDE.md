@@ -63,10 +63,12 @@ All ten v1 slices — 1 (Organization & Authentication), 2 (Customers), 3a (Invo
 (Payments & Allocation), 4 (Aging), 5 (Collection Queue), 6 (Promise-to-Pay), 7 (Disputes), 8 (Email
 Templates & Reminders), 9 (Local AI: reply classification) and 10 (Daily Briefing) — are implemented
 and tested; see /docs/slices/. Slice 11 added the Playwright E2E suite (T-121…T-132, both locales,
-tests/e2e) and the CI workflow (.github/workflows/ci.yml). What remains before the First Product is
-"done" is the v1 acceptance pass on a pilot corpus and real hardware (doc 09 §5 AI gates are
-indicative on the author-written corpus; Arabic narrative quality needs a native reviewer; T-150
-restore drill and T-140 performance in CI are open). No second module until that passes. Every AI output enters through the human gates slices 6–10 built (Proposed promises,
+tests/e2e) and the CI workflow (.github/workflows/ci.yml); slice 12 added member invitations, role
+change and deactivation (transfer of ownership still deferred) and the T-150 restore drill
+(infrastructure/restore-drill.sh, run in CI). What remains before the First Product is "done" is the
+v1 acceptance pass on a pilot corpus and real hardware (doc 09 §5 AI gates are indicative on the
+author-written corpus; Arabic narrative quality needs a native reviewer; T-140 performance in CI is
+open). No second module until that passes. Every AI output enters through the human gates slices 6–10 built (Proposed promises,
 Open disputes, PendingApproval messages, pending suggestions, an approved briefing template) and never
 through a direct write. The AI service lives in services/ai (Python, .venv); a prompt or model change
 re-runs the evaluation harness and commits the report under docs/decisions/ before merge (AI-111/112).

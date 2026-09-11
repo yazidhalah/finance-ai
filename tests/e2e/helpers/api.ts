@@ -110,3 +110,17 @@ export let SEEDED_HASH = ''
 export function ensureSeededHash(email: string): void {
   if (!SEEDED_HASH) SEEDED_HASH = psql(`SELECT password_hash FROM users WHERE email = '${email}'`)
 }
+
+/** The invitation link lands in Mailpit (the .env SMTP host); the token is the last 64 hex characters of it. */
+export async function invitationToken(to: string): Promise<string> {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const search = await (await fetch(`http://127.0.0.1:8025/api/v1/search?query=${encodeURIComponent('to:' + to)}`)).json()
+    if (search.messages_count > 0) {
+      const message = await (await fetch(`http://127.0.0.1:8025/api/v1/message/${search.messages[0].ID}`)).json()
+      const m = /accept-invitation\?token=([0-9a-f]{64})/.exec(message.Text ?? '')
+      if (m) return m[1]!
+    }
+    await new Promise((r) => setTimeout(r, 250))
+  }
+  throw new Error(`no invitation mail for ${to}`)
+}

@@ -157,6 +157,129 @@ public sealed class PlatformIdentityStore(
     }
 
     // ---------------------------------------------------------------------------------------
+    // Accepting an invitation (slice 12) — the one identity flow that starts from a token
+    // ---------------------------------------------------------------------------------------
+
+    public sealed record AcceptInvitationCommand(string Token, string? FullName, string? Password, IPAddress? ActorIp, string? RequestId);
+
+    /// <summary>Like <see cref="RegisterOutcome"/>: the endpoint renders every failure identically (SEC-07).</summary>
+    public enum AcceptInvitationOutcome
+    {
+        Accepted,
+        Invalid,
+        PasswordRequired,
+    }
+
+    public sealed record AcceptInvitationResult(AcceptInvitationOutcome Outcome, Guid? TenantId, Guid? UserId, string? Email, string? TenantName, bool CreatedUser);
+
+    /// <summary>
+    /// Two transactions by design. The first, with no tenant bound, finds the invitation by the hash of the token
+    /// (the only cross-tenant read, and it is by an unguessable 256-bit value). The second binds the invitation's
+    /// tenant so the membership, the user and the audit rows are written under a real tenant scope, re-checks the
+    /// invitation under FOR UPDATE, and either creates the user or attaches the existing one.
+    /// </summary>
+    public async Task<AcceptInvitationResult> AcceptInvitationAsync(AcceptInvitationCommand command, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        var invalid = new AcceptInvitationResult(AcceptInvitationOutcome.Invalid, null, null, null, null, false);
+        if (!InvitationTokens.LooksLikeToken(command.Token))
+        {
+            return invalid;
+        }
+
+        var hash = InvitationTokens.Hash(command.Token);
+        var now = time.GetUtcNow();
+        Guid tenantId;
+        Guid invitationId;
+        await using (var lookupDb = await contexts.CreateDbContextAsync(ct))
+        await using (var lookup = await DatabaseScope.EnterPlatformAsync(lookupDb, null, null, ct))
+        {
+            var found = await lookupDb.MemberInvitations.IgnoreQueryFilters().Where(i => i.TokenHash == hash).Select(i => new { i.Id, i.TenantId }).FirstOrDefaultAsync(ct);
+            if (found is null)
+            {
+                return invalid;
+            }
+
+            tenantId = found.TenantId;
+            invitationId = found.Id;
+        }
+
+        await using var db = await contexts.CreateDbContextAsync(ct);
+        await using var scope = await DatabaseScope.EnterPlatformAsync(db, tenantId, null, ct);
+        await db.Database.ExecuteSqlAsync($"SELECT 1 FROM member_invitations WHERE id = {invitationId} FOR UPDATE", ct);
+        // No TenantContext is bound in an identity flow, so the EF filters see no tenant; the platform scope's RLS clause is the boundary here.
+        var invitation = await db.MemberInvitations.IgnoreQueryFilters().FirstOrDefaultAsync(i => i.Id == invitationId && i.TenantId == tenantId, ct);
+        if (invitation is null || !invitation.IsPending(now))
+        {
+            return invalid;
+        }
+
+        var tenant = await db.Tenants.IgnoreQueryFilters().FirstAsync(t => t.Id == tenantId, ct);
+        var user = await db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Email == invitation.Email, ct);
+        var createdUser = false;
+        if (user is null)
+        {
+            if (string.IsNullOrWhiteSpace(command.Password) || string.IsNullOrWhiteSpace(command.FullName))
+            {
+                return new AcceptInvitationResult(AcceptInvitationOutcome.PasswordRequired, null, null, invitation.Email, tenant.Name, false);
+            }
+
+            user = new User
+            {
+                Email = invitation.Email,
+                FullName = command.FullName.Trim(),
+                PreferredLocale = invitation.Locale,
+                PasswordHash = passwordHasher.Hash(command.Password),
+                EmailVerifiedAt = now,   // D-2: the address produced the token
+                Status = UserStatus.Active,
+                CreatedAt = now,
+            };
+            db.Users.Add(user);
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException ex) when (IsEmailUniquenessViolation(ex))
+            {
+                return invalid;   // registered in the meantime; the next attempt attaches the existing user
+            }
+
+            createdUser = true;
+        }
+
+        var existing = await db.TenantMemberships.IgnoreQueryFilters().FirstOrDefaultAsync(m => m.TenantId == tenantId && m.UserId == user.Id, ct);
+        TenantMembership membership;
+        if (existing is null)
+        {
+            membership = new TenantMembership { TenantId = tenantId, UserId = user.Id, Role = invitation.Role, Status = MembershipStatus.Active, InvitedBy = invitation.InvitedBy, CreatedAt = now };
+            db.TenantMemberships.Add(membership);
+        }
+        else
+        {
+            // Re-invited after deactivation: the membership comes back with the invited role.
+            membership = existing;
+            membership.Role = invitation.Role;
+            membership.Status = MembershipStatus.Active;
+            membership.InvitedBy = invitation.InvitedBy;
+        }
+
+        invitation.AcceptedAt = now;
+        invitation.AcceptedUserId = user.Id;
+        await db.SaveChangesAsync(ct);
+
+        var audit = new AuditWriter(db);
+        if (createdUser)
+        {
+            await audit.WriteAsync(Event(AuditEventTypes.UserRegistered, "user", user.Id, tenantId, user.Id, command.ActorIp, command.RequestId, now, note: "via invitation"), ct);
+        }
+
+        await audit.WriteAsync(Event(AuditEventTypes.MembershipCreated, "tenant_membership", membership.Id, tenantId, user.Id, command.ActorIp, command.RequestId, now, toState: invitation.Role.ToString(), reasonCode: "invitation_accepted"), ct);
+        await audit.WriteAsync(Event("membership.invitation_accepted", "member_invitation", invitation.Id, tenantId, user.Id, command.ActorIp, command.RequestId, now), ct);
+        await scope.CompleteAsync(ct);
+        return new AcceptInvitationResult(AcceptInvitationOutcome.Accepted, tenantId, user.Id, invitation.Email, tenant.Name, createdUser);
+    }
+
+    // ---------------------------------------------------------------------------------------
     // Login
     // ---------------------------------------------------------------------------------------
 

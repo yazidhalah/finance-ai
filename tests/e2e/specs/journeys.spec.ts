@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { Api, PASSWORD, psql, today } from '../helpers/api'
+import { Api, PASSWORD, invitationToken, psql, today } from '../helpers/api'
 import { assertLocaleShape, expectMoney, signIn, signOut, uiLocale, useLocale } from '../helpers/ui'
 
 /**
@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }, info) => {
   await useLocale(page, uiLocale(info))
 })
 
-test('T-121 register → sign in → an Accountant sees the navigation for their permissions', async ({ page }, info) => {
+test('T-121 register → sign in → invite an Accountant → accept from the email → both see the navigation for their permissions', async ({ page, browser }, info) => {
   const stamp = Date.now().toString(36)
   const email = `owner-${stamp}@e2e.example`
   await page.goto('/')
@@ -33,18 +33,42 @@ test('T-121 register → sign in → an Accountant sees the navigation for their
   await expect(page.getByTestId('nav-today')).toBeVisible()
   await assertLocaleShape(page, uiLocale(info))
 
-  // No invitation flow in v1 (slice 1 review): the second member is seeded as the .NET suites do, then signs in.
+  // Invite an Accountant from the organization screen; the link arrives in Mailpit.
+  const accountant = `accountant-${stamp}@e2e.example`
+  await page.goto('/organization')
+  await page.getByTestId('invite-email').fill(accountant)
+  await page.getByTestId('invite-role').selectOption('Accountant')
+  await page.getByTestId('invite-submit').click()
+  await expect(page.getByTestId('invite-sent')).toBeVisible()
+  await expect(page.getByTestId('invitation-row')).toHaveCount(1)
+  const token = await invitationToken(accountant)
+
+  // Accept in a fresh browser context (no session), create the account, sign in, and see an Accountant's navigation.
+  const second = await browser.newContext({ locale: info.project.use.locale })
+  const page2 = await second.newPage()
+  await useLocale(page2, uiLocale(info))
+  await page2.goto(`/accept-invitation?token=${token}`)
+  await expect(page2.getByTestId('invitation-account')).toBeVisible()
+  await page2.getByTestId('invitation-fullName').fill('Sami Accountant')
+  await page2.getByTestId('invitation-password').fill(PASSWORD)
+  await page2.getByTestId('invitation-submit').click()
+  await expect(page2.getByTestId('invitation-accepted')).toContainText(`E2E Org ${stamp}`)
+  await page2.getByTestId('invitation-to-sign-in').click()
+  await signIn(page2, accountant)
+  await expect(page2.getByTestId('nav-import')).toBeVisible()      // invoices.import
+  await expect(page2.getByTestId('nav-settings')).toBeVisible()    // tenant.read
+  await assertLocaleShape(page2, uiLocale(info))
+  await second.close()
+
+  // The owner sees the invitation accepted and can change the role; a Viewer never sees the import link (UI-01).
+  await page.reload()
+  await expect(page.getByTestId('invitation-row')).toHaveCount(0)
   const api = new Api(email, `E2E Org ${stamp}`)
   await api.login()
-  const accountant = api.seedMember('Accountant')
-  await signOut(page)
-  await signIn(page, accountant.email, accountant.password)
-  await expect(page.getByTestId('nav-import')).toBeVisible()      // invoices.import
-  await expect(page.getByTestId('nav-settings')).toBeVisible()    // tenant.read
   const viewer = api.seedMember('Viewer')
   await signOut(page)
   await signIn(page, viewer.email, viewer.password)
-  await expect(page.getByTestId('nav-import')).toHaveCount(0)     // a Viewer never sees the link (UI-01)
+  await expect(page.getByTestId('nav-import')).toHaveCount(0)
   await expect(page.getByTestId('nav-aging')).toBeVisible()
 })
 
