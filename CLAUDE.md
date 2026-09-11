@@ -59,8 +59,9 @@ For each vertical slice:
 
 # Current Phase
 Implementation, one vertical slice at a time, against the approved specification in /docs.
-Slices 1 (Organization & Authentication) and 2 (Customers) are complete — see
-/docs/slices/slice-01-organization-and-auth.md and /docs/slices/slice-02-customers.md. Every later slice copies the tenant-isolation
+Slices 1 (Organization & Authentication), 2 (Customers) and 3a (Invoice Import) are complete —
+see /docs/slices/. Slice 3b (payments, cheques, allocation, credit notes) is next and is required
+before any pilot. Every later slice copies the tenant-isolation
 pattern established there (§5 of that document). Do not start a slice until the previous one's
 definition of done (doc 09 §9) is met.
 

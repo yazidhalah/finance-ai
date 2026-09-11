@@ -4,18 +4,19 @@ Status: **Approved for implementation.** These documents are the source of truth
 has had to diverge from them, the divergence is recorded in the slice's own document under
 [`slices/`](slices/) **and** amended here in the same commit (DM-34).
 
-Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b) and slice 2 (DM-20a).
+Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a) and slice 3 (DM-23a).
 
 | Slice | Document | Status |
 |-------|----------|--------|
 | 1 | [slices/slice-01-organization-and-auth.md](slices/slice-01-organization-and-auth.md) | Implemented and tested |
-| 2 | [slices/slice-02-customers.md](slices/slice-02-customers.md) · [review](slices/slice-02-review.md) | Implemented and tested; merge and statement deferred to slice 3 |
+| 2 | [slices/slice-02-customers.md](slices/slice-02-customers.md) · [review](slices/slice-02-review.md) | Implemented and tested; merge and statement deferred |
+| 3a | [slices/slice-03-invoice-import.md](slices/slice-03-invoice-import.md) · [review](slices/slice-03-review.md) | Implemented and tested. **3b (payments, cheques, allocation, credit notes) is required before pilot.** |
 
-**Open questions still outstanding.** Q-01, Q-02, Q-04 and Q-06 in document 00 are marked as
-blocking for slice 1. None of them touches organization, identity, roles or sessions — they concern
-withholding tax, invoice sources, product scope and GPU availability — so slice 1 proceeded without
-them. **They do block slice 3 (invoice import), and Q-04 could reshape the entity model, so they
-should be answered before slice 2 starts.**
+**Open questions still outstanding.** Q-01, Q-02, Q-04 and Q-06 in document 00 remain unanswered.
+Slices 1–3a proceeded on the documented defaults (A-01…A-05, A-11, A-12). **Q-01 (a real
+withholding-tax worked example) and Q-02 (the pilot's invoice source and export shape) now block
+3b directly:** the short-payment resolver and the allocation fixtures (T-20, E1) cannot be written
+honestly without them.
 
 Scope of this document set: **one product only** — the bilingual (Arabic/English)
 AI Accounts Receivable and Collections Assistant for Jordanian SMEs. No other

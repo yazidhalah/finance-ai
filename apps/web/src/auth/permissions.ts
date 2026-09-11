@@ -17,10 +17,10 @@ export const navigation: NavItem[] = [
   { key: 'today', labelKey: 'nav.today', permission: 'cases.read', href: '/today', available: false },
   { key: 'queue', labelKey: 'nav.queue', permission: 'cases.read', href: '/queue', available: false },
   { key: 'customers', labelKey: 'nav.customers', permission: 'customers.read', href: '/customers', available: true },
-  { key: 'invoices', labelKey: 'nav.invoices', permission: 'invoices.read', href: '/invoices', available: false },
+  { key: 'invoices', labelKey: 'nav.invoices', permission: 'invoices.read', href: '/invoices', available: true },
   { key: 'payments', labelKey: 'nav.payments', permission: 'payments.read', href: '/payments', available: false },
   { key: 'aging', labelKey: 'nav.aging', permission: 'aging.read', href: '/aging', available: false },
-  { key: 'import', labelKey: 'nav.import', permission: 'invoices.import', href: '/import', available: false },
+  { key: 'import', labelKey: 'nav.import', permission: 'invoices.import', href: '/import', available: true },
   { key: 'audit', labelKey: 'nav.audit', permission: 'audit.read', href: '/audit', available: false },
   { key: 'settings', labelKey: 'nav.settings', permission: 'tenant.read', href: '/organization', available: true },
 ]

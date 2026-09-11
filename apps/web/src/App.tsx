@@ -3,6 +3,9 @@ import { AppShell } from './components/AppShell'
 import { SessionProvider, useSession } from './auth/SessionProvider'
 import { LocaleProvider, useLocale } from './i18n/LocaleProvider'
 import { CustomerDetailPage } from './pages/CustomerDetail'
+import { ImportWizard } from './pages/ImportWizard'
+import { ImportsPage } from './pages/Imports'
+import { InvoicesPage } from './pages/Invoices'
 import { CustomersPage } from './pages/Customers'
 import { OrganizationPage } from './pages/Organization'
 import { RegisterOrganization } from './pages/RegisterOrganization'
@@ -14,6 +17,9 @@ type Screen =
   | { kind: 'organization' }
   | { kind: 'customers' }
   | { kind: 'customer'; id: string | null }
+  | { kind: 'imports' }
+  | { kind: 'import'; id: string | null }
+  | { kind: 'invoices' }
 
 /**
  * A screen switch driven by the URL path, not a routing library: three authenticated destinations
@@ -24,6 +30,10 @@ function screenFromPath(path: string): Screen {
   const customer = /^\/customers\/(new|[0-9a-f-]{36})$/i.exec(path)
   if (customer) return { kind: 'customer', id: customer[1] === 'new' ? null : customer[1]! }
   if (path.startsWith('/customers')) return { kind: 'customers' }
+  const batch = /^\/import\/(new|[0-9a-f-]{36})$/i.exec(path)
+  if (batch) return { kind: 'import', id: batch[1] === 'new' ? null : batch[1]! }
+  if (path.startsWith('/import')) return { kind: 'imports' }
+  if (path.startsWith('/invoices')) return { kind: 'invoices' }
   return { kind: 'organization' }
 }
 
@@ -82,6 +92,12 @@ function Routes() {
       />
     ) : screen.kind === 'customer' ? (
       <CustomerDetailPage id={screen.id} onBack={() => navigate({ kind: 'customers' }, '/customers')} />
+    ) : screen.kind === 'imports' ? (
+      <ImportsPage onNew={() => navigate({ kind: 'import', id: null }, '/import/new')} onOpen={(id) => navigate({ kind: 'import', id }, `/import/${id}`)} />
+    ) : screen.kind === 'import' ? (
+      <ImportWizard batchId={screen.id} onDone={() => navigate({ kind: 'imports' }, '/import')} onOpenBatch={(id) => window.history.replaceState(null, '', `/import/${id}`)} />
+    ) : screen.kind === 'invoices' ? (
+      <InvoicesPage />
     ) : (
       <OrganizationPage />
     )

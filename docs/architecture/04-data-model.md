@@ -1,6 +1,6 @@
 # 04 — PostgreSQL Entity Model
 
-Status: DRAFT, amended by slice 1 (DM-06, DM-06a, DM-06b) and slice 2 (DM-20a). The DDL below is **illustrative
+Status: DRAFT, amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a) and slice 3 (DM-23a). The DDL below is **illustrative
 specification**, not a migration.
 Migrations are written inside their vertical slice (doc 10) and must match this
 document or amend it.
@@ -452,6 +452,24 @@ CREATE TABLE import_mappings (        -- saved column mappings per tenant
 **DM-23** `import_batches.file_hash` + `tenant_id` unique among non-cancelled batches
 prevents the classic "imported the same file twice" disaster. Overriding it is an
 explicit user action recorded in the audit log.
+
+> **Amended in slice 3 (DM-23a).** As built:
+> - `import_batches` additionally carries `file_content bytea` (the file is kept inside the RLS
+>   boundary so the batch can be re-parsed when the mapping changes — no storage path, no cleanup
+>   job at pilot scale), `file_kind`, the applied `column_map` / `date_format` /
+>   `decimal_separator` (a saved mapping may change later), the detected `headers`, a `forced`
+>   flag for the DM-23 override, `duplicate_count`, `warning_count` and `row_version`.
+> - `import_rows` gains `customer_id` (the resolved customer, from matching or from
+>   `assign_customer` / `create_customer`), a `Skipped` outcome (the user's answer to an exception),
+>   and composite FKs to `customers` and `invoices` as well as to its batch.
+> - **`import_rows` of a committed batch are immutable at the database** (trigger
+>   `import_rows_frozen_after_commit`, binding the owner too). Preview rows are replaced on
+>   re-mapping, which is why the application role holds DELETE on the table.
+> - `invoices` gains a `totals_reconcile` CHECK (`total_amount = net_amount + tax_amount`), a
+>   `notes` column, the §3.1 audit columns, and a composite FK to `import_batches`.
+> - **There is no tenant FX rate table yet.** A foreign-currency row must supply
+>   `fx_rate_to_base` in the file or it is rejected; FIN-06's "from the tenant's rate table" is
+>   deferred to 3b/4.
 
 ### 5.4 Payments, cheques, allocations
 

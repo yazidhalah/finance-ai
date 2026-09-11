@@ -35,6 +35,14 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
 
     public DbSet<CustomerContact> CustomerContacts => this.Set<CustomerContact>();
 
+    public DbSet<Invoice> Invoices => this.Set<Invoice>();
+
+    public DbSet<ImportMapping> ImportMappings => this.Set<ImportMapping>();
+
+    public DbSet<ImportBatch> ImportBatches => this.Set<ImportBatch>();
+
+    public DbSet<ImportRow> ImportRows => this.Set<ImportRow>();
+
     public override int SaveChanges()
     {
         this.StampTenant();
@@ -57,6 +65,8 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
         ConfigureAuditEvents(model);
         ConfigureCustomers(model);
         ConfigureCustomerContacts(model);
+        ConfigureInvoices(model);
+        ConfigureImport(model);
 
         this.ApplyTenantQueryFilters(model);
 
@@ -271,4 +281,98 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
             e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
         });
+
+    private static void ConfigureInvoices(ModelBuilder model) =>
+        model.Entity<Invoice>(e =>
+        {
+            e.ToTable("invoices");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.CustomerId).HasColumnName("customer_id");
+            e.Property(x => x.InvoiceNumber).HasColumnName("invoice_number");
+            e.Property(x => x.Status).HasColumnName("status").HasConversion<string>();
+            e.Property(x => x.IssueDate).HasColumnName("issue_date");
+            e.Property(x => x.DueDate).HasColumnName("due_date");
+            e.Property(x => x.Currency).HasColumnName("currency").HasColumnType("char(3)");
+            e.Property(x => x.NetAmount).HasColumnName("net_amount").HasColumnType("numeric(19,3)");
+            e.Property(x => x.TaxAmount).HasColumnName("tax_amount").HasColumnType("numeric(19,3)");
+            e.Property(x => x.TotalAmount).HasColumnName("total_amount").HasColumnType("numeric(19,3)");
+            e.Property(x => x.BalanceCache).HasColumnName("balance_cache").HasColumnType("numeric(19,3)");
+            e.Property(x => x.FxRateToBase).HasColumnName("fx_rate_to_base").HasColumnType("numeric(18,8)");
+            e.Property(x => x.BaseCurrency).HasColumnName("base_currency").HasColumnType("char(3)");
+            e.Property(x => x.PoReference).HasColumnName("po_reference");
+            e.Property(x => x.Notes).HasColumnName("notes");
+            e.Property(x => x.Source).HasColumnName("source").HasConversion(v => v.ToString().ToLowerInvariant(), v => Enum.Parse<InvoiceSource>(v, true));
+            e.Property(x => x.ImportBatchId).HasColumnName("import_batch_id");
+            e.Property(x => x.ExternalId).HasColumnName("external_id");
+            e.Property(x => x.SettledAt).HasColumnName("settled_at");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.CreatedBy).HasColumnName("created_by");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.Property(x => x.UpdatedBy).HasColumnName("updated_by");
+            e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
+        });
+
+    private static void ConfigureImport(ModelBuilder model)
+    {
+        model.Entity<ImportMapping>(e =>
+        {
+            e.ToTable("import_mappings");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.Name).HasColumnName("name");
+            e.Property(x => x.ColumnMap).HasColumnName("column_map").HasColumnType("jsonb");
+            e.Property(x => x.DateFormat).HasColumnName("date_format");
+            e.Property(x => x.DecimalSeparator).HasColumnName("decimal_separator").HasColumnType("char(1)");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+        });
+
+        model.Entity<ImportBatch>(e =>
+        {
+            e.ToTable("import_batches");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.FileName).HasColumnName("file_name");
+            e.Property(x => x.FileHash).HasColumnName("file_hash");
+            e.Property(x => x.FileSize).HasColumnName("file_size");
+            e.Property(x => x.FileKind).HasColumnName("file_kind").HasConversion(v => v.ToString().ToLowerInvariant(), v => Enum.Parse<ImportFileKind>(v, true));
+            e.Property(x => x.FileContent).HasColumnName("file_content");
+            e.Property(x => x.MappingId).HasColumnName("mapping_id");
+            e.Property(x => x.ColumnMap).HasColumnName("column_map").HasColumnType("jsonb");
+            e.Property(x => x.DateFormat).HasColumnName("date_format");
+            e.Property(x => x.DecimalSeparator).HasColumnName("decimal_separator").HasColumnType("char(1)");
+            e.Property(x => x.Headers).HasColumnName("headers").HasColumnType("jsonb");
+            e.Property(x => x.Status).HasColumnName("status").HasConversion<string>();
+            e.Property(x => x.RowCount).HasColumnName("row_count");
+            e.Property(x => x.AcceptedCount).HasColumnName("accepted_count");
+            e.Property(x => x.RejectedCount).HasColumnName("rejected_count");
+            e.Property(x => x.DuplicateCount).HasColumnName("duplicate_count");
+            e.Property(x => x.WarningCount).HasColumnName("warning_count");
+            e.Property(x => x.Forced).HasColumnName("forced");
+            e.Property(x => x.UploadedBy).HasColumnName("uploaded_by");
+            e.Property(x => x.UploadedAt).HasColumnName("uploaded_at");
+            e.Property(x => x.CommittedAt).HasColumnName("committed_at");
+            e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
+        });
+
+        model.Entity<ImportRow>(e =>
+        {
+            e.ToTable("import_rows");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.BatchId).HasColumnName("batch_id");
+            e.Property(x => x.RowNo).HasColumnName("row_no");
+            e.Property(x => x.Raw).HasColumnName("raw").HasColumnType("jsonb");
+            e.Property(x => x.Parsed).HasColumnName("parsed").HasColumnType("jsonb");
+            e.Property(x => x.Outcome).HasColumnName("outcome").HasConversion<string>();
+            e.Property(x => x.ErrorCode).HasColumnName("error_code");
+            e.Property(x => x.ErrorDetail).HasColumnName("error_detail");
+            e.Property(x => x.CustomerId).HasColumnName("customer_id");
+            e.Property(x => x.InvoiceId).HasColumnName("invoice_id");
+        });
+    }
 }
