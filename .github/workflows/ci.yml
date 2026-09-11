@@ -32,8 +32,10 @@ jobs:
         run: |
           cp .env.example .env
           sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci_only/; s/^POSTGRES_APP_PASSWORD=.*/POSTGRES_APP_PASSWORD=ci_app/; s/^POSTGRES_MIGRATOR_PASSWORD=.*/POSTGRES_MIGRATOR_PASSWORD=ci_migrator/; s/^POSTGRES_REPORTING_PASSWORD=.*/POSTGRES_REPORTING_PASSWORD=ci_reporting/' .env
-          echo "JWT_SIGNING_KEY_PEM_BASE64=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null | base64 -w0)" >> .env
-          echo "AI_SERVICE_TOKEN=$(openssl rand -hex 24)" >> .env
+          # The loader keeps the first value it sees for a key, so replace the example's empty lines rather than append.
+          sed -i "s|^JWT_SIGNING_KEY_PEM_BASE64=.*|JWT_SIGNING_KEY_PEM_BASE64=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null | base64 -w0)|" .env
+          sed -i "s|^AI_SERVICE_TOKEN=.*|AI_SERVICE_TOKEN=$(openssl rand -hex 24)|" .env
+          grep -c "JWT_SIGNING_KEY_PEM_BASE64=." .env
       - run: dotnet format --verify-no-changes
       - run: dotnet build --configuration Release
       - run: dotnet test tests/unit/FinanceAi.UnitTests --configuration Release --no-build
@@ -86,8 +88,10 @@ jobs:
         run: |
           cp .env.example .env
           sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci_only/; s/^POSTGRES_APP_PASSWORD=.*/POSTGRES_APP_PASSWORD=ci_app/; s/^POSTGRES_MIGRATOR_PASSWORD=.*/POSTGRES_MIGRATOR_PASSWORD=ci_migrator/; s/^POSTGRES_REPORTING_PASSWORD=.*/POSTGRES_REPORTING_PASSWORD=ci_reporting/' .env
-          echo "JWT_SIGNING_KEY_PEM_BASE64=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null | base64 -w0)" >> .env
-          echo "AI_SERVICE_TOKEN=$(openssl rand -hex 24)" >> .env
+          # The loader keeps the first value it sees for a key, so replace the example's empty lines rather than append.
+          sed -i "s|^JWT_SIGNING_KEY_PEM_BASE64=.*|JWT_SIGNING_KEY_PEM_BASE64=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null | base64 -w0)|" .env
+          sed -i "s|^AI_SERVICE_TOKEN=.*|AI_SERVICE_TOKEN=$(openssl rand -hex 24)|" .env
+          grep -c "JWT_SIGNING_KEY_PEM_BASE64=." .env
       - run: dotnet build --configuration Release apps/api/FinanceAi.Api apps/api/FinanceAi.Migrator
       - run: python -m venv services/ai/.venv && services/ai/.venv/bin/pip install -r services/ai/requirements.txt
       - run: npm --prefix apps/web ci
