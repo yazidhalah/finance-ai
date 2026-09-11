@@ -18,6 +18,8 @@ export const navigation: NavItem[] = [
   { key: 'queue', labelKey: 'nav.queue', permission: 'cases.read', href: '/queue', available: true },
   { key: 'promises', labelKey: 'nav.promises', permission: 'cases.read', href: '/promises', available: true },
   { key: 'disputes', labelKey: 'nav.disputes', permission: 'cases.read', href: '/disputes', available: true },
+  { key: 'outbox', labelKey: 'nav.outbox', permission: 'cases.read', href: '/outbox', available: true },
+  { key: 'templates', labelKey: 'nav.templates', permission: 'cases.read', href: '/templates', available: true },
   { key: 'customers', labelKey: 'nav.customers', permission: 'customers.read', href: '/customers', available: true },
   { key: 'invoices', labelKey: 'nav.invoices', permission: 'invoices.read', href: '/invoices', available: true },
   { key: 'payments', labelKey: 'nav.payments', permission: 'payments.read', href: '/payments', available: true },

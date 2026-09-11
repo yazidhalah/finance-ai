@@ -1,6 +1,6 @@
 # 04 — PostgreSQL Entity Model
 
-Status: DRAFT, amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), slice 3 (DM-23a), slice 3b (DM-24a), slice 4 (DM-31a), slice 5 (DM-25a), slice 6 (DM-24a) and slice 7 (DM-26a). The DDL below is **illustrative
+Status: DRAFT, amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), slice 3 (DM-23a), slice 3b (DM-24a), slice 4 (DM-31a), slice 5 (DM-25a), slice 6 (DM-24a), slice 7 (DM-26a) and slice 8 (DM-27a). The DDL below is **illustrative
 specification**, not a migration.
 Migrations are written inside their vertical slice (doc 10) and must match this
 document or amend it.
@@ -859,6 +859,16 @@ CREATE TABLE inbound_messages (
 );
 CREATE INDEX inbound_unprocessed_idx ON inbound_messages (tenant_id, classification_status, received_at);
 ```
+
+> **Amended in slice 8 (DM-27a).** As built (`database/migrations/0009_messaging.sql`):
+> - `message_templates` gains `status` (`Draft` / `Approved`) with `approved_by` / `approved_at` and the
+>   `approved_has_approver` CHECK, plus `created_at` / `created_by`; a content change is a new version.
+> - `messages` gains `template_key`, `to_address`, `approval_required`, `approval_reasons[]`,
+>   `approval_kind` (`message` / `sender` / `template`), `drafted_by`, `queued_at`, `attempts`,
+>   `next_attempt_at`, `cancel_reason`, `whatsapp_link_at`, `idempotency_key` (unique per tenant),
+>   the §3.1 timestamps and `row_version`. `sent_requires_approval` also requires `approval_kind`.
+> - `tenant_settings` gains `outbound_sending_enabled` (SEC-103) and `daily_send_cap` (SEC-86).
+> - Per-tenant SMTP settings and `inbound_messages` are not created here (slice 8 D-1; slice 9).
 
 **DM-25** `messages.body` is **frozen at approval**: the sent text is stored verbatim,
 not re-rendered from the template later. An audit answer of "what exactly did we send

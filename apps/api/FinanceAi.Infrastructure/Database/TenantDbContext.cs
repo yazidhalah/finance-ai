@@ -75,6 +75,10 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
 
     public DbSet<PaymentVerificationTask> VerificationTasks => this.Set<PaymentVerificationTask>();
 
+    public DbSet<MessageTemplate> Templates => this.Set<MessageTemplate>();
+
+    public DbSet<OutboundMessage> Messages => this.Set<OutboundMessage>();
+
     public override int SaveChanges()
     {
         this.StampTenant();
@@ -103,6 +107,7 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
         ConfigureCases(model);
         ConfigurePromises(model);
         ConfigureDisputes(model);
+        ConfigureMessaging(model);
 
         this.ApplyTenantQueryFilters(model);
 
@@ -222,6 +227,8 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.QuietHoursEnd).HasColumnName("quiet_hours_end");
             e.Property(x => x.BriefingSendAt).HasColumnName("briefing_send_at");
             e.Property(x => x.PriorityWeightsVersion).HasColumnName("priority_weights_version");
+            e.Property(x => x.OutboundSendingEnabled).HasColumnName("outbound_sending_enabled");
+            e.Property(x => x.DailySendCap).HasColumnName("daily_send_cap");
         });
 
     private static void ConfigureRefreshTokens(ModelBuilder model) =>
@@ -764,6 +771,76 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.CreatedBy).HasColumnName("created_by");
             e.Property(x => x.ResolvedAt).HasColumnName("resolved_at");
             e.Property(x => x.ResolvedBy).HasColumnName("resolved_by");
+        });
+    }
+
+    private static void ConfigureMessaging(ModelBuilder model)
+    {
+        model.Entity<MessageTemplate>(e =>
+        {
+            e.ToTable("message_templates");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.Key).HasColumnName("key");
+            e.Property(x => x.Channel).HasColumnName("channel");
+            e.Property(x => x.Language).HasColumnName("language").HasColumnType("char(2)");
+            e.Property(x => x.Tone).HasColumnName("tone");
+            e.Property(x => x.Subject).HasColumnName("subject");
+            e.Property(x => x.Body).HasColumnName("body");
+            e.Property(x => x.Version).HasColumnName("version");
+            e.Property(x => x.Status).HasColumnName("status");
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.Property(x => x.IsSystem).HasColumnName("is_system");
+            e.Property(x => x.ApprovedBy).HasColumnName("approved_by");
+            e.Property(x => x.ApprovedAt).HasColumnName("approved_at");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.CreatedBy).HasColumnName("created_by");
+            e.Property(x => x.DeletedAt).HasColumnName("deleted_at");
+            e.Ignore(x => x.IsApproved);
+        });
+
+        model.Entity<OutboundMessage>(e =>
+        {
+            e.ToTable("messages");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.CaseId).HasColumnName("case_id");
+            e.Property(x => x.CustomerId).HasColumnName("customer_id");
+            e.Property(x => x.ContactId).HasColumnName("contact_id");
+            e.Property(x => x.Channel).HasColumnName("channel");
+            e.Property(x => x.Direction).HasColumnName("direction");
+            e.Property(x => x.Language).HasColumnName("language").HasColumnType("char(2)");
+            e.Property(x => x.TemplateId).HasColumnName("template_id");
+            e.Property(x => x.TemplateKey).HasColumnName("template_key");
+            e.Property(x => x.TemplateVersion).HasColumnName("template_version");
+            e.Property(x => x.ToAddress).HasColumnName("to_address");
+            e.Property(x => x.Subject).HasColumnName("subject");
+            e.Property(x => x.Body).HasColumnName("body");
+            e.Property(x => x.InvoiceIds).HasColumnName("invoice_ids");
+            e.Property(x => x.Status).HasColumnName("status").HasConversion<string>();
+            e.Property(x => x.ApprovalRequired).HasColumnName("approval_required");
+            e.Property(x => x.ApprovalReasons).HasColumnName("approval_reasons");
+            e.Property(x => x.ApprovalKind).HasColumnName("approval_kind");
+            e.Property(x => x.AiDrafted).HasColumnName("ai_drafted");
+            e.Property(x => x.AiSuggestionId).HasColumnName("ai_suggestion_id");
+            e.Property(x => x.DraftedBy).HasColumnName("drafted_by");
+            e.Property(x => x.ApprovedBy).HasColumnName("approved_by");
+            e.Property(x => x.ApprovedAt).HasColumnName("approved_at");
+            e.Property(x => x.QueuedAt).HasColumnName("queued_at");
+            e.Property(x => x.SentBy).HasColumnName("sent_by");
+            e.Property(x => x.SentAt).HasColumnName("sent_at");
+            e.Property(x => x.Attempts).HasColumnName("attempts");
+            e.Property(x => x.NextAttemptAt).HasColumnName("next_attempt_at");
+            e.Property(x => x.ProviderMessageId).HasColumnName("provider_message_id");
+            e.Property(x => x.FailureReason).HasColumnName("failure_reason");
+            e.Property(x => x.CancelReason).HasColumnName("cancel_reason");
+            e.Property(x => x.WhatsappLinkAt).HasColumnName("whatsapp_link_at");
+            e.Property(x => x.IdempotencyKey).HasColumnName("idempotency_key");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
         });
     }
 }

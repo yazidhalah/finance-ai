@@ -9,7 +9,7 @@ source-available license is a blocking review finding, not a discussion.
 
 Versions are pinned; lockfiles (`package-lock.json`, `packages.lock.json`) are committed.
 
-Last updated: slice 7 — Disputes (no dependency added; evidence sniffing is three magic-byte checks).
+Last updated: slice 8 — Email templates & reminders (no dependency added: SMTP via System.Net.Mail, WhatsApp is a click-to-chat URL; a test greps the manifests for unofficial WhatsApp libraries).
 
 ---
 

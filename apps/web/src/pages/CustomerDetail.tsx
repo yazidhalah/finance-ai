@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ApiError, customersApi, promisesApi } from '../api/client'
-import type { Contact, Customer, CustomerInput, PromiseToPay, Reliability } from '../api/client'
+import { ApiError, customersApi, messagingApi, promisesApi } from '../api/client'
+import type { Contact, Customer, CustomerInput, PromiseToPay, Reliability, Statement } from '../api/client'
+import { MessageStatusChip } from './Messaging'
+import { MoneyText } from '../components/Money'
 import { PromiseCard, ReliabilityBadge } from './Promises'
 import { useSession } from '../auth/SessionProvider'
 import { Button, Card, ErrorNotice, Field, Isolate, Select, TextInput } from '../components/ui'
@@ -277,6 +279,7 @@ export function CustomerDetailPage({ id, onBack }: { id: string | null; onBack: 
           </Card>
           <ContactsCard customerId={customer.id} editable={editable} />
           {can('cases.read') ? <PromiseHistoryCard customerId={customer.id} /> : null}
+          {can('cases.read') ? <StatementCard customerId={customer.id} /> : null}
         </>
       ) : null}
     </div>
@@ -404,6 +407,28 @@ function PromiseHistoryCard({ customerId }: { customerId: string }) {
       {history.promises.length === 0 ? <p className="mt-2 text-sm text-slate-500">{t('promises.group.empty')}</p> : (
         <div className="mt-2 space-y-2" data-testid="promise-history">{history.promises.map((p) => <PromiseCard key={p.id} promise={p} onChanged={() => void load()} />)}</div>
       )}
+    </Card>
+  )
+}
+
+/** Doc 06 — a real customer statement: positions per currency, open invoices, payments, and what we sent. Nothing summed here. */
+function StatementCard({ customerId }: { customerId: string }) {
+  const { t } = useLocale()
+  const [statement, setStatement] = useState<Statement | null>(null)
+  useEffect(() => { void messagingApi.statement(customerId).then(setStatement).catch(() => setStatement(null)) }, [customerId])
+  if (!statement) return null
+  return (
+    <Card>
+      <h2 className="text-lg font-semibold text-slate-900">{t('statement.title')}</h2>
+      <div className="mt-2 flex flex-wrap gap-4 text-sm" data-testid="statement-positions">
+        {statement.positions.map((p) => <div key={p.currency}><span className="text-slate-500">{t('invoices.column.openBalance')} </span><MoneyText value={p.openBalance} className="font-semibold" /></div>)}
+      </div>
+      <h3 className="mt-3 text-sm font-medium">{t('statement.invoices')}</h3>
+      <ul className="mt-1 space-y-1 text-sm" data-testid="statement-invoices">{statement.openInvoices.map((i) => <li key={i.invoiceId} className="flex gap-3"><Isolate className="font-mono text-xs">{i.invoiceNumber}</Isolate><span className="text-slate-500"><Isolate>{i.dueDate}</Isolate></span><MoneyText value={i.openBalance} /></li>)}</ul>
+      <h3 className="mt-3 text-sm font-medium">{t('statement.payments')}</h3>
+      <ul className="mt-1 space-y-1 text-sm" data-testid="statement-payments">{statement.payments.map((p) => <li key={p.id} className="flex gap-3"><span className="text-slate-500"><Isolate>{p.receivedDate}</Isolate></span><MoneyText value={p.amount} /><span className="text-slate-500">{t(`payments.method.${p.method}`)}</span></li>)}</ul>
+      <h3 className="mt-3 text-sm font-medium">{t('statement.messages')}</h3>
+      <ul className="mt-1 space-y-1 text-sm" data-testid="statement-messages">{statement.messages.map((m) => <li key={m.id} className="flex flex-wrap gap-2"><MessageStatusChip status={m.status} /><span className="text-slate-500"><Isolate>{(m.sentAt ?? '').slice(0, 10)}</Isolate></span><span dir="auto">{m.subject ?? m.body.slice(0, 60)}</span></li>)}</ul>
     </Card>
   )
 }

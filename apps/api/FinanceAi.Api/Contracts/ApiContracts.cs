@@ -592,3 +592,45 @@ public sealed record VerificationTaskDto(
 public sealed record VerificationTaskListResponse(IReadOnlyList<VerificationTaskDto> Items, int TotalCount);
 
 public sealed record ResolveVerificationRequest(string? Outcome, Guid? PaymentId, string? Notes);
+
+// ---------------------------------------------------------------------------------------
+// Slice 8 — Email templates & reminders (doc 05 slice 8).
+// ---------------------------------------------------------------------------------------
+
+public sealed record PlaceholderDto(string Name, string Type, string Description);
+
+public sealed record TemplateRequest(string? Key, string? Channel, string? Language, string? Tone, string? Subject, string? Body);
+
+public sealed record TemplateVersionRequest(string? Tone, string? Subject, string? Body);
+
+public sealed record TemplateResponse(
+    Guid Id, string Key, string Channel, string Language, string Tone, string? Subject, string Body, int Version, string Status, bool IsActive, bool IsSystem,
+    Guid? ApprovedBy, string? ApprovedAt, IReadOnlyList<string> Placeholders, string CreatedAt, Guid? CreatedBy);
+
+public sealed record TemplateListResponse(IReadOnlyList<TemplateResponse> Items, int TotalCount);
+
+public sealed record TemplatePreviewRequest(Guid? CaseId, IReadOnlyList<Guid>? InvoiceIds);
+
+public sealed record TemplatePreviewResponse(string Language, string? Subject, string Body, IReadOnlyList<string> InvoiceNumbers, MoneyDto AmountDue);
+
+public sealed record ComposeMessageRequest(string? Channel, string? Language, Guid? TemplateId, string? Subject, string? Body, IReadOnlyList<Guid>? InvoiceIds, Guid? ContactId);
+
+public sealed record MessageResponse(
+    Guid Id, Guid? CaseId, long? CaseNumber, Guid CustomerId, Guid? ContactId, string Channel, string Language, Guid? TemplateId, string? TemplateKey, int? TemplateVersion,
+    string? ToAddress, string? Subject, string Body, IReadOnlyList<Guid> InvoiceIds, string Status, bool ApprovalRequired, IReadOnlyList<string> ApprovalReasons, string? ApprovalKind,
+    bool AiDrafted, Guid? DraftedBy, Guid? ApprovedBy, string? ApprovedAt, Guid? SentBy, string? SentAt, int Attempts, string? NextAttemptAt, string? FailureReason, string? CancelReason,
+    string CreatedAt, long RowVersion);
+
+public sealed record MessageListResponse(IReadOnlyList<MessageResponse> Items, int TotalCount);
+
+public sealed record WhatsAppLinkResponse(Guid MessageId, string Link, string Text, string Status, string Notice);
+
+public sealed record DispatchResponse(int Sent, int Failed, int Skipped, string? SkipReason);
+
+public sealed record OutboundSettingsResponse(bool OutboundSendingEnabled, bool GloballyEnabled, int DailySendCap, int SentToday, bool RequireApprovalBeforeSend, string QuietHoursStart, string QuietHoursEnd, IReadOnlyList<int> DunningCadenceDays);
+
+public sealed record OutboundSettingsRequest(bool? OutboundSendingEnabled, int? DailySendCap);
+
+public sealed record StatementResponse(
+    Guid CustomerId, string AsOf, IReadOnlyList<CustomerPositionDto> Positions, IReadOnlyList<AgedInvoiceDto> OpenInvoices,
+    IReadOnlyList<PaymentResponse> Payments, IReadOnlyList<MessageResponse> Messages);

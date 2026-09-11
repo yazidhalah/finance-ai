@@ -34,4 +34,10 @@ public sealed class TenantSettings : ITenantScoped
     public TimeOnly QuietHoursEnd { get; set; } = new(8, 0);
     public TimeOnly BriefingSendAt { get; set; } = new(7, 30);
     public int PriorityWeightsVersion { get; set; } = 1;
+
+    /// <summary>SEC-103: the tenant-level kill switch. Off means nothing leaves, queued or not.</summary>
+    public bool OutboundSendingEnabled { get; set; } = true;
+
+    /// <summary>SEC-86: messages per tenant day; the dispatcher stops at the cap.</summary>
+    public int DailySendCap { get; set; } = 200;
 }
