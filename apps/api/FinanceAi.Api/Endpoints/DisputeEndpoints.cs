@@ -21,17 +21,17 @@ public static class DisputeEndpoints
     {
         ArgumentNullException.ThrowIfNull(api);
 
-        api.MapPost("/invoices/{id:guid}/disputes", RaiseAsync).RequiresPermission(Permissions.DisputesWrite).WithName("RaiseDispute");
+        api.MapPost("/invoices/{id:guid}/disputes", RaiseAsync).Produces<DisputeResponse>(201).RequiresPermission(Permissions.DisputesWrite).WithName("RaiseDispute");
         var disputes = api.MapGroup("/disputes");
-        disputes.MapGet("/", ListAsync).RequiresPermission(Permissions.CasesRead).WithName("ListDisputes");
-        disputes.MapGet("/{id:guid}", GetAsync).RequiresPermission(Permissions.CasesRead).WithName("GetDispute");
-        disputes.MapPost("/{id:guid}/transitions", TransitionAsync).RequiresPermission(Permissions.DisputesWrite).WithName("DisputeTransition");
-        disputes.MapPost("/{id:guid}/resolve", ResolveAsync).RequiresPermission(Permissions.DisputesResolve).WithName("ResolveDispute");
-        disputes.MapPost("/{id:guid}/evidence", EvidenceUploadAsync).RequiresPermission(Permissions.DisputesWrite).DisableAntiforgery().WithName("AttachEvidence");
-        disputes.MapGet("/{id:guid}/evidence/{evidenceId:guid}", EvidenceDownloadAsync).RequiresPermission(Permissions.CasesRead).WithName("DownloadEvidence");
-        api.MapGet("/cases/{id:guid}/dunning-eligibility", DunningEligibilityAsync).RequiresPermission(Permissions.CasesRead).WithName("DunningEligibility");
-        api.MapGet("/tasks/payment-verification", ListTasksAsync).RequiresPermission(Permissions.PaymentsRead).WithName("ListVerificationTasks");
-        api.MapPost("/tasks/payment-verification/{id:guid}/resolve", ResolveTaskAsync).RequiresPermission(Permissions.PaymentsWrite).WithName("ResolveVerificationTask");
+        disputes.MapGet("/", ListAsync).Produces<DisputeListResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("ListDisputes");
+        disputes.MapGet("/{id:guid}", GetAsync).Produces<DisputeResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("GetDispute");
+        disputes.MapPost("/{id:guid}/transitions", TransitionAsync).Produces<DisputeResponse>(200).RequiresPermission(Permissions.DisputesWrite).WithName("DisputeTransition");
+        disputes.MapPost("/{id:guid}/resolve", ResolveAsync).Produces<DisputeResponse>(200).RequiresPermission(Permissions.DisputesResolve).WithName("ResolveDispute");
+        disputes.MapPost("/{id:guid}/evidence", EvidenceUploadAsync).Produces<DisputeEvidenceDto>(201).RequiresPermission(Permissions.DisputesWrite).DisableAntiforgery().WithName("AttachEvidence");
+        disputes.MapGet("/{id:guid}/evidence/{evidenceId:guid}", EvidenceDownloadAsync).Produces(200, contentType: "application/octet-stream").RequiresPermission(Permissions.CasesRead).WithName("DownloadEvidence");
+        api.MapGet("/cases/{id:guid}/dunning-eligibility", DunningEligibilityAsync).Produces<DunningEligibilityResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("DunningEligibility");
+        api.MapGet("/tasks/payment-verification", ListTasksAsync).Produces<VerificationTaskListResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("ListVerificationTasks");
+        api.MapPost("/tasks/payment-verification/{id:guid}/resolve", ResolveTaskAsync).Produces<VerificationTaskDto>(200).RequiresPermission(Permissions.PaymentsWrite).WithName("ResolveVerificationTask");
 
         return api;
     }

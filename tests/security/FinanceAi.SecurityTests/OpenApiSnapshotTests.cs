@@ -55,6 +55,37 @@ public sealed class OpenApiSnapshotTests(ApiTestFixture fixture)
         }
     }
 
+    /// <summary>
+    /// Slice 18: every operation documents its success response — a schema (or a declared media type for a download, or
+    /// 204) — and the problem responses it can produce, so a response-shape change is a snapshot change.
+    /// </summary>
+    [Fact]
+    public async Task EveryOperation_DocumentsItsResponses()
+    {
+        var root = JsonNode.Parse(await GenerateAsync())!.AsObject();
+        Assert.True(root["components"]!["schemas"]!.AsObject().ContainsKey("Problem"));
+        var undocumented = new List<string>();
+        foreach (var (path, item) in root["paths"]!.AsObject())
+        {
+            foreach (var (method, operation) in item!.AsObject())
+            {
+                var responses = operation!["responses"]!.AsObject();
+                var success = responses.FirstOrDefault(r => r.Key.StartsWith('2'));
+                var ok = success.Value is not null && (success.Key == "204" || success.Value["content"] is JsonObject content && content.Count > 0);
+                if (!ok) undocumented.Add($"{method.ToUpperInvariant()} {path}: no typed 2xx");
+                var anonymous = operation["x-access"]?.GetValue<string>() == "anonymous";
+                if (!anonymous && !responses.ContainsKey("401")) undocumented.Add($"{method.ToUpperInvariant()} {path}: no 401");
+                if (path.Contains('{') && !responses.ContainsKey("404")) undocumented.Add($"{method.ToUpperInvariant()} {path}: no 404");
+                foreach (var (status, response) in responses)
+                {
+                    if (status.StartsWith('4') && response!["content"]?["application/problem+json"] is null) undocumented.Add($"{method.ToUpperInvariant()} {path}: {status} is not a problem");
+                }
+            }
+        }
+
+        Assert.Empty(undocumented);
+    }
+
     /// <summary>Every operation says who may call it, and the anonymous set is exactly the middleware's (SEC-10).</summary>
     [Fact]
     public async Task EveryOperation_DeclaresItsAccess()

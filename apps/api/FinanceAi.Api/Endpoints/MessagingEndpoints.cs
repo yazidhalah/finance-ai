@@ -24,28 +24,28 @@ public static class MessagingEndpoints
         ArgumentNullException.ThrowIfNull(api);
 
         var templates = api.MapGroup("/templates");
-        templates.MapGet("/", ListTemplatesAsync).RequiresPermission(Permissions.CasesRead).WithName("ListTemplates");
-        templates.MapGet("/placeholders", PlaceholdersAsync).RequiresPermission(Permissions.CasesRead).WithName("Placeholders");
-        templates.MapGet("/{id:guid}", GetTemplateAsync).RequiresPermission(Permissions.CasesRead).WithName("GetTemplate");
-        templates.MapPost("/", CreateTemplateAsync).RequiresPermission(Permissions.TemplatesWrite).WithName("CreateTemplate");
-        templates.MapPost("/{id:guid}", NewVersionAsync).RequiresPermission(Permissions.TemplatesWrite).WithName("NewTemplateVersion");
-        templates.MapPost("/{id:guid}/approve", ApproveTemplateAsync).RequiresPermission(Permissions.TemplatesWrite).WithName("ApproveTemplate");
-        templates.MapPost("/{id:guid}/preview", PreviewAsync).RequiresPermission(Permissions.CasesRead).WithName("PreviewTemplate");
+        templates.MapGet("/", ListTemplatesAsync).Produces<TemplateListResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("ListTemplates");
+        templates.MapGet("/placeholders", PlaceholdersAsync).Produces<PlaceholderListResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("Placeholders");
+        templates.MapGet("/{id:guid}", GetTemplateAsync).Produces<TemplateResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("GetTemplate");
+        templates.MapPost("/", CreateTemplateAsync).Produces<TemplateResponse>(201).RequiresPermission(Permissions.TemplatesWrite).WithName("CreateTemplate");
+        templates.MapPost("/{id:guid}", NewVersionAsync).Produces<TemplateResponse>(201).RequiresPermission(Permissions.TemplatesWrite).WithName("NewTemplateVersion");
+        templates.MapPost("/{id:guid}/approve", ApproveTemplateAsync).Produces<TemplateResponse>(200).RequiresPermission(Permissions.TemplatesWrite).WithName("ApproveTemplate");
+        templates.MapPost("/{id:guid}/preview", PreviewAsync).Produces<TemplatePreviewResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("PreviewTemplate");
 
-        api.MapPost("/cases/{id:guid}/messages", ComposeAsync).RequiresPermission(Permissions.MessagesDraft).WithName("ComposeMessage");
+        api.MapPost("/cases/{id:guid}/messages", ComposeAsync).Produces<MessageResponse>(201).RequiresPermission(Permissions.MessagesDraft).WithName("ComposeMessage");
         var messages = api.MapGroup("/messages");
-        messages.MapGet("/", ListMessagesAsync).RequiresPermission(Permissions.CasesRead).WithName("ListMessages");
-        messages.MapPost("/dispatch", DispatchAsync).RequiresPermission(Permissions.MessagesSend).WithName("DispatchMessages");
-        messages.MapGet("/{id:guid}", GetMessageAsync).RequiresPermission(Permissions.CasesRead).WithName("GetMessage");
-        messages.MapPost("/{id:guid}/approve", ApproveMessageAsync).RequiresPermission(Permissions.AiSuggestionsApprove).WithName("ApproveMessage");
-        messages.MapPost("/{id:guid}/send", SendAsync).RequiresPermission(Permissions.MessagesSend).WithName("SendMessage");
-        messages.MapPost("/{id:guid}/cancel", CancelAsync).RequiresPermission(Permissions.MessagesDraft).WithName("CancelMessage");
-        messages.MapGet("/{id:guid}/whatsapp-link", WhatsAppLinkAsync).RequiresPermission(Permissions.MessagesDraft).WithName("WhatsAppLink");
-        messages.MapPost("/{id:guid}/confirm-manual-send", ConfirmManualSendAsync).RequiresPermission(Permissions.MessagesDraft).WithName("ConfirmManualSend");
+        messages.MapGet("/", ListMessagesAsync).Produces<MessageListResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("ListMessages");
+        messages.MapPost("/dispatch", DispatchAsync).Produces<DispatchResponse>(200).RequiresPermission(Permissions.MessagesSend).WithName("DispatchMessages");
+        messages.MapGet("/{id:guid}", GetMessageAsync).Produces<MessageResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("GetMessage");
+        messages.MapPost("/{id:guid}/approve", ApproveMessageAsync).Produces<MessageResponse>(200).RequiresPermission(Permissions.AiSuggestionsApprove).WithName("ApproveMessage");
+        messages.MapPost("/{id:guid}/send", SendAsync).Produces<MessageResponse>(200).RequiresPermission(Permissions.MessagesSend).WithName("SendMessage");
+        messages.MapPost("/{id:guid}/cancel", CancelAsync).Produces<MessageResponse>(200).RequiresPermission(Permissions.MessagesDraft).WithName("CancelMessage");
+        messages.MapGet("/{id:guid}/whatsapp-link", WhatsAppLinkAsync).Produces<WhatsAppLinkResponse>(200).RequiresPermission(Permissions.MessagesDraft).WithName("WhatsAppLink");
+        messages.MapPost("/{id:guid}/confirm-manual-send", ConfirmManualSendAsync).Produces<MessageResponse>(200).RequiresPermission(Permissions.MessagesDraft).WithName("ConfirmManualSend");
 
-        api.MapGet("/organization/outbound", OutboundSettingsAsync).RequiresPermission(Permissions.TenantRead).WithName("OutboundSettings");
-        api.MapPut("/organization/outbound", UpdateOutboundSettingsAsync).RequiresPermission(Permissions.TenantSettingsWrite).WithName("UpdateOutboundSettings");
-        api.MapGet("/customers/{id:guid}/statement", StatementAsync).RequiresPermission(Permissions.CasesRead).WithName("CustomerStatement");
+        api.MapGet("/organization/outbound", OutboundSettingsAsync).Produces<OutboundSettingsResponse>(200).RequiresPermission(Permissions.TenantRead).WithName("OutboundSettings");
+        api.MapPut("/organization/outbound", UpdateOutboundSettingsAsync).Produces<OutboundSettingsResponse>(200).RequiresPermission(Permissions.TenantSettingsWrite).WithName("UpdateOutboundSettings");
+        api.MapGet("/customers/{id:guid}/statement", StatementAsync).Produces<StatementResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("CustomerStatement");
 
         return api;
     }
@@ -54,7 +54,7 @@ public static class MessagingEndpoints
     // Templates
     // ---------------------------------------------------------------------------------------
 
-    private static IResult PlaceholdersAsync() => TypedResults.Ok(new { items = Placeholders.All.Select(p => new PlaceholderDto(p.Name, p.Type, p.Description)).ToList() });
+    private static IResult PlaceholdersAsync() => TypedResults.Ok(new PlaceholderListResponse(Placeholders.All.Select(p => new PlaceholderDto(p.Name, p.Type, p.Description)).ToList()));
 
     private static async Task<IResult> ListTemplatesAsync(HttpContext context, TenantDbContext db, MessagingService messaging, CancellationToken ct)
     {

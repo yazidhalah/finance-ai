@@ -22,11 +22,11 @@ public static class ReportEndpoints
         ArgumentNullException.ThrowIfNull(api);
 
         var reports = api.MapGroup("/reports");
-        reports.MapGet("/aging", AgingAsync).RequiresPermission(Permissions.AgingRead).WithName("AgingReport");
-        reports.MapGet("/aging/customers/{id:guid}", AgingCustomerAsync).RequiresPermission(Permissions.AgingRead).WithName("AgingCustomerDetail");
-        reports.MapGet("/aging/export", ExportAsync).RequiresPermission(Permissions.ExportRun).WithName("AgingExport");
-        reports.MapGet("/dso", DsoAsync).RequiresPermission(Permissions.AgingRead).WithName("Dso");
-        reports.MapGet("/reconciliation", ReconciliationAsync).RequiresPermission(Permissions.AuditRead).WithName("Reconciliation");
+        reports.MapGet("/aging", AgingAsync).Produces<AgingReportResponse>(200).RequiresPermission(Permissions.AgingRead).WithName("AgingReport");
+        reports.MapGet("/aging/customers/{id:guid}", AgingCustomerAsync).Produces<AgingCustomerDetailResponse>(200).RequiresPermission(Permissions.AgingRead).WithName("AgingCustomerDetail");
+        reports.MapGet("/aging/export", ExportAsync).Produces(200, contentType: "application/octet-stream").RequiresPermission(Permissions.ExportRun).WithName("AgingExport");
+        reports.MapGet("/dso", DsoAsync).Produces<DsoResponse>(200).RequiresPermission(Permissions.AgingRead).WithName("Dso");
+        reports.MapGet("/reconciliation", ReconciliationAsync).Produces<ReconciliationResponse>(200).RequiresPermission(Permissions.AuditRead).WithName("Reconciliation");
 
         return api;
     }
