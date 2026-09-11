@@ -1,0 +1,14 @@
+# Build context for the three Containerfiles (slice 14). Keep secrets, build output and test artefacts out of images.
+.env
+.git
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.venv
+**/__pycache__
+**/.pytest_cache
+tests
+docs
+infrastructure
+services/ai/evaluations/*.log

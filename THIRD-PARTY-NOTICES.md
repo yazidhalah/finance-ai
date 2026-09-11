@@ -58,6 +58,8 @@ ASP.NET Core, the .NET runtime and the base class libraries ship with the .NET 1
 | `vitest` | 5.0.0 | MIT | Web tests |
 | `jsdom` | 30.0.1 | MIT | Web tests |
 | `@testing-library/react` | 16.3.3 | MIT | Web tests |
+| `pip-audit` | latest | Apache-2.0 | CI only (SEC-68): known-vulnerability check of `services/ai/requirements.txt` |
+| `podman-compose` | 1.5.0 | GPL-2.0 — a **tool** invoked by CI and operators, never linked into or shipped with the product; the compose file is the product's, the tool is the runner's (same footing as `git` or `bash`) | CI stack job; local operators use whatever `podman compose` provider they have |
 | `@testing-library/jest-dom` | 7.0.1 | MIT | Web tests |
 | `@testing-library/user-event` | 14.6.7 | MIT | Web tests |
 | `@types/react` | 19.3.0 | MIT | Types only |
@@ -84,6 +86,12 @@ Bundled with PostgreSQL (contrib), enabled by the bootstrap script. No separate 
 |-------|---------|---------|
 | `docker.io/pgvector/pgvector` | pg16 | PostgreSQL License (PostgreSQL); PostgreSQL License (pgvector extension) |
 | `docker.io/axllent/mailpit` | latest | MIT — development SMTP/IMAP only; never deployed |
+| `mcr.microsoft.com/dotnet/sdk` / `dotnet/aspnet` | 10.0 | MIT (.NET); the images bundle Debian 12 (assorted OSI licenses, see the image's `/usr/share/doc/*/copyright`). Build stage / API and migrator runtime (slice 14). |
+| `docker.io/library/node` | 22-alpine | MIT (Node.js); Alpine (MIT and others). Web build stage only — not in the runtime image. |
+| `docker.io/nginxinc/nginx-unprivileged` | 1.27-alpine | BSD-2-Clause (nginx); Alpine. Serves the SPA and proxies `/api` as a non-root user. |
+| `docker.io/library/python` | 3.13-slim | PSF-2.0 (Python); Debian 12. AI service runtime. |
+| `docker.io/ollama/ollama` | 0.34.0 | MIT. Inference runtime; reachable on the compose network only (SEC-69). |
+| `docker.io/library/caddy` | 2-alpine | Apache-2.0. Optional `tls` profile: automatic HTTPS in front of `web` (SEC-60). |
 
 ## AI service — Python (`services/ai`)
 

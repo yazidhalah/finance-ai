@@ -97,6 +97,7 @@ public sealed class MessagingTests(ApiTestFixture fixture)
     [Fact]
     public async Task SendGuards_ReturnTheirCodes()
     {
+        using var _ = fixture.Api.PinClock(AmmanAt(10)); // outside the default quiet hours (20:00–08:00 tenant-local), whatever the wall clock says
         var x = await OpenAsync("Guards", requireApproval: true);
         var tpl = await TemplateAsync(x.S.Client, "dunning_7");
         var composed = await x.S.Client.PostAsync($"/api/v1/cases/{x.CaseId}/messages", new { channel = "email", templateId = tpl.GetProperty("id").GetGuid() });
@@ -180,6 +181,7 @@ public sealed class MessagingTests(ApiTestFixture fixture)
     [Fact]
     public async Task Body_IsFrozen_AndApprovalRulesHold()
     {
+        using var _ = fixture.Api.PinClock(AmmanAt(10)); // outside the default quiet hours (20:00–08:00 tenant-local), whatever the wall clock says
         var x = await OpenAsync("Freeze", requireApproval: false);
         var tpl = await TemplateAsync(x.S.Client, "dunning_7");
         var approvedTpl = await x.S.Client.PostAsync($"/api/v1/templates/{tpl.GetProperty("id").GetGuid()}/approve", new { });
@@ -234,6 +236,7 @@ public sealed class MessagingTests(ApiTestFixture fixture)
     [Fact]
     public async Task WorkTheMessage_T128()
     {
+        using var _ = fixture.Api.PinClock(AmmanAt(10)); // outside the default quiet hours (20:00–08:00 tenant-local), whatever the wall clock says
         var x = await OpenAsync("T128", requireApproval: true, language: "ar");
         var tpl = await TemplateAsync(x.S.Client, "dunning_7", "ar");
         var preview = await x.S.Client.PostAsync($"/api/v1/templates/{tpl.GetProperty("id").GetGuid()}/preview", new { caseId = x.CaseId });
@@ -277,6 +280,7 @@ public sealed class MessagingTests(ApiTestFixture fixture)
     [Fact]
     public async Task Cadence_AutoQueuesOnlyWhenSafe()
     {
+        using var _ = fixture.Api.PinClock(AmmanAt(10)); // outside the default quiet hours (20:00–08:00 tenant-local), whatever the wall clock says
         var x = await OpenAsync("Cadence", requireApproval: false, daysOverdue: 7);
         var tpl = await TemplateAsync(x.S.Client, "dunning_7");
         // Not yet approved: the sweep drafts nothing automatic (a PendingApproval draft appears instead, first message).

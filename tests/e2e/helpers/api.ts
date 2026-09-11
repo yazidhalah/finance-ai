@@ -11,6 +11,16 @@ const dotenv = Object.fromEntries(
   readFileSync(resolve(root, '.env'), 'utf8').split('\n').filter((l) => l.includes('=') && !l.trim().startsWith('#')).map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]),
 )
 
+/**
+ * An IANA fixed-offset zone where the local time is about noon right now — for journeys that send mail, so the
+ * tenant's quiet hours (20:00–08:00 local by default) never depend on the hour CI happens to run at.
+ * `Etc/GMT+5` is UTC−5 (the sign is inverted by convention).
+ */
+export function daytimeZone(): string {
+  const offset = 12 - new Date().getUTCHours()          // local = utc + offset → noon
+  return offset === 0 ? 'Etc/GMT' : `Etc/GMT${offset > 0 ? '-' : '+'}${Math.abs(offset)}`
+}
+
 export function today(offsetDays = 0): string {
   const amman = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Amman' }))
   amman.setDate(amman.getDate() + offsetDays)
@@ -24,10 +34,10 @@ export class Api {
 
   constructor(public email: string, public organizationName: string) {}
 
-  static async register(prefix: string, locale = 'en-JO'): Promise<Api> {
+  static async register(prefix: string, locale = 'en-JO', timezone = 'Asia/Amman'): Promise<Api> {
     const stamp = Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
     const api = new Api(`${prefix}-${stamp}@e2e.example`, `${prefix} ${stamp}`)
-    const r = await fetch(`${API}/auth/register`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: api.email, password: PASSWORD, fullName: `${prefix} Owner`, organizationName: api.organizationName, baseCurrency: 'JOD', timezone: 'Asia/Amman', locale }) })
+    const r = await fetch(`${API}/auth/register`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: api.email, password: PASSWORD, fullName: `${prefix} Owner`, organizationName: api.organizationName, baseCurrency: 'JOD', timezone, locale }) })
     if (!r.ok) throw new Error(`register ${r.status}: ${await r.text()}`)
     await api.login()
     return api

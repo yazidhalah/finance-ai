@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { Api, PASSWORD, invitationToken, psql, today } from '../helpers/api'
+import { Api, PASSWORD, daytimeZone, invitationToken, psql, today } from '../helpers/api'
 import { assertLocaleShape, expectMoney, signIn, signOut, snapshot, uiLocale, useLocale } from '../helpers/ui'
 import { totp } from '../helpers/totp'
 
@@ -284,7 +284,7 @@ test('T-127 raise a dispute → dunning blocked in the UI and the API → partia
 })
 
 test('T-128 compose from an Arabic template → preview → approval → approve as a second user → send → frozen body in the timeline', async ({ page, browser }, info) => {
-  const api = await Api.register('Compose', uiLocale(info))
+  const api = await Api.register('Compose', uiLocale(info), daytimeZone())   // sending must not hit the tenant's quiet hours
   await api.customer('Madaba Prints', 'مطابع مادبا')
   const customerId = (await api.must('GET', '/customers')).items[0].id
   await api.contact(customerId, `madaba-${Date.now().toString(36)}@e2e.example`)

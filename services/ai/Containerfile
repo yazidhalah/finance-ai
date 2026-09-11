@@ -1,0 +1,14 @@
+# finance-ai AI service (slice 14): FastAPI on :8090, reachable only from the API on the compose network (SEC-69,
+# AI-101). Non-root, no model weights inside — Ollama is its own container.
+FROM docker.io/library/python:3.13-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+WORKDIR /app
+COPY services/ai/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY services/ai/app ./app
+COPY services/ai/prompts ./prompts
+COPY services/ai/schemas ./schemas
+RUN adduser --system --uid 10002 --no-create-home ai && chown -R ai /app
+USER ai
+EXPOSE 8090
+CMD ["uvicorn", "--factory", "app.main:app_from_env", "--host", "0.0.0.0", "--port", "8090"]

@@ -1,0 +1,7 @@
+# CI overlay for the stack smoke test (slice 14): the AI service runs its deterministic stand-in instead of Ollama,
+# so the whole stack starts on a runner without pulling a 2.5 GB model. Never used outside CI.
+#   podman compose --env-file .env -f infrastructure/compose.yml -f infrastructure/compose.ci.yml --profile full up -d --build postgres mailpit migrate api ai web
+services:
+  ai:
+    environment:
+      AI_FAKE_MODEL: "1"

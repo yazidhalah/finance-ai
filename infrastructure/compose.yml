@@ -1,15 +1,34 @@
+# finance-ai — Podman Compose (A-15, slice 14).
+#
+#   podman compose -f infrastructure/compose.yml up -d                      # dev: PostgreSQL + Mailpit only
+#   podman compose -f infrastructure/compose.yml --profile full up -d       # the whole stack from this clone
+#   podman compose -f infrastructure/compose.yml --profile full --profile tls up -d   # + Caddy with automatic HTTPS
+#
+# Only `web` (and, in dev, Mailpit) publish a port; PostgreSQL, the API, the AI service and Ollama are reachable on
+# the compose network only (SEC-69). Every secret comes from the repo `.env` (SEC-67).
+
+x-hardened: &hardened
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+
 services:
   postgres:
     image: docker.io/pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
-      POSTGRES_USER: finance
-      POSTGRES_PASSWORD: dev_only_change_me
-      POSTGRES_DB: finance_ai
+      POSTGRES_USER: ${POSTGRES_USER:-finance}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_only_change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-finance_ai}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:5432:5432"       # dev only; the `full` profile's containers use the network name
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-finance} -d ${POSTGRES_DB:-finance_ai}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   mailpit:
     image: docker.io/axllent/mailpit:latest
@@ -18,5 +37,123 @@ services:
       - "127.0.0.1:1025:1025"
       - "127.0.0.1:8025:8025"
 
+  ollama:
+    profiles: [full]
+    image: docker.io/ollama/ollama:0.34.0
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+    # GPU (Q-06): uncomment on a host with the NVIDIA container toolkit.
+    # devices: ["nvidia.com/gpu=all"]
+    deploy:
+      resources:
+        limits: { memory: 8g }
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+
+  ollama-pull:
+    profiles: [full]
+    image: docker.io/ollama/ollama:0.34.0
+    depends_on:
+      ollama: { condition: service_healthy }
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama pull ${AI_MODEL:-qwen3:4b}"]
+    restart: "no"
+
+  ai:
+    <<: *hardened
+    profiles: [full]
+    build: { context: .., dockerfile: services/ai/Containerfile }
+    image: finance-ai/ai:local
+    env_file: ../.env
+    environment:
+      OLLAMA_URL: http://ollama:11434
+      AI_MODEL: ${AI_MODEL:-qwen3:4b}
+    read_only: true
+    tmpfs: ["/tmp"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=2).status == 200 else 1)"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+    # No hard dependency on the model pull: the service starts, answers /health, and reports the model on /ready;
+    # the API shows ai_unavailable until the pull (≈2.5 GB on first start) completes.
+    deploy:
+      resources:
+        limits: { memory: 512m }
+
+  migrate:
+    profiles: [full]
+    build: { context: .., dockerfile: apps/api/Containerfile }
+    image: finance-ai/api:local
+    command: ["migrate"]
+    env_file: ../.env
+    environment:
+      POSTGRES_HOST: postgres
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    <<: *hardened
+    profiles: [full]
+    build: { context: .., dockerfile: apps/api/Containerfile }
+    image: finance-ai/api:local
+    env_file: ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      AI_SERVICE_URL: http://ai:8090
+      WEB_ORIGINS: ${WEB_ORIGINS:-http://localhost:8080}
+    read_only: true
+    tmpfs: ["/tmp"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "dotnet", "/app/api/FinanceAi.Api.dll", "--health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 1g }
+
+  web:
+    <<: *hardened
+    profiles: [full]
+    build: { context: .., dockerfile: apps/web/Containerfile }
+    image: finance-ai/web:local
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 128m }
+
+  caddy:
+    profiles: [tls]
+    image: docker.io/library/caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    # DOMAIN must be set in .env for this profile; Caddy obtains and renews the certificate itself (SEC-60).
+    command: ["caddy", "reverse-proxy", "--from", "${DOMAIN:-localhost}", "--to", "web:8080"]
+    volumes:
+      - caddy-data:/data
+    depends_on:
+      web: { condition: service_started }
+
 volumes:
   postgres-data:
+  ollama-models:
+  caddy-data:

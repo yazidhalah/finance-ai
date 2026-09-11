@@ -67,7 +67,11 @@ tests/e2e) and the CI workflow (.github/workflows/ci.yml); slice 12 added member
 change and deactivation and the T-150 restore drill (infrastructure/restore-drill.sh, run in CI);
 slice 13 added TOTP MFA (required for Owner/Admin after a 7-day grace, enforced by the middleware),
 password reset, the five-minute re-authentication proof (X-Reauth) on transfer of ownership and
-write-off approval, and transfer of ownership itself. MFA_KEK_BASE64 must be set in every environment. What remains before the First Product is "done" is the
+write-off approval, and transfer of ownership itself. MFA_KEK_BASE64 must be set in every environment.
+Slice 14 added the deployment: three Containerfiles, infrastructure/compose.yml (profiles full/tls,
+`infrastructure/stack.sh --profile full up -d --build` from a clean clone, only `web` published — SEC-69),
+infrastructure/smoke.sh run by the CI `stack` job, SEC-68 dependency audits in CI, and the operations
+runbook docs/ops/runbook.md (SEC-103). What remains before the First Product is "done" is the
 v1 acceptance pass on a pilot corpus and real hardware (doc 09 §5 AI gates are indicative on the
 author-written corpus; Arabic narrative quality needs a native reviewer; T-140 performance in CI is
 open). No second module until that passes. Every AI output enters through the human gates slices 6–10 built (Proposed promises,
