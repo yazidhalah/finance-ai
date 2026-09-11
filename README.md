@@ -63,7 +63,8 @@ non-root, read-only root filesystems, no capabilities, memory limits. Only `web`
 (loopback only, for backups), the API, the AI service and Ollama stay on the compose network (SEC-69). The first
 start pulls `qwen3:4b` (~2.5 GB); until it lands the product runs with AI marked unavailable. The refresh cookie
 is `Secure`, so use the `tls` profile or your own TLS edge for anything but `http://localhost`.
-Operations — kill switches, revoking sessions, key rotation, backups — are in [docs/ops/runbook.md](docs/ops/runbook.md).
+Operations — kill switches, revoking sessions, key rotation, backups — are in [docs/ops/runbook.md](docs/ops/runbook.md);
+the v1 acceptance pass (pilot corpus, target hardware, Arabic review) is [docs/ops/acceptance-pass.md](docs/ops/acceptance-pass.md).
 
 ## Running the tests
 
@@ -76,6 +77,7 @@ npm --prefix tests/e2e test           # Playwright journeys T-121…T-132 in en 
 infrastructure/restore-drill.sh       # backup → restore into a fresh database → row counts match (T-150, PRD-23)
 services/ai/.venv/bin/python -m pytest -c services/ai/pytest.ini   # the AI service, with a fake model
 infrastructure/check-notices.py       # every direct dependency recorded in THIRD-PARTY-NOTICES.md, licences permissive
+infrastructure/check-notices.py --transitive   # the whole lock-file tree: no copyleft anywhere
 git config core.hooksPath .githooks   # once per clone: gitleaks on staged changes before each commit (SEC-67)
 AI_LIVE_TESTS=1 services/ai/.venv/bin/python -m pytest -c services/ai/pytest.ini   # + the injection corpus against Ollama (slow)
 ```
