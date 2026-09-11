@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using FinanceAi.Api.Authorization;
 using FinanceAi.Domain.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -97,7 +98,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
         // Pinned so that a permission becoming universal is a deliberate, visible change rather than
         // a quiet loss of test coverage.
         Assert.Equal(
-            ["customers.read", "invoices.read", "tenant.read"],
+            ["customers.read", "invoices.read", "payments.read", "tenant.read"],
             universal.Distinct(StringComparer.Ordinal).OrderBy(p => p, StringComparer.Ordinal).ToList());
     }
 
@@ -215,7 +216,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     {
         var endpoints = this.Endpoints();
 
-        Assert.Equal(36, endpoints.Count);
+        Assert.Equal(60, endpoints.Count);
         Assert.All(endpoints, e => Assert.True(e.Permission is not null || e.Access is not null));
 
         // The anonymous set is exactly registration, login and refresh — nothing has drifted into it.
@@ -254,7 +255,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     private static string Normalize(string? template) =>
         (template ?? string.Empty).Trim('/');
 
-    private sealed record ForeignIds(Guid MembershipId, Guid CustomerId, Guid ContactId, Guid BatchId, Guid RowId, Guid MappingId, Guid InvoiceId);
+    private sealed record ForeignIds(Guid MembershipId, Guid CustomerId, Guid ContactId, Guid BatchId, Guid RowId, Guid MappingId, Guid InvoiceId, Guid PaymentId, Guid AllocationId, Guid ChequeId, Guid CreditNoteId, Guid WriteOffId);
 
     /// <summary>One real row of every {id}-addressed entity, inside organization B.</summary>
     private async Task<ForeignIds> CreateEntitiesInAsync(ApiScenario.Organization organization)
@@ -293,14 +294,46 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
         var invoices = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/v1/invoices", ApiScenario.Json);
         var invoiceId = invoices.GetProperty("items")[0].GetProperty("id").GetGuid();
 
+        // Slice 3b: money against that invoice, so payment, allocation, cheque, credit note and
+        // write-off ids are all real. The invoice is 1.000 (the sweep CSV); allocate 0.500 so a
+        // write-off proposal still has a balance to name.
+        JsonElement Post(string path, object body)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = JsonContent.Create(body, options: ApiScenario.Json) };
+            request.Headers.TryAddWithoutValidation("Idempotency-Key", Guid.NewGuid().ToString());
+            var response = client.SendAsync(request).GetAwaiter().GetResult();
+            var text = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            Assert.True(response.IsSuccessStatusCode, $"{path}: {(int)response.StatusCode} {text}");
+            return JsonDocument.Parse(text).RootElement.Clone();
+        }
+
+        var payment = Post("/api/v1/payments", new
+        {
+            customerId,
+            amount = new { amount = "0.500", currency = "JOD" },
+            method = "Cash",
+            receivedDate = "2026-09-10",
+            allocations = new[] { new { invoiceId, amount = new { amount = "0.500", currency = "JOD" } } },
+        });
+        var cheque = Post("/api/v1/cheques", new { customerId, chequeNumber = "SWEEP-1", amount = new { amount = "1.000", currency = "JOD" }, chequeDate = "2026-10-01", receivedDate = "2026-09-10" });
+        var note = Post("/api/v1/credit-notes", new { customerId, amount = new { amount = "0.100", currency = "JOD" }, issueDate = "2026-09-10", reasonCode = "other" });
+        var writeOff = Post($"/api/v1/invoices/{invoiceId}/write-off", new { reasonCode = "sweep" });
+
         Assert.NotEqual(Guid.Empty, membershipId);
-        return new ForeignIds(membershipId, customerId, contact.GetProperty("id").GetGuid(), batchId, rowId, mappingId, invoiceId);
+        return new ForeignIds(membershipId, customerId, contact.GetProperty("id").GetGuid(), batchId, rowId, mappingId, invoiceId,
+            payment.GetProperty("id").GetGuid(), payment.GetProperty("allocations")[0].GetProperty("id").GetGuid(),
+            cheque.GetProperty("id").GetGuid(), note.GetProperty("id").GetGuid(), writeOff.GetProperty("id").GetGuid());
     }
 
     /// <summary>Which of B's real ids a route is addressed with. A new entity with an {id} route registers here.</summary>
     private static Guid IdFor(EndpointUnderTest endpoint, ForeignIds ids) => endpoint.Template switch
     {
         var t when t.Contains("import-mappings", StringComparison.Ordinal) => ids.MappingId,
+        var t when t.Contains("payments", StringComparison.Ordinal) => ids.PaymentId,
+        var t when t.Contains("allocations/{id", StringComparison.Ordinal) => ids.AllocationId,
+        var t when t.Contains("cheques", StringComparison.Ordinal) => ids.ChequeId,
+        var t when t.Contains("credit-notes", StringComparison.Ordinal) => ids.CreditNoteId,
+        var t when t.Contains("write-offs", StringComparison.Ordinal) => ids.WriteOffId,
         var t when t.Contains("imports", StringComparison.Ordinal) => ids.BatchId,
         var t when t.Contains("invoices", StringComparison.Ordinal) => ids.InvoiceId,
         var t when t.Contains("customers", StringComparison.Ordinal) => ids.CustomerId,

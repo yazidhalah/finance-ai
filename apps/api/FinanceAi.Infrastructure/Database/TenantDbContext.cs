@@ -43,6 +43,20 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
 
     public DbSet<ImportRow> ImportRows => this.Set<ImportRow>();
 
+    public DbSet<Payment> Payments => this.Set<Payment>();
+
+    public DbSet<Cheque> Cheques => this.Set<Cheque>();
+
+    public DbSet<PaymentAllocation> PaymentAllocations => this.Set<PaymentAllocation>();
+
+    public DbSet<WithholdingDeduction> WithholdingDeductions => this.Set<WithholdingDeduction>();
+
+    public DbSet<CreditNote> CreditNotes => this.Set<CreditNote>();
+
+    public DbSet<CreditNoteApplication> CreditNoteApplications => this.Set<CreditNoteApplication>();
+
+    public DbSet<WriteOff> WriteOffs => this.Set<WriteOff>();
+
     public override int SaveChanges()
     {
         this.StampTenant();
@@ -67,6 +81,7 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
         ConfigureCustomerContacts(model);
         ConfigureInvoices(model);
         ConfigureImport(model);
+        ConfigureLedger(model);
 
         this.ApplyTenantQueryFilters(model);
 
@@ -312,6 +327,7 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
             e.Property(x => x.UpdatedBy).HasColumnName("updated_by");
             e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
+            e.Ignore(x => x.Settlement);
         });
 
     private static void ConfigureImport(ModelBuilder model)
@@ -373,6 +389,167 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.ErrorDetail).HasColumnName("error_detail");
             e.Property(x => x.CustomerId).HasColumnName("customer_id");
             e.Property(x => x.InvoiceId).HasColumnName("invoice_id");
+        });
+    }
+
+    private static void ConfigureLedger(ModelBuilder model)
+    {
+        model.Entity<Payment>(e =>
+        {
+            e.ToTable("payments");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.CustomerId).HasColumnName("customer_id");
+            e.Property(x => x.Amount).HasColumnName("amount").HasColumnType("numeric(19,3)");
+            e.Property(x => x.Currency).HasColumnName("currency").HasColumnType("char(3)");
+            e.Property(x => x.Method).HasColumnName("method").HasConversion<string>();
+            e.Property(x => x.ReceivedDate).HasColumnName("received_date");
+            e.Property(x => x.EffectiveDate).HasColumnName("effective_date");
+            e.Property(x => x.Reference).HasColumnName("reference");
+            e.Property(x => x.Status).HasColumnName("status").HasConversion<string>();
+            e.Property(x => x.ChequeId).HasColumnName("cheque_id");
+            e.Property(x => x.Notes).HasColumnName("notes");
+            e.Property(x => x.IdempotencyKey).HasColumnName("idempotency_key");
+            e.Property(x => x.RequestHash).HasColumnName("request_hash");
+            e.Property(x => x.ReversedAt).HasColumnName("reversed_at");
+            e.Property(x => x.ReversalReason).HasColumnName("reversal_reason");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.CreatedBy).HasColumnName("created_by");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
+        });
+
+        model.Entity<Cheque>(e =>
+        {
+            e.ToTable("cheques");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.CustomerId).HasColumnName("customer_id");
+            e.Property(x => x.ChequeNumber).HasColumnName("cheque_number");
+            e.Property(x => x.BankName).HasColumnName("bank_name");
+            e.Property(x => x.Amount).HasColumnName("amount").HasColumnType("numeric(19,3)");
+            e.Property(x => x.Currency).HasColumnName("currency").HasColumnType("char(3)");
+            e.Property(x => x.ChequeDate).HasColumnName("cheque_date");
+            e.Property(x => x.ReceivedDate).HasColumnName("received_date");
+            e.Property(x => x.Status).HasColumnName("status").HasConversion<string>();
+            e.Property(x => x.BouncedReason).HasColumnName("bounced_reason");
+            e.Property(x => x.ClearedDate).HasColumnName("cleared_date");
+            e.Property(x => x.PtpId).HasColumnName("ptp_id");
+            e.Property(x => x.PaymentId).HasColumnName("payment_id");
+            e.Property(x => x.Notes).HasColumnName("notes");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.CreatedBy).HasColumnName("created_by");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
+            e.Ignore(x => x.IsPostDated);
+        });
+
+        model.Entity<PaymentAllocation>(e =>
+        {
+            e.ToTable("payment_allocations");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.PaymentId).HasColumnName("payment_id");
+            e.Property(x => x.InvoiceId).HasColumnName("invoice_id");
+            e.Property(x => x.Amount).HasColumnName("amount").HasColumnType("numeric(19,3)");
+            e.Property(x => x.Currency).HasColumnName("currency").HasColumnType("char(3)");
+            e.Property(x => x.EffectiveDate).HasColumnName("effective_date");
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.Property(x => x.ReversalOfId).HasColumnName("reversal_of_id");
+            e.Property(x => x.ReversalReason).HasColumnName("reversal_reason");
+            e.Property(x => x.AllocatedBy).HasColumnName("allocated_by");
+            e.Property(x => x.Method).HasColumnName("method").HasConversion(
+                v => v == AllocationMethod.AutoExactMatch ? "auto_exact_match" : v == AllocationMethod.ProposedFifo ? "proposed_fifo" : "manual",
+                v => v == "auto_exact_match" ? AllocationMethod.AutoExactMatch : v == "proposed_fifo" ? AllocationMethod.ProposedFifo : AllocationMethod.Manual);
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+        });
+
+        model.Entity<WithholdingDeduction>(e =>
+        {
+            e.ToTable("withholding_deductions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.InvoiceId).HasColumnName("invoice_id");
+            e.Property(x => x.PaymentId).HasColumnName("payment_id");
+            e.Property(x => x.BaseAmount).HasColumnName("base_amount").HasColumnType("numeric(19,3)");
+            e.Property(x => x.RatePct).HasColumnName("rate_pct").HasColumnType("numeric(5,2)");
+            e.Property(x => x.WithheldAmount).HasColumnName("withheld_amount").HasColumnType("numeric(19,3)");
+            e.Property(x => x.Currency).HasColumnName("currency").HasColumnType("char(3)");
+            e.Property(x => x.CertificateReference).HasColumnName("certificate_reference");
+            e.Property(x => x.CertificateReceived).HasColumnName("certificate_received");
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.Property(x => x.ReversalOfId).HasColumnName("reversal_of_id");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.CreatedBy).HasColumnName("created_by");
+        });
+
+        model.Entity<CreditNote>(e =>
+        {
+            e.ToTable("credit_notes");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.CustomerId).HasColumnName("customer_id");
+            e.Property(x => x.NoteNumber).HasColumnName("note_number");
+            e.Property(x => x.Amount).HasColumnName("amount").HasColumnType("numeric(19,3)");
+            e.Property(x => x.Currency).HasColumnName("currency").HasColumnType("char(3)");
+            e.Property(x => x.IssueDate).HasColumnName("issue_date");
+            e.Property(x => x.ReasonCode).HasColumnName("reason_code");
+            e.Property(x => x.DisputeId).HasColumnName("dispute_id");
+            e.Property(x => x.Status).HasColumnName("status").HasConversion<string>();
+            e.Property(x => x.ApprovedBy).HasColumnName("approved_by");
+            e.Property(x => x.Notes).HasColumnName("notes");
+            e.Property(x => x.VoidedAt).HasColumnName("voided_at");
+            e.Property(x => x.VoidReason).HasColumnName("void_reason");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.CreatedBy).HasColumnName("created_by");
+            e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
+        });
+
+        model.Entity<CreditNoteApplication>(e =>
+        {
+            e.ToTable("credit_note_applications");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.CreditNoteId).HasColumnName("credit_note_id");
+            e.Property(x => x.InvoiceId).HasColumnName("invoice_id");
+            e.Property(x => x.Amount).HasColumnName("amount").HasColumnType("numeric(19,3)");
+            e.Property(x => x.Currency).HasColumnName("currency").HasColumnType("char(3)");
+            e.Property(x => x.EffectiveDate).HasColumnName("effective_date");
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.Property(x => x.ReversalOfId).HasColumnName("reversal_of_id");
+            e.Property(x => x.ReversalReason).HasColumnName("reversal_reason");
+            e.Property(x => x.AppliedBy).HasColumnName("applied_by");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+        });
+
+        model.Entity<WriteOff>(e =>
+        {
+            e.ToTable("write_offs");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.InvoiceId).HasColumnName("invoice_id");
+            e.Property(x => x.Amount).HasColumnName("amount").HasColumnType("numeric(19,3)");
+            e.Property(x => x.Currency).HasColumnName("currency").HasColumnType("char(3)");
+            e.Property(x => x.ReasonCode).HasColumnName("reason_code");
+            e.Property(x => x.Note).HasColumnName("note");
+            e.Property(x => x.Status).HasColumnName("status").HasConversion<string>();
+            e.Property(x => x.ProposedBy).HasColumnName("proposed_by");
+            e.Property(x => x.ProposedAt).HasColumnName("proposed_at");
+            e.Property(x => x.ApprovedBy).HasColumnName("approved_by");
+            e.Property(x => x.SelfApproved).HasColumnName("self_approved");
+            e.Property(x => x.ApprovedAt).HasColumnName("approved_at");
+            e.Property(x => x.RejectedBy).HasColumnName("rejected_by");
+            e.Property(x => x.ReversedBy).HasColumnName("reversed_by");
+            e.Property(x => x.ReversedAt).HasColumnName("reversed_at");
+            e.Property(x => x.ReversalReason).HasColumnName("reversal_reason");
+            e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
         });
     }
 }

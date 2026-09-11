@@ -48,7 +48,11 @@ public sealed class Invoice : ITenantScoped
     public Guid? UpdatedBy { get; set; }
     public long RowVersion { get; set; } = 1;
 
+    /// <summary>Only <see cref="InvoiceBalance"/> may call this.</summary>
     internal void SetBalance(decimal balance) => this.BalanceCache = balance;
+
+    /// <summary>FIN-12: derived, never stored.</summary>
+    public Settlement Settlement => LedgerRules.SettlementOf(this.BalanceCache, this.TotalAmount);
 }
 
 /// <summary>

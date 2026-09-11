@@ -254,8 +254,8 @@ public sealed record CustomerResponse(
     int BrokenPromiseCount12m,
     int BouncedChequeCount12m,
     string? Notes,
-    /// <summary>FIN-15 balance blocks per currency; one per currency with an Open invoice. Empty means no open invoices.</summary>
-    IReadOnlyList<CustomerBalanceDto> Balances,
+    /// <summary>FIN-15 / FIN-42: open balance, unapplied cash and unapplied credit per currency — three figures, never netted.</summary>
+    IReadOnlyList<CustomerPositionDto> Balances,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     string RowVersion);
@@ -376,5 +376,85 @@ public sealed record InvoiceResponse(
 
 public sealed record InvoiceListResponse(IReadOnlyList<InvoiceResponse> Items, string? NextCursor, int TotalCount);
 
-/// <summary>FIN-15: the open balance per currency, never netted, never summed across currencies.</summary>
-public sealed record CustomerBalanceDto(string Currency, MoneyDto OpenBalance, int OpenInvoiceCount);
+
+// ---------------------------------------------------------------------------------------
+// Slice 3b — Payments, cheques, allocation, credit notes, withholding, write-off
+// ---------------------------------------------------------------------------------------
+
+public sealed record AllocationLineInput(Guid? InvoiceId, MoneyInput? Amount);
+
+public sealed record PaymentRequest(
+    Guid? CustomerId,
+    MoneyInput? Amount,
+    string? Method,
+    string? ReceivedDate,
+    string? EffectiveDate,
+    string? Reference,
+    string? Notes,
+    IReadOnlyList<AllocationLineInput>? Allocations);
+
+public sealed record AllocationRequest(IReadOnlyList<AllocationLineInput>? Lines);
+
+public sealed record ReasonRequest(string? Reason);
+
+public sealed record AllocationDto(Guid Id, Guid PaymentId, Guid InvoiceId, MoneyDto Amount, string EffectiveDate, bool IsActive, Guid? ReversalOfId, string? ReversalReason, string Method, DateTimeOffset CreatedAt, Guid? AllocatedBy);
+
+public sealed record PaymentResponse(
+    Guid Id, Guid CustomerId, MoneyDto Amount, string Currency, string Method, string ReceivedDate, string EffectiveDate,
+    string? Reference, string Status, Guid? ChequeId, string? Notes,
+    /// <summary>FIN-16: what is still on the customer's account, exact.</summary>
+    MoneyDto Unallocated,
+    IReadOnlyList<AllocationDto> Allocations, DateTimeOffset CreatedAt, string RowVersion);
+
+public sealed record PaymentListResponse(IReadOnlyList<PaymentResponse> Items, string? NextCursor, int TotalCount);
+
+public sealed record ProposalLineDto(Guid InvoiceId, string InvoiceNumber, string DueDate, MoneyDto OpenBalance, MoneyDto Proposed);
+
+public sealed record AllocationProposalResponse(MoneyDto Available, IReadOnlyList<ProposalLineDto> Lines, MoneyDto RemainingAfterProposal);
+
+public sealed record InvoiceResidualDto(Guid InvoiceId, MoneyDto OpenBalance, string Settlement, MoneyDto? ProposedRoundingAdjustment);
+
+public sealed record AllocationResultResponse(PaymentResponse Payment, MoneyDto Unallocated, IReadOnlyList<InvoiceResidualDto> Invoices);
+
+public sealed record ChequeRequest(Guid? CustomerId, string? ChequeNumber, string? BankName, MoneyInput? Amount, string? ChequeDate, string? ReceivedDate, string? Notes);
+
+public sealed record ChequeTransitionRequest(string? Event, string? Reason, IReadOnlyList<AllocationLineInput>? Allocations);
+
+public sealed record ChequeResponse(Guid Id, Guid CustomerId, string ChequeNumber, string? BankName, MoneyDto Amount, string ChequeDate, string ReceivedDate, bool IsPostDated, string Status, string? BouncedReason, string? ClearedDate, Guid? PaymentId, Guid? PtpId, string? Notes, string RowVersion);
+
+public sealed record ChequeListResponse(IReadOnlyList<ChequeResponse> Items, string? NextCursor, int TotalCount);
+
+public sealed record ChequeTransitionResponse(ChequeResponse Cheque, PaymentResponse? Payment, AllocationResultResponse? Allocation);
+
+public sealed record WithholdingRequest(MoneyInput? BaseAmount, string? RatePct, MoneyInput? WithheldAmount, Guid? PaymentId, string? CertificateReference, bool? CertificateReceived);
+
+public sealed record WithholdingDto(Guid Id, Guid InvoiceId, Guid? PaymentId, MoneyDto BaseAmount, string RatePct, MoneyDto WithheldAmount, string? CertificateReference, bool CertificateReceived, bool IsActive, DateTimeOffset CreatedAt, Guid? CreatedBy);
+
+public sealed record CreditNoteRequest(Guid? CustomerId, string? NoteNumber, MoneyInput? Amount, string? IssueDate, string? ReasonCode, string? Notes, IReadOnlyList<AllocationLineInput>? Applications);
+
+public sealed record CreditApplicationDto(Guid Id, Guid CreditNoteId, Guid InvoiceId, MoneyDto Amount, string EffectiveDate, bool IsActive, Guid? ReversalOfId, string? ReversalReason, DateTimeOffset CreatedAt, Guid? AppliedBy);
+
+public sealed record CreditNoteResponse(Guid Id, Guid CustomerId, string? NoteNumber, MoneyDto Amount, string Currency, string IssueDate, string ReasonCode, string Status, MoneyDto Unapplied, IReadOnlyList<CreditApplicationDto> Applications, string? Notes, DateTimeOffset CreatedAt, string RowVersion);
+
+public sealed record CreditNoteListResponse(IReadOnlyList<CreditNoteResponse> Items, string? NextCursor, int TotalCount);
+
+public sealed record WriteOffProposeRequest(string? ReasonCode, string? Note);
+
+public sealed record WriteOffApproveRequest(bool? SelfApproved);
+
+public sealed record WriteOffResponse(Guid Id, Guid InvoiceId, MoneyDto Amount, string ReasonCode, string? Note, string Status, Guid ProposedBy, DateTimeOffset ProposedAt, Guid? ApprovedBy, bool SelfApproved, DateTimeOffset? ApprovedAt, Guid? RejectedBy, Guid? ReversedBy, string? ReversalReason, string RowVersion);
+
+public sealed record WriteOffListResponse(IReadOnlyList<WriteOffResponse> Items, string? NextCursor, int TotalCount);
+
+/// <summary>Doc 06 §6.5: the money history panel — "why is the balance this?" (PRD-04).</summary>
+public sealed record MoneyHistoryEntry(string Kind, Guid Id, string Date, MoneyDto Amount, string Effect, bool IsActive, string? Reference, string? ReasonCode, Guid? Actor, DateTimeOffset RecordedAt);
+
+public sealed record InvoiceDetailResponse(
+    InvoiceResponse Invoice,
+    /// <summary>FIN-12: the pure function of the balance.</summary>
+    string Settlement,
+    IReadOnlyList<MoneyHistoryEntry> History,
+    IReadOnlyList<WithholdingDto> Withholding,
+    IReadOnlyList<WriteOffResponse> WriteOffs);
+
+public sealed record CustomerPositionDto(string Currency, MoneyDto OpenBalance, int OpenInvoiceCount, MoneyDto UnappliedCash, MoneyDto UnappliedCredit);

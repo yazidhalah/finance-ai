@@ -158,7 +158,7 @@ public static class CustomerEndpoints
         return TypedResults.Created($"/api/v1/customers/{customer.Id}", ToResponse(customer));
     }
 
-    private static async Task<IResult> GetAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<IResult> GetAsync(Guid id, HttpContext context, TenantDbContext db, FinanceAi.Infrastructure.Ledger.LedgerService ledger, CancellationToken ct)
     {
         var customer = await db.Customers.FirstOrDefaultAsync(c => c.Id == id, ct);
 
@@ -168,18 +168,15 @@ public static class CustomerEndpoints
             return ApiProblems.NotFoundProblem(context);
         }
 
-        // FIN-15: open balance per currency from the derived cache, grouped in the database so no
-        // two currencies are ever added together (FIN-04). Nothing is netted.
-        var balances = await db.Invoices
-            .Where(i => i.CustomerId == id && i.Status == InvoiceStatus.Open && i.BalanceCache > 0m)
-            .GroupBy(i => i.Currency)
-            .Select(g => new { Currency = g.Key, Open = g.Sum(i => i.BalanceCache), Count = g.Count() })
-            .OrderBy(g => g.Currency)
-            .ToListAsync(ct);
+        // FIN-15 / FIN-42: open balance, unapplied cash and unapplied credit — per currency, three
+        // separate figures. Nothing here nets them and nothing sums across currencies (FIN-04).
+        var position = await ledger.CustomerPositionAsync(id, ct);
 
         return TypedResults.Ok(ToResponse(customer) with
         {
-            Balances = balances.Select(b => new CustomerBalanceDto(b.Currency, MoneyDto.From(b.Open, b.Currency), b.Count)).ToList(),
+            Balances = position.Select(b => new CustomerPositionDto(
+                b.Currency, MoneyDto.From(b.OpenBalance, b.Currency), b.OpenInvoiceCount,
+                MoneyDto.From(b.UnappliedCash, b.Currency), MoneyDto.From(b.UnappliedCredit, b.Currency))).ToList(),
         });
     }
 

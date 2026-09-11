@@ -416,7 +416,7 @@ public static class ImportEndpoints
     private static async Task<IResult> GetInvoiceAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var invoice = await db.Invoices.FirstOrDefaultAsync(i => i.Id == id, ct);
-        return invoice is null ? ApiProblems.NotFoundProblem(context) : TypedResults.Ok(ToResponse(invoice));
+        return invoice is null ? ApiProblems.NotFoundProblem(context) : TypedResults.Ok(await LedgerEndpoints.InvoiceDetailAsync(invoice, db, ct));
     }
 
     // ---------------------------------------------------------------------------------------

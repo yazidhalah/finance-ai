@@ -9,7 +9,7 @@ source-available license is a blocking review finding, not a discussion.
 
 Versions are pinned; lockfiles (`package-lock.json`, `packages.lock.json`) are committed.
 
-Last updated: slice 3a — Invoice Import (no dependency added: CSV and XLSX are parsed in-house).
+Last updated: slice 3b — Payments & Allocation (no dependency added: the randomized invariant tests use a seeded `System.Random`, not FsCheck).
 
 ---
 

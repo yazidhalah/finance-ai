@@ -10,6 +10,8 @@ export interface FieldError {
   field: string
   code: string
   messageKey: string
+  /** Rule-specific facts the message may cite (e.g. the invoice's open balance); never computed client-side. */
+  meta?: Record<string, string>
 }
 
 export interface Problem {
@@ -57,12 +59,14 @@ interface RequestOptions {
   method?: string
   body?: unknown
   ifMatch?: string
+  /** API-08: sent on every POST that creates money. */
+  idempotencyKey?: string
   /** Internal: prevents a refresh loop when the refresh call itself returns 401. */
   retryOnUnauthorized?: boolean
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, ifMatch, retryOnUnauthorized = true } = options
+  const { method = 'GET', body, ifMatch, idempotencyKey, retryOnUnauthorized = true } = options
 
   const headers: Record<string, string> = { Accept: 'application/json' }
 
@@ -74,6 +78,9 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
   if (ifMatch) {
     headers['If-Match'] = ifMatch
+  }
+  if (idempotencyKey) {
+    headers['Idempotency-Key'] = idempotencyKey
   }
 
   let response: Response
@@ -424,4 +431,175 @@ export const invoicesApi = {
     const suffix = query.size ? `?${query}` : ''
     return request<{ items: Invoice[]; nextCursor: string | null; totalCount: number }>(`/invoices${suffix}`)
   },
+}
+
+// ---------------------------------------------------------------------------------------
+// Slice 3b — Payments, cheques, allocation, credit notes, withholding, write-off
+// ---------------------------------------------------------------------------------------
+
+export interface AllocationLine {
+  invoiceId: string
+  amount: Money
+}
+
+export interface Allocation {
+  id: string
+  paymentId: string
+  invoiceId: string
+  amount: Money
+  effectiveDate: string
+  isActive: boolean
+  reversalOfId: string | null
+  reversalReason: string | null
+  method: string
+  createdAt: string
+}
+
+export interface Payment {
+  id: string
+  customerId: string
+  amount: Money
+  currency: string
+  method: string
+  receivedDate: string
+  effectiveDate: string
+  reference: string | null
+  status: 'Pending' | 'Confirmed' | 'Reversed'
+  chequeId: string | null
+  notes: string | null
+  unallocated: Money
+  allocations: Allocation[]
+  createdAt: string
+  rowVersion: string
+}
+
+export interface ProposalLine {
+  invoiceId: string
+  invoiceNumber: string
+  dueDate: string
+  openBalance: Money
+  proposed: Money
+}
+
+export interface AllocationProposal {
+  available: Money
+  lines: ProposalLine[]
+  remainingAfterProposal: Money
+}
+
+export interface InvoiceResidual {
+  invoiceId: string
+  openBalance: Money
+  settlement: 'Unpaid' | 'PartiallyPaid' | 'Paid'
+  proposedRoundingAdjustment: Money | null
+}
+
+export interface AllocationResult {
+  payment: Payment
+  unallocated: Money
+  invoices: InvoiceResidual[]
+}
+
+export interface Cheque {
+  id: string
+  customerId: string
+  chequeNumber: string
+  bankName: string | null
+  amount: Money
+  chequeDate: string
+  receivedDate: string
+  isPostDated: boolean
+  status: 'Received' | 'Deposited' | 'Cleared' | 'Bounced' | 'Returned' | 'Cancelled'
+  bouncedReason: string | null
+  clearedDate: string | null
+  paymentId: string | null
+  rowVersion: string
+}
+
+export interface CreditNote {
+  id: string
+  customerId: string
+  noteNumber: string | null
+  amount: Money
+  currency: string
+  issueDate: string
+  reasonCode: string
+  status: 'Active' | 'Void'
+  unapplied: Money
+  applications: { id: string; invoiceId: string; amount: Money; isActive: boolean }[]
+  rowVersion: string
+}
+
+export interface WriteOff {
+  id: string
+  invoiceId: string
+  amount: Money
+  reasonCode: string
+  note: string | null
+  status: 'Proposed' | 'Approved' | 'Rejected' | 'Reversed'
+  proposedBy: string
+  proposedAt: string
+  approvedBy: string | null
+  selfApproved: boolean
+}
+
+export interface MoneyHistoryEntry {
+  kind: string
+  id: string
+  date: string
+  amount: Money
+  effect: 'reduces' | 'restores'
+  isActive: boolean
+  reference: string | null
+  reasonCode: string | null
+  recordedAt: string
+}
+
+export interface InvoiceDetail {
+  invoice: Invoice
+  settlement: 'Unpaid' | 'PartiallyPaid' | 'Paid'
+  history: MoneyHistoryEntry[]
+  withholding: { id: string; withheldAmount: Money; ratePct: string; certificateReceived: boolean }[]
+  writeOffs: WriteOff[]
+}
+
+export const creditNoteReasons = ['dispute_resolution', 'agreed_discount', 'goods_returned', 'service_credit', 'billing_error', 'bank_charges', 'rounding_adjustment', 'other'] as const
+
+function idempotent(body: unknown) {
+  return { method: 'POST', body, idempotencyKey: crypto.randomUUID() } as const
+}
+
+export const ledgerApi = {
+  invoice: (id: string) => request<InvoiceDetail>(`/invoices/${id}`),
+  invoicesOf: (customerId: string) => request<{ items: Invoice[] }>(`/invoices?customerId=${customerId}&status=Open&limit=200`),
+
+  payments: (customerId?: string) => request<{ items: Payment[] }>(`/payments${customerId ? `?customerId=${customerId}` : ''}`),
+  payment: (id: string) => request<Payment>(`/payments/${id}`),
+  recordPayment: (body: { customerId: string; amount: { amount: string; currency: string }; method: string; receivedDate: string; reference?: string }) =>
+    request<Payment>('/payments', idempotent(body)),
+  proposal: (paymentId: string) => request<AllocationProposal>(`/payments/${paymentId}/allocation-proposal`),
+  allocate: (paymentId: string, lines: { invoiceId: string; amount: { amount: string; currency: string } }[]) =>
+    request<AllocationResult>(`/payments/${paymentId}/allocations`, { method: 'POST', body: { lines } }),
+  reverseAllocation: (id: string, reason: string) => request<Allocation>(`/allocations/${id}/reverse`, { method: 'POST', body: { reason } }),
+  reversePayment: (id: string, reason: string) => request<Payment>(`/payments/${id}/reverse`, { method: 'POST', body: { reason } }),
+
+  cheques: () => request<{ items: Cheque[] }>('/cheques'),
+  recordCheque: (body: { customerId: string; chequeNumber: string; bankName?: string; amount: { amount: string; currency: string }; chequeDate: string; receivedDate: string }) =>
+    request<Cheque>('/cheques', { method: 'POST', body }),
+  transitionCheque: (id: string, event: 'deposit' | 'clear' | 'bounce' | 'cancel', reason?: string) =>
+    request<{ cheque: Cheque; payment: Payment | null }>(`/cheques/${id}/transitions`, { method: 'POST', body: { event, reason } }),
+
+  withholding: (invoiceId: string, body: { baseAmount: { amount: string; currency: string }; ratePct: string; withheldAmount: { amount: string; currency: string }; certificateReference?: string }) =>
+    request<unknown>(`/invoices/${invoiceId}/withholding`, { method: 'POST', body }),
+
+  creditNotes: () => request<{ items: CreditNote[] }>('/credit-notes'),
+  createCreditNote: (body: { customerId: string; amount: { amount: string; currency: string }; issueDate: string; reasonCode: string; applications?: { invoiceId: string; amount: { amount: string; currency: string } }[] }) =>
+    request<CreditNote>('/credit-notes', { method: 'POST', body }),
+  voidCreditNote: (id: string, reason: string) => request<CreditNote>(`/credit-notes/${id}/void`, { method: 'POST', body: { reason } }),
+
+  writeOffs: () => request<{ items: WriteOff[] }>('/write-offs'),
+  proposeWriteOff: (invoiceId: string, reasonCode: string, note?: string) => request<WriteOff>(`/invoices/${invoiceId}/write-off`, { method: 'POST', body: { reasonCode, note } }),
+  approveWriteOff: (id: string, selfApproved: boolean) => request<WriteOff>(`/write-offs/${id}/approve`, { method: 'POST', body: { selfApproved } }),
+  rejectWriteOff: (id: string, reason?: string) => request<WriteOff>(`/write-offs/${id}/reject`, { method: 'POST', body: { reason } }),
+  voidInvoice: (id: string, reason: string) => request<Invoice>(`/invoices/${id}/void`, { method: 'POST', body: { reason } }),
 }

@@ -4,19 +4,20 @@ Status: **Approved for implementation.** These documents are the source of truth
 has had to diverge from them, the divergence is recorded in the slice's own document under
 [`slices/`](slices/) **and** amended here in the same commit (DM-34).
 
-Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a) and slice 3 (DM-23a).
+Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), slice 3 (DM-23a) and slice 3b (DM-24a). Doc 03 §2.1 / FIN-20 were amended by slice 3b (F-1: withholding is a fourth balance instrument).
 
 | Slice | Document | Status |
 |-------|----------|--------|
 | 1 | [slices/slice-01-organization-and-auth.md](slices/slice-01-organization-and-auth.md) | Implemented and tested |
 | 2 | [slices/slice-02-customers.md](slices/slice-02-customers.md) · [review](slices/slice-02-review.md) | Implemented and tested; merge and statement deferred |
-| 3a | [slices/slice-03-invoice-import.md](slices/slice-03-invoice-import.md) · [review](slices/slice-03-review.md) | Implemented and tested. **3b (payments, cheques, allocation, credit notes) is required before pilot.** |
+| 3a | [slices/slice-03-invoice-import.md](slices/slice-03-invoice-import.md) · [review](slices/slice-03-review.md) | Implemented and tested |
+| 3b | [slices/slice-03b-payments-and-allocation.md](slices/slice-03b-payments-and-allocation.md) · [review](slices/slice-03b-review.md) | Implemented and tested; re-auth on write-off approval deferred with MFA (D-6) |
 
 **Open questions still outstanding.** Q-01, Q-02, Q-04 and Q-06 in document 00 remain unanswered.
-Slices 1–3a proceeded on the documented defaults (A-01…A-05, A-11, A-12). **Q-01 (a real
-withholding-tax worked example) and Q-02 (the pilot's invoice source and export shape) now block
-3b directly:** the short-payment resolver and the allocation fixtures (T-20, E1) cannot be written
-honestly without them.
+Slices 1–3b proceeded on the documented defaults (A-01…A-05, A-11, A-12). **Slice 3b built E1 on a
+placeholder 5% withholding rate (Q-01)**; the product computes nothing from the rate, so a real
+example changes only the fixture. Q-02 (the pilot's invoice source) still shapes the first import
+mapping a pilot will need.
 
 Scope of this document set: **one product only** — the bilingual (Arabic/English)
 AI Accounts Receivable and Collections Assistant for Jordanian SMEs. No other
