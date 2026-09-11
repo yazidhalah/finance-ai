@@ -36,7 +36,7 @@ export default defineConfig({
       url: 'http://127.0.0.1:8091/health',
       reuseExistingServer: true,
       env: { ...env, AI_FAKE_MODEL: '1', AI_SERVICE_PORT: '8091' },
-      timeout: 60_000,
+      timeout: 120_000,
     },
     {
       command: `dotnet run --project ${resolve(root, 'apps/api/FinanceAi.Migrator')} -c Release -- up && dotnet ${resolve(root, 'apps/api/FinanceAi.Api/bin/Release/net10.0/FinanceAi.Api.dll')}`,
@@ -46,10 +46,11 @@ export default defineConfig({
       timeout: 180_000,
     },
     {
-      command: `npm --prefix ${resolve(root, 'apps/web')} run dev`,
+      // --host: on some runners "localhost" resolves to ::1 only, and the health check (and the API proxy) use 127.0.0.1.
+      command: `npm --prefix ${resolve(root, 'apps/web')} run dev -- --host 127.0.0.1`,
       url: 'http://127.0.0.1:5173',
       reuseExistingServer: true,
-      timeout: 60_000,
+      timeout: 120_000,
     },
   ],
 })
