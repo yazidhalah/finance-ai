@@ -77,6 +77,38 @@ jobs:
       - run: services/ai/.venv/bin/python -m pytest -c services/ai/pytest.ini
       - run: services/ai/.venv/bin/pip install -q pip-audit && services/ai/.venv/bin/pip-audit -r services/ai/requirements.txt   # SEC-68
 
+  secrets:
+    name: secrets · gitleaks over the history (SEC-67)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      # Pinned release, checksum-verified (slice 16 D-2). MIT.
+      - name: Install gitleaks 8.24.3
+        run: |
+          curl -fsSL -o gitleaks.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz
+          echo "9991e0b2903da4c8f6122b5c3186448b927a5da4deef1fe45271c3793f4ee29c  gitleaks.tgz" | sha256sum -c -
+          tar xzf gitleaks.tgz gitleaks && sudo mv gitleaks /usr/local/bin/
+      - run: gitleaks detect --source . --config .gitleaks.toml --redact --no-banner
+
+  notices:
+    name: notices · every direct dependency recorded, licences permissive (PRD-26, SEC-68)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { global-json-file: global.json }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      # The installs, so the checker can read each package's declared licence from its metadata.
+      - run: dotnet restore
+      - run: npm --prefix apps/web ci && npm --prefix tests/e2e ci
+      - run: python -m venv services/ai/.venv && services/ai/.venv/bin/pip install -q -r services/ai/requirements.txt
+      - run: infrastructure/check-notices.py --self-test
+      - run: infrastructure/check-notices.py
+
   stack:
     name: stack · podman compose · smoke (A-15, SEC-69)
     runs-on: ubuntu-24.04

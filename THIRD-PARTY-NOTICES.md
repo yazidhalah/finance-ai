@@ -9,7 +9,7 @@ source-available license is a blocking review finding, not a discussion.
 
 Versions are pinned; lockfiles (`package-lock.json`, `packages.lock.json`) are committed.
 
-Last updated: slice 13 — auth completion (no dependency added: TOTP/Base32 and AES-GCM use the .NET base class library; slice 13 D-2). Slice 12 added none either (`pg_dump`/`pg_restore` are the PostgreSQL client tools, PostgreSQL License). Slice 11 added Playwright for the E2E suite, test-only. Slice 10 added no dependency (LangGraph deliberately not adopted, slice 10 D-1). Slice 9 added the Python AI service and its dependency tree, the Qwen3 model weights and the Ollama runtime; see the flagged `certifi` entry.
+Last updated: slice 16 — CI gates: `Microsoft.AspNetCore.OpenApi` (referenced since slice 1, recorded now), `gitleaks` (CI tool). `infrastructure/check-notices.py` now verifies this file against every direct dependency in CI.
 
 ---
 
@@ -23,6 +23,7 @@ Last updated: slice 13 — auth completion (no dependency added: TOTP/Base32 and
 | `Konscious.Security.Cryptography.Argon2` | 1.3.1 | MIT | Argon2id password hashing at the parameters SEC-01 mandates. |
 | `Konscious.Security.Cryptography.Blake2` | 1.1.1 | MIT | Transitive dependency of the above (Argon2 is built on BLAKE2). |
 | `Microsoft.IdentityModel.JsonWebTokens` | 8.19.2 | MIT | Issues the RS256 access token of SEC-03. |
+| `Microsoft.AspNetCore.OpenApi` | 10.0.12 | MIT | Generates the OpenAPI document diffed against `docs/api/openapi.json` (API-14, slice 16). Never served. |
 | `Microsoft.AspNetCore.Authentication.JwtBearer` | 10.0.12 | MIT | Validates it. |
 
 ASP.NET Core, the .NET runtime and the base class libraries ship with the .NET 10 SDK
@@ -59,6 +60,7 @@ ASP.NET Core, the .NET runtime and the base class libraries ship with the .NET 1
 | `jsdom` | 30.0.1 | MIT | Web tests |
 | `@testing-library/react` | 16.3.3 | MIT | Web tests |
 | `pip-audit` | latest | Apache-2.0 | CI only (SEC-68): known-vulnerability check of `services/ai/requirements.txt` |
+| `gitleaks` | 8.24.3 | MIT | CI secret scan over the history and the optional pre-commit hook (SEC-67, slice 16); a pinned, checksum-verified binary, never shipped |
 | `podman-compose` | 1.5.0 | GPL-2.0 — a **tool** invoked by CI and operators, never linked into or shipped with the product; the compose file is the product's, the tool is the runner's (same footing as `git` or `bash`) | CI stack job; local operators use whatever `podman compose` provider they have |
 | `@testing-library/jest-dom` | 7.0.1 | MIT | Web tests |
 | `@testing-library/user-event` | 14.6.7 | MIT | Web tests |
@@ -86,7 +88,7 @@ Bundled with PostgreSQL (contrib), enabled by the bootstrap script. No separate 
 |-------|---------|---------|
 | `docker.io/pgvector/pgvector` | pg16 | PostgreSQL License (PostgreSQL); PostgreSQL License (pgvector extension) |
 | `docker.io/axllent/mailpit` | latest | MIT — development SMTP/IMAP only; never deployed |
-| `mcr.microsoft.com/dotnet/sdk` / `dotnet/aspnet` | 10.0 | MIT (.NET); the images bundle Debian 12 (assorted OSI licenses, see the image's `/usr/share/doc/*/copyright`). Build stage / API and migrator runtime (slice 14). |
+| `mcr.microsoft.com/dotnet/sdk`, `mcr.microsoft.com/dotnet/aspnet` | 10.0.103 / 10.0 | MIT (.NET); the images bundle Debian 12 (assorted OSI licenses, see the image's `/usr/share/doc/*/copyright`). Build stage / API and migrator runtime (slice 14). |
 | `docker.io/library/node` | 22-alpine | MIT (Node.js); Alpine (MIT and others). Web build stage only — not in the runtime image. |
 | `docker.io/nginxinc/nginx-unprivileged` | 1.27-alpine | BSD-2-Clause (nginx); Alpine. Serves the SPA and proxies `/api` as a non-root user. |
 | `docker.io/library/python` | 3.13-slim | PSF-2.0 (Python); Debian 12. AI service runtime. |

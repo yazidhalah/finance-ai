@@ -1,0 +1,17 @@
+# Secret scanning (SEC-67, slice 16): gitleaks over the whole history in CI, and over staged files in the
+# pre-commit hook (.githooks/pre-commit). Only known non-secrets are allowlisted, each with a reason.
+title = "finance-ai"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known non-secrets"
+regexes = [
+  # The TOTP fixture in the web tests: Base32 of "1234567890" repeated — never a real enrolment secret.
+  '''GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ''',
+]
+paths = [
+  # Placeholders only; every value in the example is empty or a documented dummy.
+  '''\.env\.example$''',
+]

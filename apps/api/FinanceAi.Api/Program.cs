@@ -50,6 +50,11 @@ builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
 
 builder.Services.AddApiServices();
 
+// Slice 16 (API-14): the OpenAPI document is generated from the endpoint metadata and diffed against
+// docs/api/openapi.json by the security suite. It is never served — no MapOpenApi() — so the route pin
+// and the anonymous set are untouched; x-permission / x-access come from the same metadata the middleware enforces.
+builder.Services.AddOpenApi(options => { options.AddDocumentTransformer<FinanceAi.Api.Http.AccessDocumentTransformer>(); options.AddOperationTransformer<FinanceAi.Api.Http.AccessDocumentTransformer>(); });
+
 var app = builder.Build();
 
 // Order is load-bearing. Routing comes before the rate limiter and the tenant scope because both

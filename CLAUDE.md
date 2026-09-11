@@ -74,6 +74,10 @@ infrastructure/smoke.sh run by the CI `stack` job, SEC-68 dependency audits in C
 runbook docs/ops/runbook.md (SEC-103). Slice 15 added the invariant job (doc 03 §7, run last in the sweep and on
 demand), the SEC-102 alert path (alerts table, ALERT_EMAIL, ALERT_WEBHOOK_URL, infrastructure/alert.sh, T-153) and
 the Audit screen; it also fixed SEC-53 verification (audit `changes` is hashed in canonical JSON form).
+Slice 16 closed the slice-0 CI list: the OpenAPI snapshot in docs/api/openapi.json (a contract change fails the
+security suite; accept with UPDATE_OPENAPI=1), gitleaks over the history (and `git config core.hooksPath .githooks`
+locally), infrastructure/check-notices.py (every direct dependency recorded, licences permissive), and the nightly
+performance workflow (T-140/141).
 What remains before the First Product is "done" is the
 v1 acceptance pass on a pilot corpus and real hardware (doc 09 §5 AI gates are indicative on the
 author-written corpus; Arabic narrative quality needs a native reviewer; T-140 performance in CI is

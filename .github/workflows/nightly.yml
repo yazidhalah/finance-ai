@@ -1,0 +1,40 @@
+# Nightly (slice 16): the performance category of doc 09 §7 — T-140 at 50k invoices and the T-141 query-plan
+# assertions — against real PostgreSQL. Not a PR check: minutes of seeding do not belong in the merge path.
+name: nightly
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # 02:00 UTC daily
+  workflow_dispatch:
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  performance:
+    name: performance · T-140 P95 at 50k · T-141 query plans
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env: { POSTGRES_USER: finance, POSTGRES_PASSWORD: ci_only, POSTGRES_DB: finance_ai }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U finance" --health-interval 5s --health-timeout 5s --health-retries 20
+      mailpit:
+        image: axllent/mailpit:latest
+        ports: ["1025:1025", "8025:8025"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { global-json-file: global.json }
+      - name: Write .env
+        run: |
+          cp .env.example .env
+          sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci_only/; s/^POSTGRES_APP_PASSWORD=.*/POSTGRES_APP_PASSWORD=ci_app/; s/^POSTGRES_MIGRATOR_PASSWORD=.*/POSTGRES_MIGRATOR_PASSWORD=ci_migrator/; s/^POSTGRES_REPORTING_PASSWORD=.*/POSTGRES_REPORTING_PASSWORD=ci_reporting/' .env
+          sed -i "s|^JWT_SIGNING_KEY_PEM_BASE64=.*|JWT_SIGNING_KEY_PEM_BASE64=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null | base64 -w0)|" .env
+          sed -i "s|^AI_SERVICE_TOKEN=.*|AI_SERVICE_TOKEN=$(openssl rand -hex 24)|" .env
+          sed -i "s|^MFA_KEK_BASE64=.*|MFA_KEK_BASE64=$(openssl rand -base64 32)|" .env
+      - run: dotnet build --configuration Release
+      - run: dotnet test tests/integration/FinanceAi.IntegrationTests --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=normal"

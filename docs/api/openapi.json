@@ -1,0 +1,5812 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "finance-ai AR & Collections API",
+    "version": "v1"
+  },
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "Register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-access": "anonymous"
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "Login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-access": "anonymous"
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "Refresh",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-access": "anonymous"
+      }
+    },
+    "/api/v1/auth/accept-invitation": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "AcceptInvitation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInvitationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-access": "anonymous"
+      }
+    },
+    "/api/v1/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "ForgotPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-access": "anonymous"
+      }
+    },
+    "/api/v1/auth/reset-password": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "ResetPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-access": "anonymous"
+      }
+    },
+    "/api/v1/auth/mfa/enroll": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "MfaEnroll",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-access": "authenticated",
+        "x-allowed-without-mfa": true
+      }
+    },
+    "/api/v1/auth/mfa/verify": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "MfaVerify",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-access": "authenticated",
+        "x-allowed-without-mfa": true
+      }
+    },
+    "/api/v1/auth/reauthenticate": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "Reauthenticate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReauthenticateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-access": "authenticated",
+        "x-allowed-without-mfa": true
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "Logout",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-access": "authenticated",
+        "x-allowed-without-mfa": true
+      }
+    },
+    "/api/v1/auth/tenants": {
+      "get": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "ListTenants",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-access": "authenticated",
+        "x-allowed-without-mfa": true
+      }
+    },
+    "/api/v1/auth/switch-tenant": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "SwitchTenant",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwitchTenantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-access": "authenticated",
+        "x-allowed-without-mfa": true
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "OrganizationEndpoints"
+        ],
+        "operationId": "GetMe",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-access": "authenticated",
+        "x-allowed-without-mfa": true
+      },
+      "patch": {
+        "tags": [
+          "OrganizationEndpoints"
+        ],
+        "operationId": "UpdateMe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-access": "authenticated",
+        "x-allowed-without-mfa": true
+      }
+    },
+    "/api/v1/audit": {
+      "get": {
+        "tags": [
+          "OrganizationEndpoints"
+        ],
+        "operationId": "ListAudit",
+        "parameters": [
+          {
+            "name": "entityType",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "eventType",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actorUserId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "audit.read"
+      }
+    },
+    "/api/v1/allocations/{id}/reverse": {
+      "post": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "ReverseAllocation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.allocate"
+      }
+    },
+    "/api/v1/invoices/{id}/withholding": {
+      "post": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "RecordWithholding",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WithholdingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.write"
+      }
+    },
+    "/api/v1/invoices/{id}/write-off": {
+      "post": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "ProposeWriteOff",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteOffProposeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "writeoff.propose"
+      }
+    },
+    "/api/v1/invoices/{id}/void": {
+      "post": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "VoidInvoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "invoices.void"
+      }
+    },
+    "/api/v1/queue": {
+      "get": {
+        "tags": [
+          "CaseEndpoints"
+        ],
+        "operationId": "Queue",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/queue/summary": {
+      "get": {
+        "tags": [
+          "CaseEndpoints"
+        ],
+        "operationId": "QueueSummary",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/cases/{id}/promises": {
+      "post": {
+        "tags": [
+          "PromiseEndpoints"
+        ],
+        "operationId": "RecordPromise",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordPromiseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "ptp.write"
+      }
+    },
+    "/api/v1/customers/{id}/promise-history": {
+      "get": {
+        "tags": [
+          "PromiseEndpoints"
+        ],
+        "operationId": "PromiseHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/invoices/{id}/disputes": {
+      "post": {
+        "tags": [
+          "DisputeEndpoints"
+        ],
+        "operationId": "RaiseDispute",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RaiseDisputeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "disputes.write"
+      }
+    },
+    "/api/v1/cases/{id}/dunning-eligibility": {
+      "get": {
+        "tags": [
+          "DisputeEndpoints"
+        ],
+        "operationId": "DunningEligibility",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/tasks/payment-verification": {
+      "get": {
+        "tags": [
+          "DisputeEndpoints"
+        ],
+        "operationId": "ListVerificationTasks",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.read"
+      }
+    },
+    "/api/v1/tasks/payment-verification/{id}/resolve": {
+      "post": {
+        "tags": [
+          "DisputeEndpoints"
+        ],
+        "operationId": "ResolveVerificationTask",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveVerificationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.write"
+      }
+    },
+    "/api/v1/cases/{id}/messages": {
+      "post": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "ComposeMessage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComposeMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "messages.draft"
+      }
+    },
+    "/api/v1/organization/outbound": {
+      "get": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "OutboundSettings",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "tenant.read"
+      },
+      "put": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "UpdateOutboundSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutboundSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "tenant.settings.write"
+      }
+    },
+    "/api/v1/customers/{id}/statement": {
+      "get": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "CustomerStatement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/organization/ai-settings": {
+      "get": {
+        "tags": [
+          "AiEndpoints"
+        ],
+        "operationId": "AiSettings",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "tenant.read"
+      },
+      "patch": {
+        "tags": [
+          "AiEndpoints"
+        ],
+        "operationId": "UpdateAiSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "ai.settings.write"
+      }
+    },
+    "/api/v1/organization/briefing-settings": {
+      "get": {
+        "tags": [
+          "BriefingEndpoints"
+        ],
+        "operationId": "BriefingSettings",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "tenant.read"
+      },
+      "patch": {
+        "tags": [
+          "BriefingEndpoints"
+        ],
+        "operationId": "UpdateBriefingSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BriefingSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "tenant.settings.write"
+      }
+    },
+    "/api/v1/organization/invariants": {
+      "get": {
+        "tags": [
+          "OpsEndpoints"
+        ],
+        "operationId": "LatestInvariantRun",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "audit.read"
+      }
+    },
+    "/api/v1/organization/invariants/run": {
+      "post": {
+        "tags": [
+          "OpsEndpoints"
+        ],
+        "operationId": "RunInvariants",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "tenant.settings.write"
+      }
+    },
+    "/api/v1/organization/alerts": {
+      "get": {
+        "tags": [
+          "OpsEndpoints"
+        ],
+        "operationId": "ListAlerts",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "audit.read"
+      }
+    },
+    "/api/v1/organization/alerts/{id}/acknowledge": {
+      "post": {
+        "tags": [
+          "OpsEndpoints"
+        ],
+        "operationId": "AcknowledgeAlert",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "tenant.settings.write"
+      }
+    },
+    "/api/v1/organization": {
+      "get": {
+        "tags": [
+          "OrganizationEndpoints"
+        ],
+        "operationId": "GetOrganization",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "tenant.read"
+      },
+      "patch": {
+        "tags": [
+          "OrganizationEndpoints"
+        ],
+        "operationId": "UpdateOrganization",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrganizationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "tenant.settings.write"
+      }
+    },
+    "/api/v1/organization/members": {
+      "get": {
+        "tags": [
+          "OrganizationEndpoints"
+        ],
+        "operationId": "ListMembers",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "users.read"
+      }
+    },
+    "/api/v1/organization/members/{id}": {
+      "get": {
+        "tags": [
+          "OrganizationEndpoints"
+        ],
+        "operationId": "GetMember",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "users.read"
+      },
+      "patch": {
+        "tags": [
+          "OrganizationEndpoints"
+        ],
+        "operationId": "ChangeMemberRole",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "users.role.write"
+      }
+    },
+    "/api/v1/organization/members/invite": {
+      "post": {
+        "tags": [
+          "OrganizationEndpoints"
+        ],
+        "operationId": "InviteMember",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteMemberRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "users.invite"
+      }
+    },
+    "/api/v1/organization/invitations": {
+      "get": {
+        "tags": [
+          "OrganizationEndpoints"
+        ],
+        "operationId": "ListInvitations",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "users.read"
+      }
+    },
+    "/api/v1/organization/invitations/{id}/revoke": {
+      "post": {
+        "tags": [
+          "OrganizationEndpoints"
+        ],
+        "operationId": "RevokeInvitation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "users.invite"
+      }
+    },
+    "/api/v1/organization/members/{id}/deactivate": {
+      "post": {
+        "tags": [
+          "OrganizationEndpoints"
+        ],
+        "operationId": "DeactivateMember",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "users.deactivate"
+      }
+    },
+    "/api/v1/organization/transfer-ownership": {
+      "post": {
+        "tags": [
+          "OrganizationEndpoints"
+        ],
+        "operationId": "TransferOwnership",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferOwnershipRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "tenant.transfer_ownership",
+        "x-requires-reauthentication": true
+      }
+    },
+    "/api/v1/customers": {
+      "get": {
+        "tags": [
+          "CustomerEndpoints"
+        ],
+        "operationId": "ListCustomers",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "riskFlag",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "currency",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "customers.read"
+      },
+      "post": {
+        "tags": [
+          "CustomerEndpoints"
+        ],
+        "operationId": "CreateCustomer",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "customers.write"
+      }
+    },
+    "/api/v1/customers/duplicates": {
+      "get": {
+        "tags": [
+          "CustomerEndpoints"
+        ],
+        "operationId": "CustomerDuplicates",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "customers.read"
+      }
+    },
+    "/api/v1/customers/{id}": {
+      "get": {
+        "tags": [
+          "CustomerEndpoints"
+        ],
+        "operationId": "GetCustomer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "customers.read"
+      },
+      "patch": {
+        "tags": [
+          "CustomerEndpoints"
+        ],
+        "operationId": "UpdateCustomer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "customers.write"
+      },
+      "delete": {
+        "tags": [
+          "CustomerEndpoints"
+        ],
+        "operationId": "DeleteCustomer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "customers.write"
+      }
+    },
+    "/api/v1/customers/{id}/contacts": {
+      "get": {
+        "tags": [
+          "CustomerEndpoints"
+        ],
+        "operationId": "ListContacts",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "customers.read"
+      },
+      "post": {
+        "tags": [
+          "CustomerEndpoints"
+        ],
+        "operationId": "CreateContact",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "customers.write"
+      }
+    },
+    "/api/v1/customers/{id}/contacts/{contactId}": {
+      "patch": {
+        "tags": [
+          "CustomerEndpoints"
+        ],
+        "operationId": "UpdateContact",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "contactId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "customers.write"
+      },
+      "delete": {
+        "tags": [
+          "CustomerEndpoints"
+        ],
+        "operationId": "DeleteContact",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "contactId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "customers.write"
+      }
+    },
+    "/api/v1/imports": {
+      "post": {
+        "tags": [
+          "ImportEndpoints"
+        ],
+        "operationId": "UploadImport",
+        "parameters": [
+          {
+            "name": "force",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "$ref": "#/components/schemas/IFormFile"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "invoices.import"
+      },
+      "get": {
+        "tags": [
+          "ImportEndpoints"
+        ],
+        "operationId": "ListImports",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "invoices.import"
+      }
+    },
+    "/api/v1/imports/{id}": {
+      "get": {
+        "tags": [
+          "ImportEndpoints"
+        ],
+        "operationId": "GetImport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "invoices.import"
+      }
+    },
+    "/api/v1/imports/{id}/rows": {
+      "get": {
+        "tags": [
+          "ImportEndpoints"
+        ],
+        "operationId": "ListImportRows",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "outcome",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "invoices.import"
+      }
+    },
+    "/api/v1/imports/{id}/mapping": {
+      "post": {
+        "tags": [
+          "ImportEndpoints"
+        ],
+        "operationId": "ApplyImportMapping",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyMappingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "invoices.import"
+      }
+    },
+    "/api/v1/imports/{id}/rows/{rowId}/resolve": {
+      "post": {
+        "tags": [
+          "ImportEndpoints"
+        ],
+        "operationId": "ResolveImportRow",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "rowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveRowRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "invoices.import"
+      }
+    },
+    "/api/v1/imports/{id}/commit": {
+      "post": {
+        "tags": [
+          "ImportEndpoints"
+        ],
+        "operationId": "CommitImport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "invoices.import"
+      }
+    },
+    "/api/v1/imports/{id}/cancel": {
+      "post": {
+        "tags": [
+          "ImportEndpoints"
+        ],
+        "operationId": "CancelImport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "invoices.import"
+      }
+    },
+    "/api/v1/import-mappings": {
+      "get": {
+        "tags": [
+          "ImportEndpoints"
+        ],
+        "operationId": "ListImportMappings",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "invoices.import"
+      },
+      "post": {
+        "tags": [
+          "ImportEndpoints"
+        ],
+        "operationId": "CreateImportMapping",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportMappingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "invoices.import"
+      }
+    },
+    "/api/v1/import-mappings/{id}": {
+      "delete": {
+        "tags": [
+          "ImportEndpoints"
+        ],
+        "operationId": "DeleteImportMapping",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "invoices.import"
+      }
+    },
+    "/api/v1/invoices": {
+      "get": {
+        "tags": [
+          "ImportEndpoints"
+        ],
+        "operationId": "ListInvoices",
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "currency",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dueBefore",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "dueAfter",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "invoices.read"
+      }
+    },
+    "/api/v1/invoices/{id}": {
+      "get": {
+        "tags": [
+          "ImportEndpoints"
+        ],
+        "operationId": "GetInvoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "invoices.read"
+      }
+    },
+    "/api/v1/payments": {
+      "post": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "RecordPayment",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.write"
+      },
+      "get": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "ListPayments",
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.read"
+      }
+    },
+    "/api/v1/payments/{id}": {
+      "get": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "GetPayment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.read"
+      }
+    },
+    "/api/v1/payments/{id}/allocation-proposal": {
+      "get": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "AllocationProposal",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.allocate"
+      }
+    },
+    "/api/v1/payments/{id}/allocations": {
+      "post": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "Allocate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AllocationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.allocate"
+      }
+    },
+    "/api/v1/payments/{id}/reverse": {
+      "post": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "ReversePayment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.write"
+      }
+    },
+    "/api/v1/cheques": {
+      "post": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "RecordCheque",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChequeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.write"
+      },
+      "get": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "ListCheques",
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.read"
+      }
+    },
+    "/api/v1/cheques/{id}": {
+      "get": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "GetCheque",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.read"
+      }
+    },
+    "/api/v1/cheques/{id}/transitions": {
+      "post": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "TransitionCheque",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChequeTransitionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.write"
+      }
+    },
+    "/api/v1/credit-notes": {
+      "post": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "CreateCreditNote",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreditNoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "credit_notes.write"
+      },
+      "get": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "ListCreditNotes",
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.read"
+      }
+    },
+    "/api/v1/credit-notes/{id}": {
+      "get": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "GetCreditNote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.read"
+      }
+    },
+    "/api/v1/credit-notes/{id}/applications": {
+      "post": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "ApplyCreditNote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AllocationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "credit_notes.write"
+      }
+    },
+    "/api/v1/credit-notes/{id}/void": {
+      "post": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "VoidCreditNote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "credit_notes.write"
+      }
+    },
+    "/api/v1/write-offs": {
+      "get": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "ListWriteOffs",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.read"
+      }
+    },
+    "/api/v1/write-offs/{id}": {
+      "get": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "GetWriteOff",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "payments.read"
+      }
+    },
+    "/api/v1/write-offs/{id}/approve": {
+      "post": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "ApproveWriteOff",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteOffApproveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "writeoff.approve",
+        "x-requires-reauthentication": true
+      }
+    },
+    "/api/v1/write-offs/{id}/reject": {
+      "post": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "RejectWriteOff",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "writeoff.approve"
+      }
+    },
+    "/api/v1/write-offs/{id}/reverse": {
+      "post": {
+        "tags": [
+          "LedgerEndpoints"
+        ],
+        "operationId": "ReverseWriteOff",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "writeoff.approve"
+      }
+    },
+    "/api/v1/reports/aging": {
+      "get": {
+        "tags": [
+          "ReportEndpoints"
+        ],
+        "operationId": "AgingReport",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "aging.read"
+      }
+    },
+    "/api/v1/reports/aging/customers/{id}": {
+      "get": {
+        "tags": [
+          "ReportEndpoints"
+        ],
+        "operationId": "AgingCustomerDetail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "aging.read"
+      }
+    },
+    "/api/v1/reports/aging/export": {
+      "get": {
+        "tags": [
+          "ReportEndpoints"
+        ],
+        "operationId": "AgingExport",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "export.run"
+      }
+    },
+    "/api/v1/reports/dso": {
+      "get": {
+        "tags": [
+          "ReportEndpoints"
+        ],
+        "operationId": "Dso",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "aging.read"
+      }
+    },
+    "/api/v1/reports/reconciliation": {
+      "get": {
+        "tags": [
+          "ReportEndpoints"
+        ],
+        "operationId": "Reconciliation",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "audit.read"
+      }
+    },
+    "/api/v1/cases": {
+      "get": {
+        "tags": [
+          "CaseEndpoints"
+        ],
+        "operationId": "ListCases",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      },
+      "post": {
+        "tags": [
+          "CaseEndpoints"
+        ],
+        "operationId": "CreateCase",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.write"
+      }
+    },
+    "/api/v1/cases/sweep": {
+      "post": {
+        "tags": [
+          "CaseEndpoints"
+        ],
+        "operationId": "SweepCases",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.write"
+      }
+    },
+    "/api/v1/cases/{id}": {
+      "get": {
+        "tags": [
+          "CaseEndpoints"
+        ],
+        "operationId": "GetCase",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/cases/{id}/timeline": {
+      "get": {
+        "tags": [
+          "CaseEndpoints"
+        ],
+        "operationId": "CaseTimeline",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/cases/{id}/transitions": {
+      "post": {
+        "tags": [
+          "CaseEndpoints"
+        ],
+        "operationId": "CaseTransition",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseTransitionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.write"
+      }
+    },
+    "/api/v1/cases/{id}/assign": {
+      "post": {
+        "tags": [
+          "CaseEndpoints"
+        ],
+        "operationId": "AssignCase",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignCaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.assign"
+      }
+    },
+    "/api/v1/cases/{id}/activities": {
+      "post": {
+        "tags": [
+          "CaseEndpoints"
+        ],
+        "operationId": "LogCaseActivity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseActivityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.write"
+      }
+    },
+    "/api/v1/cases/{id}/snooze": {
+      "post": {
+        "tags": [
+          "CaseEndpoints"
+        ],
+        "operationId": "SnoozeCase",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnoozeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.write"
+      }
+    },
+    "/api/v1/promises": {
+      "get": {
+        "tags": [
+          "PromiseEndpoints"
+        ],
+        "operationId": "ListPromises",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/promises/{id}": {
+      "get": {
+        "tags": [
+          "PromiseEndpoints"
+        ],
+        "operationId": "GetPromise",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/promises/{id}/confirm": {
+      "post": {
+        "tags": [
+          "PromiseEndpoints"
+        ],
+        "operationId": "ConfirmPromise",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmPromiseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "ptp.write"
+      }
+    },
+    "/api/v1/promises/{id}/reject": {
+      "post": {
+        "tags": [
+          "PromiseEndpoints"
+        ],
+        "operationId": "RejectPromise",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "ptp.write"
+      }
+    },
+    "/api/v1/promises/{id}/cancel": {
+      "post": {
+        "tags": [
+          "PromiseEndpoints"
+        ],
+        "operationId": "CancelPromise",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "ptp.write"
+      }
+    },
+    "/api/v1/disputes": {
+      "get": {
+        "tags": [
+          "DisputeEndpoints"
+        ],
+        "operationId": "ListDisputes",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/disputes/{id}": {
+      "get": {
+        "tags": [
+          "DisputeEndpoints"
+        ],
+        "operationId": "GetDispute",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/disputes/{id}/transitions": {
+      "post": {
+        "tags": [
+          "DisputeEndpoints"
+        ],
+        "operationId": "DisputeTransition",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisputeTransitionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "disputes.write"
+      }
+    },
+    "/api/v1/disputes/{id}/resolve": {
+      "post": {
+        "tags": [
+          "DisputeEndpoints"
+        ],
+        "operationId": "ResolveDispute",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveDisputeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "disputes.resolve"
+      }
+    },
+    "/api/v1/disputes/{id}/evidence": {
+      "post": {
+        "tags": [
+          "DisputeEndpoints"
+        ],
+        "operationId": "AttachEvidence",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "$ref": "#/components/schemas/IFormFile"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "disputes.write"
+      }
+    },
+    "/api/v1/disputes/{id}/evidence/{evidenceId}": {
+      "get": {
+        "tags": [
+          "DisputeEndpoints"
+        ],
+        "operationId": "DownloadEvidence",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "evidenceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/templates": {
+      "get": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "ListTemplates",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      },
+      "post": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "CreateTemplate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "templates.write"
+      }
+    },
+    "/api/v1/templates/placeholders": {
+      "get": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "Placeholders",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/templates/{id}": {
+      "get": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "GetTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      },
+      "post": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "NewTemplateVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "templates.write"
+      }
+    },
+    "/api/v1/templates/{id}/approve": {
+      "post": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "ApproveTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "templates.write"
+      }
+    },
+    "/api/v1/templates/{id}/preview": {
+      "post": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "PreviewTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplatePreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/messages": {
+      "get": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "ListMessages",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/messages/dispatch": {
+      "post": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "DispatchMessages",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "messages.send"
+      }
+    },
+    "/api/v1/messages/{id}": {
+      "get": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "GetMessage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/messages/{id}/approve": {
+      "post": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "ApproveMessage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "ai.suggestions.approve"
+      }
+    },
+    "/api/v1/messages/{id}/send": {
+      "post": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "SendMessage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "messages.send"
+      }
+    },
+    "/api/v1/messages/{id}/cancel": {
+      "post": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "CancelMessage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "messages.draft"
+      }
+    },
+    "/api/v1/messages/{id}/whatsapp-link": {
+      "get": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "WhatsAppLink",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "messages.draft"
+      }
+    },
+    "/api/v1/messages/{id}/confirm-manual-send": {
+      "post": {
+        "tags": [
+          "MessagingEndpoints"
+        ],
+        "operationId": "ConfirmManualSend",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "messages.draft"
+      }
+    },
+    "/api/v1/inbound-messages": {
+      "get": {
+        "tags": [
+          "AiEndpoints"
+        ],
+        "operationId": "ListInboundMessages",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      },
+      "post": {
+        "tags": [
+          "AiEndpoints"
+        ],
+        "operationId": "CreateInboundMessage",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInboundMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.write"
+      }
+    },
+    "/api/v1/inbound-messages/{id}": {
+      "get": {
+        "tags": [
+          "AiEndpoints"
+        ],
+        "operationId": "GetInboundMessage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/inbound-messages/{id}/classify": {
+      "post": {
+        "tags": [
+          "AiEndpoints"
+        ],
+        "operationId": "ClassifyInboundMessage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.write"
+      }
+    },
+    "/api/v1/inbound-messages/{id}/match-customer": {
+      "post": {
+        "tags": [
+          "AiEndpoints"
+        ],
+        "operationId": "MatchInboundCustomer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchCustomerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.write"
+      }
+    },
+    "/api/v1/inbound-messages/{id}/classify-manually": {
+      "post": {
+        "tags": [
+          "AiEndpoints"
+        ],
+        "operationId": "ClassifyInboundManually",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualClassificationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.write"
+      }
+    },
+    "/api/v1/ai/suggestions": {
+      "get": {
+        "tags": [
+          "AiEndpoints"
+        ],
+        "operationId": "ListAiSuggestions",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "ai.suggestions.read"
+      }
+    },
+    "/api/v1/ai/suggestions/{id}": {
+      "get": {
+        "tags": [
+          "AiEndpoints"
+        ],
+        "operationId": "GetAiSuggestion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "ai.suggestions.read"
+      }
+    },
+    "/api/v1/ai/suggestions/{id}/approve": {
+      "post": {
+        "tags": [
+          "AiEndpoints"
+        ],
+        "operationId": "ApproveAiSuggestion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveSuggestionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "ai.suggestions.approve"
+      }
+    },
+    "/api/v1/ai/suggestions/{id}/edit-and-approve": {
+      "post": {
+        "tags": [
+          "AiEndpoints"
+        ],
+        "operationId": "EditAndApproveAiSuggestion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditAndApproveSuggestionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "ai.suggestions.approve"
+      }
+    },
+    "/api/v1/ai/suggestions/{id}/reject": {
+      "post": {
+        "tags": [
+          "AiEndpoints"
+        ],
+        "operationId": "RejectAiSuggestion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectSuggestionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "ai.suggestions.approve"
+      }
+    },
+    "/api/v1/ai/health": {
+      "get": {
+        "tags": [
+          "AiEndpoints"
+        ],
+        "operationId": "AiHealth",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "tenant.read"
+      }
+    },
+    "/api/v1/briefings/today": {
+      "get": {
+        "tags": [
+          "BriefingEndpoints"
+        ],
+        "operationId": "BriefingToday",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/briefings/{date}": {
+      "get": {
+        "tags": [
+          "BriefingEndpoints"
+        ],
+        "operationId": "BriefingByDate",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "cases.read"
+      }
+    },
+    "/api/v1/briefings/regenerate": {
+      "post": {
+        "tags": [
+          "BriefingEndpoints"
+        ],
+        "operationId": "BriefingRegenerate",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-permission": "ai.settings.write"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AcceptInvitationRequest": {
+        "required": [
+          "token",
+          "fullName",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fullName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "password": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "AiSettingsRequest": {
+        "required": [
+          "aiEnabled",
+          "aiMinConfidence"
+        ],
+        "type": "object",
+        "properties": {
+          "aiEnabled": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "aiMinConfidence": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "AllocationLineInput": {
+        "required": [
+          "invoiceId",
+          "amount"
+        ],
+        "type": "object",
+        "properties": {
+          "invoiceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "amount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MoneyInput"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "AllocationRequest": {
+        "required": [
+          "lines"
+        ],
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/AllocationLineInput"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ApplyMappingRequest": {
+        "required": [
+          "columnMap",
+          "dateFormat",
+          "decimalSeparator",
+          "mappingId",
+          "saveAs"
+        ],
+        "type": "object",
+        "properties": {
+          "columnMap": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "dateFormat": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "decimalSeparator": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "mappingId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "saveAs": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ApproveSuggestionRequest": {
+        "required": [
+          "note"
+        ],
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssignCaseRequest": {
+        "required": [
+          "userId"
+        ],
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BriefingSettingsRequest": {
+        "required": [
+          "briefingSendAt",
+          "briefingLanguage",
+          "briefingEmailEnabled",
+          "recipientUserIds"
+        ],
+        "type": "object",
+        "properties": {
+          "briefingSendAt": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "briefingLanguage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "briefingEmailEnabled": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "recipientUserIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "CaseActivityRequest": {
+        "required": [
+          "kind",
+          "summary",
+          "detail"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "summary": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "detail": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "CaseTransitionRequest": {
+        "required": [
+          "event",
+          "reasonCode",
+          "note",
+          "holdUntil"
+        ],
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reasonCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "holdUntil": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChangeRoleRequest": {
+        "required": [
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChequeRequest": {
+        "required": [
+          "customerId",
+          "chequeNumber",
+          "bankName",
+          "amount",
+          "chequeDate",
+          "receivedDate",
+          "notes"
+        ],
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "chequeNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bankName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "amount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MoneyInput"
+              }
+            ]
+          },
+          "chequeDate": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "receivedDate": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChequeTransitionRequest": {
+        "required": [
+          "event",
+          "reason",
+          "allocations"
+        ],
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "allocations": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/AllocationLineInput"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ComposeMessageRequest": {
+        "required": [
+          "channel",
+          "language",
+          "templateId",
+          "subject",
+          "body",
+          "invoiceIds",
+          "contactId"
+        ],
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "language": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "templateId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "subject": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "body": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "invoiceIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "contactId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfirmPromiseRequest": {
+        "required": [
+          "promisedAmount",
+          "promisedDate"
+        ],
+        "type": "object",
+        "properties": {
+          "promisedAmount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MoneyInput"
+              }
+            ]
+          },
+          "promisedDate": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ContactRequest": {
+        "required": [
+          "name",
+          "roleTitle",
+          "email",
+          "phoneE164",
+          "isPrimary",
+          "isBilling",
+          "preferredLanguage"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "roleTitle": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phoneE164": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isPrimary": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "isBilling": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "preferredLanguage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateCaseRequest": {
+        "required": [
+          "customerId"
+        ],
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateInboundMessageRequest": {
+        "required": [
+          "channel",
+          "fromAddress",
+          "subject",
+          "body",
+          "receivedAt",
+          "customerId",
+          "inReplyToMessageId"
+        ],
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fromAddress": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "subject": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "body": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "receivedAt": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "inReplyToMessageId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreditNoteRequest": {
+        "required": [
+          "customerId",
+          "noteNumber",
+          "amount",
+          "issueDate",
+          "reasonCode",
+          "notes",
+          "applications"
+        ],
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "noteNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "amount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MoneyInput"
+              }
+            ]
+          },
+          "issueDate": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reasonCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "applications": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/AllocationLineInput"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerRequest": {
+        "required": [
+          "code",
+          "nameAr",
+          "nameEn",
+          "legalName",
+          "taxRegistrationNo",
+          "preferredLanguage",
+          "paymentTermsDays",
+          "creditLimit",
+          "defaultCurrency",
+          "riskFlag",
+          "status",
+          "notes",
+          "clearCreditLimit"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nameAr": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "legalName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "taxRegistrationNo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "preferredLanguage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "paymentTermsDays": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "creditLimit": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MoneyInput"
+              }
+            ]
+          },
+          "defaultCurrency": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "riskFlag": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "clearCreditLimit": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "DisputeTransitionRequest": {
+        "required": [
+          "event",
+          "reason",
+          "assignedTo"
+        ],
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "assignedTo": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EditAndApproveSuggestionRequest": {
+        "required": [
+          "classification",
+          "invoiceId",
+          "invoiceIds",
+          "amount",
+          "promisedDate",
+          "disputeReasonCode",
+          "note"
+        ],
+        "type": "object",
+        "properties": {
+          "classification": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "invoiceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "invoiceIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "amount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MoneyInput"
+              }
+            ]
+          },
+          "promisedDate": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "disputeReasonCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ForgotPasswordRequest": {
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "IFormFile": {
+        "type": "string",
+        "format": "binary"
+      },
+      "ImportMappingRequest": {
+        "required": [
+          "name",
+          "columnMap",
+          "dateFormat",
+          "decimalSeparator"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "columnMap": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "dateFormat": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "decimalSeparator": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "InviteMemberRequest": {
+        "required": [
+          "email",
+          "role",
+          "locale"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "role": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "locale": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "JsonElement": {},
+      "LoginRequest": {
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "password": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "totp": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManualClassificationRequest": {
+        "required": [
+          "classification",
+          "note"
+        ],
+        "type": "object",
+        "properties": {
+          "classification": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "MatchCustomerRequest": {
+        "required": [
+          "customerId"
+        ],
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MfaVerifyRequest": {
+        "required": [
+          "code"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "MoneyInput": {
+        "required": [
+          "amount",
+          "currency"
+        ],
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "currency": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "OutboundSettingsRequest": {
+        "required": [
+          "outboundSendingEnabled",
+          "dailySendCap"
+        ],
+        "type": "object",
+        "properties": {
+          "outboundSendingEnabled": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "dailySendCap": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PaymentRequest": {
+        "required": [
+          "customerId",
+          "amount",
+          "method",
+          "receivedDate",
+          "effectiveDate",
+          "reference",
+          "notes",
+          "allocations"
+        ],
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "amount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MoneyInput"
+              }
+            ]
+          },
+          "method": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "receivedDate": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "effectiveDate": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reference": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "allocations": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/AllocationLineInput"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "RaiseDisputeRequest": {
+        "required": [
+          "reasonCode",
+          "disputedAmount",
+          "customerClaim"
+        ],
+        "type": "object",
+        "properties": {
+          "reasonCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "disputedAmount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MoneyInput"
+              }
+            ]
+          },
+          "customerClaim": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReasonRequest": {
+        "required": [
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReauthenticateRequest": {
+        "required": [
+          "password",
+          "totp"
+        ],
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "totp": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "RecordPromiseRequest": {
+        "required": [
+          "invoiceIds",
+          "promisedAmount",
+          "promisedDate",
+          "source",
+          "notes"
+        ],
+        "type": "object",
+        "properties": {
+          "invoiceIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "promisedAmount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MoneyInput"
+              }
+            ]
+          },
+          "promisedDate": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "source": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "RegisterRequest": {
+        "required": [
+          "email",
+          "password",
+          "fullName",
+          "organizationName",
+          "baseCurrency",
+          "timezone",
+          "locale"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "password": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fullName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "organizationName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "baseCurrency": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "timezone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "locale": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "RejectSuggestionRequest": {
+        "required": [
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResetPasswordRequest": {
+        "required": [
+          "token",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "password": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResolveDisputeRequest": {
+        "required": [
+          "outcome",
+          "resolutionAmount",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "resolutionAmount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MoneyInput"
+              }
+            ]
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResolveRowRequest": {
+        "required": [
+          "action",
+          "customerId"
+        ],
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResolveVerificationRequest": {
+        "required": [
+          "outcome",
+          "paymentId",
+          "notes"
+        ],
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "paymentId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "SnoozeRequest": {
+        "required": [
+          "untilDate",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "untilDate": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "SwitchTenantRequest": {
+        "required": [
+          "tenantId"
+        ],
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TemplatePreviewRequest": {
+        "required": [
+          "caseId",
+          "invoiceIds"
+        ],
+        "type": "object",
+        "properties": {
+          "caseId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "invoiceIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "TemplateRequest": {
+        "required": [
+          "key",
+          "channel",
+          "language",
+          "tone",
+          "subject",
+          "body"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "channel": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "language": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "tone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "subject": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "body": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "TemplateVersionRequest": {
+        "required": [
+          "tone",
+          "subject",
+          "body"
+        ],
+        "type": "object",
+        "properties": {
+          "tone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "subject": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "body": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "TransferOwnershipRequest": {
+        "required": [
+          "targetMembershipId"
+        ],
+        "type": "object",
+        "properties": {
+          "targetMembershipId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateMeRequest": {
+        "required": [
+          "fullName",
+          "preferredLocale"
+        ],
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "preferredLocale": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateOrganizationRequest": {
+        "required": [
+          "name",
+          "legalName",
+          "taxRegistrationNo",
+          "timezone",
+          "defaultLocale"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "legalName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "taxRegistrationNo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "timezone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultLocale": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "WithholdingRequest": {
+        "required": [
+          "baseAmount",
+          "ratePct",
+          "withheldAmount",
+          "paymentId",
+          "certificateReference",
+          "certificateReceived"
+        ],
+        "type": "object",
+        "properties": {
+          "baseAmount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MoneyInput"
+              }
+            ]
+          },
+          "ratePct": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "withheldAmount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MoneyInput"
+              }
+            ]
+          },
+          "paymentId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "certificateReference": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "certificateReceived": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "WriteOffApproveRequest": {
+        "required": [
+          "selfApproved"
+        ],
+        "type": "object",
+        "properties": {
+          "selfApproved": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "WriteOffProposeRequest": {
+        "required": [
+          "reasonCode",
+          "note"
+        ],
+        "type": "object",
+        "properties": {
+          "reasonCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "AuthEndpoints"
+    },
+    {
+      "name": "OrganizationEndpoints"
+    },
+    {
+      "name": "LedgerEndpoints"
+    },
+    {
+      "name": "CaseEndpoints"
+    },
+    {
+      "name": "PromiseEndpoints"
+    },
+    {
+      "name": "DisputeEndpoints"
+    },
+    {
+      "name": "MessagingEndpoints"
+    },
+    {
+      "name": "AiEndpoints"
+    },
+    {
+      "name": "BriefingEndpoints"
+    },
+    {
+      "name": "OpsEndpoints"
+    },
+    {
+      "name": "CustomerEndpoints"
+    },
+    {
+      "name": "ImportEndpoints"
+    },
+    {
+      "name": "ReportEndpoints"
+    }
+  ]
+}

@@ -403,5 +403,54 @@ public sealed class AgingTests(ApiTestFixture fixture, Xunit.Abstractions.ITestO
         var p95 = timings.Order().ElementAt((int)Math.Ceiling(timings.Count * 0.95) - 1);
         output.WriteLine($"aging P95 {p95:F0} ms, min {timings.Min():F0} ms, max {timings.Max():F0} ms over {timings.Count} calls at 50k invoices");
         Assert.True(p95 < 800, $"aging P95 was {p95:F0} ms over {timings.Count} calls (min {timings.Min():F0}, max {timings.Max():F0})");
+
+        // T-141 (slice 16): the plans behind the two hot reads at 50k rows. fn_aging is LANGUAGE sql and inlinable,
+        // so EXPLAIN shows the real plan, not a function scan. The sweep's candidate query, asked for the old tail of
+        // the ledger (a selective cutoff — the seed makes every invoice overdue), must hit the partial index. The aging read touches a tenant's whole ledger: when that tenant is most of the table
+        // (as here, one 50k tenant in a test database) a sequential scan filtered on tenant_id is the planner's
+        // correct choice; when the tenant is a minority the scan must be an index scan keyed on tenant_id.
+        var share = await fixture.Database.ScalarAsync<double>("SELECT (SELECT count(*) FROM invoices WHERE tenant_id = @t)::float / greatest((SELECT count(*) FROM invoices), 1)", ("t", tenant));
+        var agingPlan = await fixture.Database.ScalarAsync<string>(
+            "EXPLAIN (FORMAT JSON) SELECT * FROM fn_aging(@t, date '2026-09-11', 'due_date', 'Asia/Amman')", ("t", tenant));
+        AssertInvoiceScanIsTenantScoped(agingPlan!, "fn_aging", requireIndex: share < 0.2);
+        var sweepPlan = await fixture.Database.ScalarAsync<string>(
+            "EXPLAIN (FORMAT JSON) SELECT DISTINCT customer_id FROM invoices WHERE tenant_id = @t AND status = 'Open' AND balance_cache > 0 AND due_date < date '2025-09-20'", ("t", tenant));
+        AssertInvoiceScanIsTenantScoped(sweepPlan!, "the sweep's overdue candidates", requireIndex: true);
+        output.WriteLine($"T-141: invoice scans are tenant-scoped (tenant share of the table {share:P0}; index required for the sweep, {(share < 0.2 ? "and" : "not")} for aging)");
+    }
+
+    /// <summary>
+    /// T-141: walks an EXPLAIN (FORMAT JSON) tree. Every scan of <c>invoices</c> must be an index scan keyed on the
+    /// tenant, or — only when allowed — a sequential scan whose filter names <c>tenant_id</c>. An unfiltered scan, or
+    /// a sequential scan where an index was required, fails.
+    /// </summary>
+    private static void AssertInvoiceScanIsTenantScoped(string planJson, string what, bool requireIndex)
+    {
+        using var doc = JsonDocument.Parse(planJson);
+        var scans = new List<(string Type, string Detail)>();
+        void Walk(JsonElement node)
+        {
+            if (node.ValueKind == JsonValueKind.Array) { foreach (var n in node.EnumerateArray()) Walk(n); return; }
+            if (node.ValueKind != JsonValueKind.Object) return;
+            if (node.TryGetProperty("Relation Name", out var rel) && rel.GetString() == "invoices" && node.TryGetProperty("Node Type", out var type))
+            {
+                var cond = node.TryGetProperty("Index Cond", out var ic) ? ic.GetString() ?? string.Empty : string.Empty;
+                var filter = node.TryGetProperty("Filter", out var f) ? f.GetString() ?? string.Empty : string.Empty;
+                var index = node.TryGetProperty("Index Name", out var iname) ? iname.GetString() ?? string.Empty : string.Empty;
+                scans.Add((type.GetString()!, $"index={index} cond=[{cond}] filter=[{filter}]"));
+            }
+
+            foreach (var property in node.EnumerateObject()) Walk(property.Value);
+        }
+
+        Walk(doc.RootElement);
+        Assert.True(scans.Count > 0, $"{what}: the plan never reads invoices? {planJson}");
+        foreach (var (type, detail) in scans)
+        {
+            var isIndex = type.Contains("Index", StringComparison.Ordinal) && detail.Contains("tenant_id", StringComparison.Ordinal);
+            var isFilteredSeq = type == "Seq Scan" && detail.Contains("tenant_id", StringComparison.Ordinal);
+            Assert.True(isIndex || (!requireIndex && isFilteredSeq),
+                $"{what}: {type} on invoices is not tenant-scoped the way T-141 requires ({detail}); index required: {requireIndex}. Plan: {planJson}");
+        }
     }
 }

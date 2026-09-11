@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+# Pre-commit secret scan (SEC-67, slice 16). Enable once per clone:  git config core.hooksPath .githooks
+# Uses gitleaks when it is on the PATH (https://github.com/gitleaks/gitleaks, MIT); says so and passes otherwise —
+# CI runs the same scan over the whole history, so nothing slips through, it is only caught later.
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --no-banner --redact --config "$(git rev-parse --show-toplevel)/.gitleaks.toml" || {
+    echo "pre-commit: gitleaks found a secret in the staged changes; remove it (or allowlist a proven non-secret in .gitleaks.toml)." >&2
+    exit 1
+  }
+else
+  echo "pre-commit: gitleaks not installed; the secret scan runs in CI instead." >&2
+fi
