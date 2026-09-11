@@ -60,10 +60,13 @@ For each vertical slice:
 # Current Phase
 Implementation, one vertical slice at a time, against the approved specification in /docs.
 Slices 1 (Organization & Authentication), 2 (Customers), 3a (Invoice Import), 3b (Payments &
-Allocation), 4 (Aging), 5 (Collection Queue), 6 (Promise-to-Pay), 7 (Disputes) and 8 (Email
-Templates & Reminders) are complete — see /docs/slices/. Slice 9 (Local AI: reply classification)
-is next; every AI output enters through the human gates slices 6–8 built (Proposed promises, Open
-disputes, PendingApproval messages) and never through a direct write.
+Allocation), 4 (Aging), 5 (Collection Queue), 6 (Promise-to-Pay), 7 (Disputes), 8 (Email
+Templates & Reminders) and 9 (Local AI: reply classification) are complete — see /docs/slices/.
+Slice 10 (AI drafting, case summaries and the daily briefing) is next; every AI output enters
+through the human gates slices 6–9 built (Proposed promises, Open disputes, PendingApproval
+messages, pending suggestions) and never through a direct write. The AI service lives in
+services/ai (Python, .venv); a prompt or model change re-runs the evaluation harness and commits
+the report under docs/decisions/ before merge (AI-111/112).
 Every later slice copies the tenant-isolation
 pattern established there (§5 of that document). Do not start a slice until the previous one's
 definition of done (doc 09 §9) is met.

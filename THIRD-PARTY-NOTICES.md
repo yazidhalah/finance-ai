@@ -9,7 +9,7 @@ source-available license is a blocking review finding, not a discussion.
 
 Versions are pinned; lockfiles (`package-lock.json`, `packages.lock.json`) are committed.
 
-Last updated: slice 8 — Email templates & reminders (no dependency added: SMTP via System.Net.Mail, WhatsApp is a click-to-chat URL; a test greps the manifests for unofficial WhatsApp libraries).
+Last updated: slice 9 — Local AI: reply classification (the Python AI service and its dependency tree, the Qwen3 model weights and the Ollama runtime; see the flagged `certifi` entry).
 
 ---
 
@@ -84,11 +84,48 @@ Bundled with PostgreSQL (contrib), enabled by the bootstrap script. No separate 
 | `docker.io/pgvector/pgvector` | pg16 | PostgreSQL License (PostgreSQL); PostgreSQL License (pgvector extension) |
 | `docker.io/axllent/mailpit` | latest | MIT — development SMTP/IMAP only; never deployed |
 
-## AI models
+## AI service — Python (`services/ai`)
 
-**None yet.** Slice 1 contains no AI. Qwen3 via Ollama arrives in a later slice; its model licence
-(Apache-2.0 for the Qwen3 open weights) and Ollama's own licence (MIT) must be recorded here in the
-commit that introduces them, together with the pinned model digest that doc 09 §5.3 requires.
+Direct dependencies are pinned in `services/ai/requirements.txt`; the transitive tree below is what
+`pip` resolved on Python 3.14 (slice 9). Nothing here ships to a browser or a customer.
+
+| Package | Version | License | Scope |
+|---------|---------|---------|-------|
+| `fastapi` | 0.141.1 | MIT | HTTP framework for the internal AI endpoints |
+| `starlette` | 1.6.0 | BSD-3-Clause | via fastapi |
+| `uvicorn` | 0.52.4 | BSD-3-Clause | ASGI server, bound to 127.0.0.1 |
+| `httpx` | 0.28.1 | BSD-3-Clause | The only outbound call: Ollama on the local network |
+| `httpcore` | 1.0.9 | BSD-3-Clause | via httpx |
+| `h11` | 0.16.0 | MIT | via httpcore |
+| `anyio` | 4.15.1 | MIT | via starlette / httpx |
+| `sniffio` | — | MIT / Apache-2.0 | via anyio (not installed separately on 3.14; listed for completeness) |
+| `idna` | 3.19 | BSD-3-Clause | via httpx |
+| `certifi` | 2026.7.22 | **MPL-2.0** — see note | via httpx: Mozilla's CA bundle for TLS. **Flagged:** MPL-2.0 is file-scoped weak copyleft, not on the permissive list. Used unmodified, never linked into our code, and the service makes no TLS connection (Ollama is plain HTTP on localhost). Left for the review to accept or to replace httpx. |
+| `jsonschema` | 4.26.0 | MIT | Validates every request and response against `schemas/` (AI-04) |
+| `jsonschema-specifications` | 2025.9.1 | MIT | via jsonschema |
+| `referencing` | 0.37.0 | MIT | via jsonschema |
+| `rpds-py` | 2026.6.3 | MIT | via jsonschema |
+| `attrs` | 26.1.0 | MIT | via jsonschema |
+| `pydantic` | 2.13.5 | MIT | Pulled by fastapi; the service's own validation is `jsonschema` |
+| `pydantic_core` | 2.46.5 | MIT | via pydantic |
+| `annotated-types` | 0.8.0 | MIT | via pydantic |
+| `typing_extensions` | 4.16.0 | PSF-2.0 | via pydantic |
+| `typing-inspection` | 0.4.4 | MIT | via pydantic |
+| `click` | 8.5.0 | BSD-3-Clause | via uvicorn |
+| `pytest` | 9.1.1 | MIT | Tests only |
+| `pluggy` | 1.6.0 | MIT | via pytest |
+| `iniconfig` | 2.3.0 | MIT | via pytest |
+| `packaging` | 26.3 | Apache-2.0 OR BSD-2-Clause | via pytest |
+| `Pygments` | 2.21.0 | BSD-2-Clause | via pytest |
+
+## AI models and runtime
+
+| Component | Version / digest | License | Notes |
+|-----------|------------------|---------|-------|
+| Qwen3 4B (open weights, GGUF Q4_K_M as packaged by Ollama) | `qwen3:4b`, digest `359d7dd4bcda…` | Apache-2.0 | The only model in the product. Pinned by digest in every `ai_suggestions` row (AI-06, AI-112). Re-evaluated on every prompt or model change (doc 09 §5). |
+| Ollama | 0.34.0 | MIT | Local inference runtime on 127.0.0.1:11434; never published on the host network. |
+
+No hosted model, no paid inference API, no telemetry to a model vendor.
 
 ## Not used, deliberately
 

@@ -1,0 +1,7 @@
+# services/ai — pinned to the versions installed in .venv (Python 3.14). Licenses in THIRD-PARTY-NOTICES.md.
+fastapi==0.141.1
+uvicorn==0.52.4
+httpx==0.28.1
+jsonschema==4.26.0
+pydantic==2.13.5
+pytest==9.1.1

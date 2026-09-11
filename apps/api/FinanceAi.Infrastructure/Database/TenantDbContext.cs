@@ -79,6 +79,10 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
 
     public DbSet<OutboundMessage> Messages => this.Set<OutboundMessage>();
 
+    public DbSet<InboundMessage> InboundMessages => this.Set<InboundMessage>();
+
+    public DbSet<AiSuggestion> AiSuggestions => this.Set<AiSuggestion>();
+
     public override int SaveChanges()
     {
         this.StampTenant();
@@ -108,6 +112,7 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
         ConfigurePromises(model);
         ConfigureDisputes(model);
         ConfigureMessaging(model);
+        ConfigureAi(model);
 
         this.ApplyTenantQueryFilters(model);
 
@@ -841,6 +846,76 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
             e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
+        });
+    }
+
+    private static void ConfigureAi(ModelBuilder model)
+    {
+        model.Entity<InboundMessage>(e =>
+        {
+            e.ToTable("inbound_messages");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.CustomerId).HasColumnName("customer_id");
+            e.Property(x => x.CaseId).HasColumnName("case_id");
+            e.Property(x => x.Channel).HasColumnName("channel");
+            e.Property(x => x.FromAddress).HasColumnName("from_address");
+            e.Property(x => x.Subject).HasColumnName("subject");
+            e.Property(x => x.BodyRaw).HasColumnName("body_raw");
+            e.Property(x => x.BodyNormalized).HasColumnName("body_normalized");
+            e.Property(x => x.DetectedLanguage).HasColumnName("detected_language");
+            e.Property(x => x.ReceivedAt).HasColumnName("received_at");
+            e.Property(x => x.InReplyToMessageId).HasColumnName("in_reply_to_message_id");
+            e.Property(x => x.MatchConfidence).HasColumnName("match_confidence");
+            e.Property(x => x.MatchMethod).HasColumnName("match_method");
+            e.Property(x => x.MatchedBy).HasColumnName("matched_by");
+            e.Property(x => x.ClassificationStatus).HasColumnName("classification_status").HasConversion<string>();
+            e.Property(x => x.Classification).HasColumnName("classification");
+            e.Property(x => x.HumanClassification).HasColumnName("human_classification");
+            e.Property(x => x.HumanClassifiedBy).HasColumnName("human_classified_by");
+            e.Property(x => x.HumanClassifiedAt).HasColumnName("human_classified_at");
+            e.Property(x => x.LastSuggestionId).HasColumnName("last_suggestion_id");
+            e.Property(x => x.HasAttachments).HasColumnName("has_attachments");
+            e.Property(x => x.TruncatedForAi).HasColumnName("truncated_for_ai");
+            e.Property(x => x.CreatedBy).HasColumnName("created_by");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
+        });
+
+        model.Entity<AiSuggestion>(e =>
+        {
+            e.ToTable("ai_suggestions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.Operation).HasColumnName("operation");
+            e.Property(x => x.SubjectType).HasColumnName("subject_type");
+            e.Property(x => x.SubjectId).HasColumnName("subject_id");
+            e.Property(x => x.ModelName).HasColumnName("model_name");
+            e.Property(x => x.ModelDigest).HasColumnName("model_digest");
+            e.Property(x => x.PromptVersion).HasColumnName("prompt_version");
+            e.Property(x => x.SchemaVersion).HasColumnName("schema_version");
+            e.Property(x => x.InputRef).HasColumnName("input_ref").HasColumnType("jsonb");
+            e.Property(x => x.InputHash).HasColumnName("input_hash");
+            e.Property(x => x.OutputJson).HasColumnName("output_json").HasColumnType("jsonb");
+            e.Property(x => x.Confidence).HasColumnName("confidence");
+            e.Property(x => x.Classification).HasColumnName("classification");
+            e.Property(x => x.ReasonCode).HasColumnName("reason_code");
+            e.Property(x => x.ValidationStatus).HasColumnName("validation_status");
+            e.Property(x => x.RequiresHumanReview).HasColumnName("requires_human_review");
+            e.Property(x => x.Suspicious).HasColumnName("suspicious");
+            e.Property(x => x.LatencyMs).HasColumnName("latency_ms");
+            e.Property(x => x.OutcomeType).HasColumnName("outcome_type");
+            e.Property(x => x.OutcomeId).HasColumnName("outcome_id");
+            e.Property(x => x.GuardReason).HasColumnName("guard_reason");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.HumanDecision).HasColumnName("human_decision");
+            e.Property(x => x.DecidedBy).HasColumnName("decided_by");
+            e.Property(x => x.DecidedAt).HasColumnName("decided_at");
+            e.Property(x => x.DecisionReason).HasColumnName("decision_reason");
+            e.Property(x => x.HumanCorrection).HasColumnName("human_correction").HasColumnType("jsonb");
         });
     }
 }

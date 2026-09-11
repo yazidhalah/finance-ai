@@ -1,0 +1,72 @@
+{"id": "c-001", "language": "ar", "text": "السلام عليكم، تم تحويل المبلغ كامل يوم امبارح، رقم الحوالة TRX-88213", "label": "payment_claimed", "expect": {"payment_reference_text": "TRX-88213"}}
+{"id": "c-002", "language": "ar", "text": "حولنا لكم 1500 دينار على حسابكم الأسبوع الماضي، الرجاء التأكد", "label": "payment_claimed", "expect": {"mentioned_amount_numeric": "1500.000"}}
+{"id": "c-003", "language": "ar", "text": "الشيك عندكم من اسبوع، المحاسب سلمه لمندوبكم", "label": "payment_claimed", "expect": {"payment_method_mentioned": "cheque"}}
+{"id": "c-004", "language": "en", "text": "Payment for INV-1001 was released on 2 September via bank transfer, reference 20260902-771.", "label": "payment_claimed", "expect": {"payment_method_mentioned": "bank_transfer"}}
+{"id": "c-005", "language": "en", "text": "We already paid this one, please check your records.", "label": "payment_claimed"}
+{"id": "c-006", "language": "ar_latin", "text": "d7afna el mablagh embare7 3al 7esab, check ma3kom", "label": "payment_claimed"}
+{"id": "c-007", "language": "ar", "text": "دفعنا كاش للمندوب يوم الاثنين", "label": "payment_claimed", "expect": {"payment_method_mentioned": "cash"}}
+{"id": "c-008", "language": "ar", "text": "رح نحول مبلغ ١٥٠٠ دينار يوم الخميس الجاي ان شاء الله بخصوص فاتورة INV-1001", "label": "promise_to_pay", "expect": {"date_is_relative": true, "mentioned_amount_numeric": "1500.000"}}
+{"id": "c-009", "language": "ar", "text": "سيتم تسديد الفاتورة بتاريخ 2026-09-25", "label": "promise_to_pay", "expect": {"mentioned_date_iso": "2026-09-25", "date_is_relative": false}}
+{"id": "c-010", "language": "ar", "text": "بنحول بكرا الصبح اول شي", "label": "promise_to_pay", "expect": {"date_is_relative": true}}
+{"id": "c-011", "language": "ar", "text": "بعد العيد بنسدد كل المبلغ", "label": "promise_to_pay", "expect": {"date_is_relative": true}}
+{"id": "c-012", "language": "en", "text": "We will transfer 1500 JOD on 18 September for INV-1001.", "label": "promise_to_pay", "expect": {"mentioned_date_iso": "2026-09-18", "mentioned_amount_numeric": "1500.000"}}
+{"id": "c-013", "language": "en", "text": "Our payment run is next Tuesday; your invoice is on it.", "label": "promise_to_pay", "expect": {"date_is_relative": true}}
+{"id": "c-014", "language": "ar_latin", "text": "raho ndfa3 el mablagh bokra bel bank", "label": "promise_to_pay", "expect": {"date_is_relative": true}}
+{"id": "c-015", "language": "mixed", "text": "Noted, رح نحول by end of month 2026-09-30", "label": "promise_to_pay", "expect": {"mentioned_date_iso": "2026-09-30"}}
+{"id": "c-016", "language": "ar", "text": "ممكن ندفع 500 دينار هلأ والباقي الشهر الجاي؟", "label": "partial_payment_offer", "expect": {"mentioned_amount_numeric": "500.000"}}
+{"id": "c-017", "language": "en", "text": "We can settle half of INV-1001 now and the rest in October.", "label": "partial_payment_offer"}
+{"id": "c-018", "language": "ar", "text": "ممكن نقسط المبلغ على 3 دفعات؟", "label": "payment_plan_request"}
+{"id": "c-019", "language": "en", "text": "Could you put us on a monthly installment plan for the outstanding balance?", "label": "payment_plan_request"}
+{"id": "c-020", "language": "ar_latin", "text": "momken n2aset el mablagh 3ala 3 daf3at?", "label": "payment_plan_request"}
+{"id": "c-021", "language": "ar", "text": "الفاتورة غلط، احنا استلمنا 40 كرتونة مش 50", "label": "dispute_raised"}
+{"id": "c-022", "language": "ar", "text": "المبلغ المذكور في الفاتورة INV-1001 غير صحيح، السعر المتفق عليه كان أقل", "label": "dispute_raised", "expect": {"referenced_invoice_numbers": ["INV-1001"]}}
+{"id": "c-023", "language": "en", "text": "We're not paying INV-1001 as is — the goods arrived damaged and we raised this with your driver.", "label": "dispute_raised"}
+{"id": "c-024", "language": "en", "text": "This invoice includes a delivery fee we never agreed to. Please issue a corrected invoice.", "label": "dispute_raised"}
+{"id": "c-025", "language": "ar", "text": "البضاعة وصلت ناقصة وفيها كسر، مش رح ندفع قبل ما تنحل المشكلة", "label": "dispute_raised"}
+{"id": "c-026", "language": "ar_latin", "text": "el fatoora ghalat, el se3er msh heik", "label": "dispute_raised"}
+{"id": "c-027", "language": "ar", "text": "ما وصلتنا الفاتورة، ابعتوها على الايميل", "label": "invoice_not_received"}
+{"id": "c-028", "language": "en", "text": "We never received this invoice. Can you resend it with the statement of account?", "label": "invoice_not_received"}
+{"id": "c-029", "language": "ar", "text": "الرجاء تزويدنا بكشف حساب مفصل لآخر 3 شهور", "label": "information_request"}
+{"id": "c-030", "language": "en", "text": "Please send the PO number and delivery note for INV-1001 so we can process it.", "label": "information_request"}
+{"id": "c-031", "language": "en", "text": "Can someone call me back tomorrow to discuss the account?", "label": "information_request"}
+{"id": "c-032", "language": "ar", "text": "انا مش الشخص المسؤول، الحسابات مع الأستاذ محمود", "label": "wrong_recipient"}
+{"id": "c-033", "language": "en", "text": "You have the wrong company; we have never done business with you.", "label": "wrong_recipient"}
+{"id": "c-034", "language": "en", "text": "I am out of the office until 20 September with limited access to email.", "label": "out_of_office", "expect": {"mentioned_date_iso": "2026-09-20"}}
+{"id": "c-035", "language": "ar", "text": "أنا خارج المكتب حتى تاريخ 2026-09-22 وسأرد على رسالتكم عند عودتي", "label": "out_of_office", "expect": {"mentioned_date_iso": "2026-09-22"}}
+{"id": "c-036", "language": "ar", "text": "شكرا، وصلتنا الرسالة", "label": "acknowledgement"}
+{"id": "c-037", "language": "en", "text": "Received, thanks. Will get back to you.", "label": "acknowledgement"}
+{"id": "c-038", "language": "ar_latin", "text": "tamam, wsolat el resale", "label": "acknowledgement"}
+{"id": "c-039", "language": "en", "text": "Please stop emailing, we will not pay for this.", "label": "refusal_to_pay"}
+{"id": "c-040", "language": "ar", "text": "مش رح ندفع ولا قرش، وخلصونا من الرسائل", "label": "refusal_to_pay"}
+{"id": "c-041", "language": "ar", "text": "الوضع صعب هالفترة والسيولة معدومة، أعطونا شوي وقت", "label": "hardship_or_delay_notice"}
+{"id": "c-042", "language": "en", "text": "Cash flow is very tight this quarter; we need some more time on this balance.", "label": "hardship_or_delay_notice"}
+{"id": "c-043", "language": "en", "text": "This is the third reminder in a week. If this continues I will take it up with your management.", "label": "complaint_or_escalation"}
+{"id": "c-044", "language": "ar", "text": "هاي رابع رسالة بنفس الاسبوع! رح اشتكي عليكم للادارة", "label": "complaint_or_escalation"}
+{"id": "c-045", "language": "en", "text": "Happy Eid to you and your team!", "label": "unrelated"}
+{"id": "c-046", "language": "ar", "text": "كل عام وانتم بخير", "label": "unrelated"}
+{"id": "c-047", "language": "en", "text": "Please find attached our new product catalogue for 2027.", "label": "unrelated"}
+{"id": "c-048", "language": "ar", "text": "ok", "label": "unclassified"}
+{"id": "c-049", "language": "en", "text": "?", "label": "unclassified"}
+{"id": "c-050", "language": "ar", "text": "حولنا 1000 دينار امبارح والباقي 500 بنحوله الاسبوع الجاي", "label": "payment_claimed", "secondary": "promise_to_pay"}
+{"id": "c-051", "language": "en", "text": "INV-1001 is wrong (we got 40 cartons not 50) but INV-1002 will be paid on 2026-09-20.", "label": "dispute_raised", "secondary": "promise_to_pay"}
+{"id": "c-052", "language": "ar", "text": "الفاتورة INV-1002 صح وبنسددها الخميس، بس INV-1001 فيها خطأ بالكمية", "label": "dispute_raised", "secondary": "promise_to_pay"}
+{"id": "c-053", "language": "en", "text": "We paid INV-1001 last week. INV-1002 we still dispute the freight charge.", "label": "payment_claimed", "secondary": "dispute_raised"}
+{"id": "c-054", "language": "ar", "text": "المبلغ رح ينحول اليوم بعد الظهر، 1500 دينار", "label": "promise_to_pay", "expect": {"mentioned_amount_numeric": "1500.000"}}
+{"id": "c-055", "language": "ar", "text": "يعطيكم العافية، بس ليش الفاتورة فيها ضريبة 16%؟ احنا معفيين", "label": "dispute_raised"}
+{"id": "c-056", "language": "en", "text": "Our finance team processes supplier invoices on the 25th of every month.", "label": "promise_to_pay", "expect": {"date_is_relative": true}}
+{"id": "c-057", "language": "ar", "text": "ابعتولي رقم الآيبان تبعكم عشان احول", "label": "information_request"}
+{"id": "c-058", "language": "en", "text": "Kindly share your IBAN and we will process the transfer this week.", "label": "promise_to_pay", "expect": {"date_is_relative": true}}
+{"id": "c-059", "language": "ar", "text": "تم الدفع عن طريق كليك، رقم العملية 5541", "label": "payment_claimed", "expect": {"payment_method_mentioned": "cliq"}}
+{"id": "c-060", "language": "ar", "text": "الشركة اغلقت من شهرين، ما في حدا يدفع", "label": "refusal_to_pay"}
+{"id": "c-061", "language": "en", "text": "Auto-reply: Thank you for your email. Our office is closed for the public holiday and will reopen on 15 September.", "label": "out_of_office"}
+{"id": "c-062", "language": "ar", "text": "لو سمحتوا مين المسؤول عن الحسابات عندكم؟ بدي اتواصل معه بخصوص الرصيد", "label": "information_request"}
+{"id": "c-063", "language": "mixed", "text": "Thanks, we will pay بعد العيد", "label": "promise_to_pay", "expect": {"date_is_relative": true}}
+{"id": "c-064", "language": "ar", "text": "ما بعرف عن أي فاتورة بتحكوا، انا موظف بالاستقبال", "label": "wrong_recipient"}
+{"id": "c-065", "language": "en", "text": "As discussed with Sami, we're waiting for the credit note for the returned items before paying the balance.", "label": "dispute_raised"}
+{"id": "c-066", "language": "ar", "text": "ماشي", "label": "acknowledgement"}
+{"id": "c-067", "language": "en", "text": "Unsubscribe", "label": "unrelated"}
+{"id": "c-068", "language": "ar", "text": "تمام رح نتابع الموضوع مع المحاسب ونرد عليكم", "label": "acknowledgement"}
+{"id": "c-069", "language": "ar_latin", "text": "el mablagh kbeer 3alena hal fatra, momken shway wa2t?", "label": "hardship_or_delay_notice"}
+{"id": "c-070", "language": "en", "text": "Bonjour, nous avons bien reçu votre message.", "label": "acknowledgement"}
+{"id": "c-071", "language": "ar", "text": "حسب اتفاقنا الدفع 60 يوم من تاريخ الفاتورة، يعني لسا ما استحقت", "label": "dispute_raised"}
+{"id": "c-072", "language": "en", "text": "We have paid INV-1001 in full; ignore the earlier reminder about it and please stop chasing.", "label": "payment_claimed"}

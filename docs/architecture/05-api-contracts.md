@@ -394,6 +394,29 @@ provenance (SM-04, ADR-0003).
 **API-21** `503 ai_unavailable` MUST NOT be returned by any endpoint outside this
 slice's AI-specific routes and the briefing narrative.
 
+> **Amended in slice 9 (API-20a).** As built:
+> - `GET /inbound-messages/{id}` added (`cases.read`). `POST /inbound-messages` is user-facing only for
+>   now (channels `email`, `whatsapp_pasted`, `manual`); the IMAP poller is deferred. A `fromAddress`
+>   equal to a contact email matches the customer; `customerId` binds explicitly; `inReplyToMessageId`
+>   binds through the outbound message's customer.
+> - `classify` is on demand (there is no poller yet) and refuses with `409 ai_disabled` when the tenant
+>   switch is off, `422 customer_required` before a match, `409 already_classified` after one. On
+>   `503 ai_unavailable` the request's transaction rolls back: the message is exactly as it was.
+> - `GET /ai/suggestions/{id}` returns the validated output fields (classification, reason, extracted,
+>   secondary, rationale) and the provenance; the prompt projection itself is not stored (AI-32 deferred)
+>   so it is not returned. Filters: `decision`, `classification`, `review`, `subjectId`.
+> - `approve` on a `promise_proposed` outcome confirms the promise (`Proposed → Active`, `confirmedBy`
+>   = the caller). `approve` on a promise or dispute suggestion whose values failed AI-41/AI-51 or
+>   whose invoice was ambiguous answers `422 values_required`; `edit-and-approve` takes `classification`,
+>   `invoiceId`, `invoiceIds`, `amount`, `promisedDate`, `disputeReasonCode`, `note`. `reject` takes a
+>   free-text `reason` (no reason-code catalogue yet), withdraws a Proposed promise (`Rejected`) or
+>   cancels an Open dispute, and returns the message to `Unclassified`.
+> - `GET /ai/health` returns configured / reachable / ready / model / digest / prompt version /
+>   `aiEnabled`; the P95 and the below-threshold rate are not computed yet.
+> - `GET /organization/ai-settings` is `tenant.read`; `PATCH` is `ai.settings.write` and takes
+>   `aiEnabled` and `aiMinConfidence` (0.500–1.000, three decimals). There is no per-operation
+>   enablement yet (one operation exists) and, as specified, nothing that resembles autosend.
+
 ---
 
 ## Slice 10 — Daily briefing
