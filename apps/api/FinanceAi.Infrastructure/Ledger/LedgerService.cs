@@ -359,7 +359,13 @@ public sealed class LedgerService(TenantDbContext db, IAuditWriter audit, TimePr
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync(Event("cheque.recorded", "cheque", cheque.Id, actorUserId, note: Money(cheque.Amount, cheque.Currency)), ct);
 
-        // Slice 6: a post-dated cheque SHOULD also create an Active PTP for its date (A-05, E2).
+        // A-05 / E2: a post-dated cheque is a promise; the case layer decides whether there is one to make.
+        cheque.PtpId = await cases.ChequeReceivedAsync(cheque, actorUserId, ct);
+        if (cheque.PtpId is not null)
+        {
+            await db.SaveChangesAsync(ct);
+        }
+
         return cheque;
     }
 
@@ -432,6 +438,11 @@ public sealed class LedgerService(TenantDbContext db, IAuditWriter audit, TimePr
         cheque.RowVersion++;
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync(Transition("cheque", cheque.Id, from.ToString(), next.ToString(), @event, actorUserId, reason), ct);
+
+        if (next == ChequeStatus.Bounced)
+        {
+            await cases.ChequeBouncedAsync(cheque, actorUserId, ct);   // E2: the promise breaks at once, the case reopens
+        }
 
         return new ChequeTransitionResult(cheque, payment, allocation);
     }
@@ -707,6 +718,10 @@ public sealed class LedgerService(TenantDbContext db, IAuditWriter audit, TimePr
 
         await LockAsync("invoices", writeOff.InvoiceId, ct);
         var invoice = await db.Invoices.FirstAsync(i => i.Id == writeOff.InvoiceId, ct);
+        if (await cases.HasActivePromiseAsync(invoice.Id, ct))
+        {
+            throw new LedgerException("ptp_active");   // SM-54: a write-off needs quiet
+        }
 
         // Slices 6 and 7 add SM-54 here: blocked while a dispute is open or a PTP is Active.
         if (invoice.Status != InvoiceStatus.Open)

@@ -836,3 +836,61 @@ export const casesApi = {
     request<TimelineEntry>(`/cases/${id}/activities`, { method: 'POST', body }),
   snooze: (id: string, untilDate: string, reason?: string) => request<QueueItem>(`/cases/${id}/snooze`, { method: 'POST', body: { untilDate, reason } }),
 }
+
+// ---------------------------------------------------------------------------------------
+// Slice 6 — Promise-to-Pay (doc 05 slice 6). A promise is a commitment; the verdict is the server's.
+// ---------------------------------------------------------------------------------------
+
+export type PtpStatus = 'Proposed' | 'Active' | 'Kept' | 'PartiallyKept' | 'Broken' | 'Cancelled' | 'Rejected'
+
+export interface PromiseToPay {
+  id: string
+  caseId: string
+  caseNumber: number
+  customerId: string
+  status: PtpStatus
+  promisedAmount: Money
+  promisedDate: string
+  deadlineDate: string
+  source: string
+  capturedBy: string | null
+  confirmedBy: string | null
+  chequeId: string | null
+  supersededById: string | null
+  cancelReason: string | null
+  evaluatedAt: string | null
+  receivedInWindow: Money | null
+  evaluationNote: string | null
+  notes: string | null
+  createdAt: string
+  rowVersion: number
+  invoices: { invoiceId: string; invoiceNumber: string; openBalance: Money; status: string }[]
+  superseded: string[]
+}
+
+export interface Reliability {
+  kept: number
+  partiallyKept: number
+  broken: number
+  denominator: number
+  ratio: string | null
+}
+
+export const promiseSources = ['call', 'email', 'whatsapp', 'in_person'] as const
+
+export const promisesApi = {
+  list: (q: { status?: string; dueBefore?: string; customerId?: string; caseId?: string } = {}) => {
+    const params = new URLSearchParams()
+    for (const [k, v] of Object.entries(q)) if (v) params.set(k, v)
+    const text = params.toString()
+    return request<{ items: PromiseToPay[]; totalCount: number; today: string }>(`/promises${text ? `?${text}` : ''}`)
+  },
+  get: (id: string) => request<PromiseToPay>(`/promises/${id}`),
+  record: (caseId: string, body: { invoiceIds: string[]; promisedAmount: { amount: string; currency: string }; promisedDate: string; source: string; notes?: string }) =>
+    request<PromiseToPay>(`/cases/${caseId}/promises`, { method: 'POST', body }),
+  confirm: (id: string, body: { promisedAmount?: { amount: string; currency: string }; promisedDate?: string } = {}) =>
+    request<PromiseToPay>(`/promises/${id}/confirm`, { method: 'POST', body }),
+  reject: (id: string, reason: string) => request<PromiseToPay>(`/promises/${id}/reject`, { method: 'POST', body: { reason } }),
+  cancel: (id: string, reason: string) => request<PromiseToPay>(`/promises/${id}/cancel`, { method: 'POST', body: { reason } }),
+  history: (customerId: string) => request<{ customerId: string; reliability: Reliability; promises: PromiseToPay[] }>(`/customers/${customerId}/promise-history`),
+}

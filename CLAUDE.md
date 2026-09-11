@@ -60,8 +60,8 @@ For each vertical slice:
 # Current Phase
 Implementation, one vertical slice at a time, against the approved specification in /docs.
 Slices 1 (Organization & Authentication), 2 (Customers), 3a (Invoice Import), 3b (Payments &
-Allocation), 4 (Aging) and 5 (Collection Queue) are complete — see /docs/slices/. Slice 6
-(Promise-to-Pay) is next.
+Allocation), 4 (Aging), 5 (Collection Queue) and 6 (Promise-to-Pay) are complete — see
+/docs/slices/. Slice 7 (Disputes) is next.
 Every later slice copies the tenant-isolation
 pattern established there (§5 of that document). Do not start a slice until the previous one's
 definition of done (doc 09 §9) is met.

@@ -24,6 +24,7 @@ public sealed class CaseMachineTests
         (CaseStatus.PromiseActive, CaseEvent.PtpBroken, CaseStatus.InProgress),
         (CaseStatus.PromiseActive, CaseEvent.PtpCancelled, CaseStatus.InProgress),
         (CaseStatus.PromiseActive, CaseEvent.PtpKeptAndBalanceZero, CaseStatus.Resolved),
+        (CaseStatus.PromiseActive, CaseEvent.PtpKept, CaseStatus.InProgress),   // slice 6 D-1 (F-1)
         (CaseStatus.Open, CaseEvent.DisputeOpened, CaseStatus.Disputed),
         (CaseStatus.InProgress, CaseEvent.DisputeOpened, CaseStatus.Disputed),
         (CaseStatus.AwaitingCustomer, CaseEvent.DisputeOpened, CaseStatus.Disputed),
@@ -90,7 +91,7 @@ public sealed class CaseMachineTests
     public void Matrix_CoversTheEnums_AndTheTableHasNoExtraRows()
     {
         Assert.Equal(9, Enum.GetValues<CaseStatus>().Length);
-        Assert.Equal(17, Enum.GetValues<CaseEvent>().Length);
+        Assert.Equal(18, Enum.GetValues<CaseEvent>().Length);
         Assert.Equal(Legal.Length, CaseMachine.Transitions.Count);
         // C1 is creation, not a transition; terminal states have no outgoing rows (SM-05).
         Assert.DoesNotContain(CaseMachine.Transitions.Keys, k => k.Event == CaseEvent.InvoiceBecameOverdue);

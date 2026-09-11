@@ -534,3 +534,26 @@ public sealed record CaseActivityRequest(string? Kind, string? Summary, System.T
 public sealed record SnoozeRequest(string? UntilDate, string? Reason);
 
 public sealed record SweepResponse(int Created, int Resolved, int Resumed, int FollowedUp, int Rescored);
+
+// ---------------------------------------------------------------------------------------
+// Slice 6 — Promise-to-Pay (doc 05 slice 6). A promise is never money; amounts are MoneyDto strings.
+// ---------------------------------------------------------------------------------------
+
+public sealed record RecordPromiseRequest(IReadOnlyList<Guid>? InvoiceIds, MoneyInput? PromisedAmount, string? PromisedDate, string? Source, string? Notes);
+
+public sealed record ConfirmPromiseRequest(MoneyInput? PromisedAmount, string? PromisedDate);
+
+public sealed record PromiseInvoiceDto(Guid InvoiceId, string InvoiceNumber, MoneyDto OpenBalance, string Status);
+
+public sealed record PromiseResponse(
+    Guid Id, Guid CaseId, long CaseNumber, Guid CustomerId, string Status, MoneyDto PromisedAmount, string PromisedDate, string DeadlineDate,
+    string Source, Guid? CapturedBy, Guid? ConfirmedBy, Guid? ChequeId, Guid? SupersededById, string? CancelReason,
+    string? EvaluatedAt, MoneyDto? ReceivedInWindow, string? EvaluationNote, string? Notes, string CreatedAt, long RowVersion,
+    IReadOnlyList<PromiseInvoiceDto> Invoices, IReadOnlyList<Guid> Superseded);
+
+public sealed record PromiseListResponse(IReadOnlyList<PromiseResponse> Items, int TotalCount, string Today);
+
+/// <summary>SM-37: always the counts; the ratio only when the sample is large enough.</summary>
+public sealed record ReliabilityDto(int Kept, int PartiallyKept, int Broken, int Denominator, string? Ratio);
+
+public sealed record PromiseHistoryResponse(Guid CustomerId, ReliabilityDto Reliability, IReadOnlyList<PromiseResponse> Promises);

@@ -216,7 +216,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     {
         var endpoints = this.Endpoints();
 
-        Assert.Equal(76, endpoints.Count);
+        Assert.Equal(83, endpoints.Count);
         Assert.All(endpoints, e => Assert.True(e.Permission is not null || e.Access is not null));
 
         // The anonymous set is exactly registration, login and refresh — nothing has drifted into it.
@@ -255,7 +255,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     private static string Normalize(string? template) =>
         (template ?? string.Empty).Trim('/');
 
-    private sealed record ForeignIds(Guid MembershipId, Guid CustomerId, Guid ContactId, Guid BatchId, Guid RowId, Guid MappingId, Guid InvoiceId, Guid PaymentId, Guid AllocationId, Guid ChequeId, Guid CreditNoteId, Guid WriteOffId, Guid CaseId);
+    private sealed record ForeignIds(Guid MembershipId, Guid CustomerId, Guid ContactId, Guid BatchId, Guid RowId, Guid MappingId, Guid InvoiceId, Guid PaymentId, Guid AllocationId, Guid ChequeId, Guid CreditNoteId, Guid WriteOffId, Guid CaseId, Guid PromiseId);
 
     /// <summary>One real row of every {id}-addressed entity, inside organization B.</summary>
     private async Task<ForeignIds> CreateEntitiesInAsync(ApiScenario.Organization organization)
@@ -322,17 +322,22 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
         // Slice 5: an overdue invoice so a case can be opened for the customer.
         await fixture.Database.OpenInvoiceAsync(organization.TenantId, customerId, "SW-OVERDUE", 5m, dueDate: "2026-08-01", issueDate: "2026-07-01");
         var collectionCase = Post("/api/v1/cases", new { customerId });
+        // Slice 6: a promise on the overdue invoice.
+        var overdueInvoice = collectionCase.GetProperty("caseId").GetGuid();
+        var overdueId = await fixture.Database.ScalarAsync<Guid>("SELECT invoice_id FROM case_invoices WHERE case_id = @c", ("c", overdueInvoice));
+        var promise = Post($"/api/v1/cases/{overdueInvoice}/promises", new { invoiceIds = new[] { overdueId }, promisedAmount = new { amount = "1.000", currency = "JOD" }, promisedDate = "2030-01-01", source = "call" });
 
         Assert.NotEqual(Guid.Empty, membershipId);
         return new ForeignIds(membershipId, customerId, contact.GetProperty("id").GetGuid(), batchId, rowId, mappingId, invoiceId,
             payment.GetProperty("id").GetGuid(), payment.GetProperty("allocations")[0].GetProperty("id").GetGuid(),
-            cheque.GetProperty("id").GetGuid(), note.GetProperty("id").GetGuid(), writeOff.GetProperty("id").GetGuid(), collectionCase.GetProperty("caseId").GetGuid());
+            cheque.GetProperty("id").GetGuid(), note.GetProperty("id").GetGuid(), writeOff.GetProperty("id").GetGuid(), collectionCase.GetProperty("caseId").GetGuid(), promise.GetProperty("id").GetGuid());
     }
 
     /// <summary>Which of B's real ids a route is addressed with. A new entity with an {id} route registers here.</summary>
     private static Guid IdFor(EndpointUnderTest endpoint, ForeignIds ids) => endpoint.Template switch
     {
         var t when t.Contains("import-mappings", StringComparison.Ordinal) => ids.MappingId,
+        var t when t.Contains("promises/{id", StringComparison.Ordinal) => ids.PromiseId,
         var t when t.Contains("cases", StringComparison.Ordinal) => ids.CaseId,
         var t when t.Contains("payments", StringComparison.Ordinal) => ids.PaymentId,
         var t when t.Contains("allocations/{id", StringComparison.Ordinal) => ids.AllocationId,

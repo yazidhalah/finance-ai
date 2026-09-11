@@ -63,6 +63,12 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
 
     public DbSet<CaseActivity> CaseActivities => this.Set<CaseActivity>();
 
+    public DbSet<PromiseToPay> Promises => this.Set<PromiseToPay>();
+
+    public DbSet<PtpInvoice> PtpInvoices => this.Set<PtpInvoice>();
+
+    public DbSet<TenantHoliday> Holidays => this.Set<TenantHoliday>();
+
     public override int SaveChanges()
     {
         this.StampTenant();
@@ -89,6 +95,7 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
         ConfigureImport(model);
         ConfigureLedger(model);
         ConfigureCases(model);
+        ConfigurePromises(model);
 
         this.ApplyTenantQueryFilters(model);
 
@@ -623,6 +630,58 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.AiSuggestionId).HasColumnName("ai_suggestion_id");
             e.Property(x => x.Summary).HasColumnName("summary");
             e.Property(x => x.Detail).HasColumnName("detail").HasColumnType("jsonb");
+        });
+    }
+
+    private static void ConfigurePromises(ModelBuilder model)
+    {
+        model.Entity<PromiseToPay>(e =>
+        {
+            e.ToTable("promises_to_pay");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.CaseId).HasColumnName("case_id");
+            e.Property(x => x.CustomerId).HasColumnName("customer_id");
+            e.Property(x => x.Status).HasColumnName("status").HasConversion<string>();
+            e.Property(x => x.PromisedAmount).HasColumnName("promised_amount").HasColumnType("numeric(19,3)");
+            e.Property(x => x.Currency).HasColumnName("currency").HasColumnType("char(3)");
+            e.Property(x => x.PromisedDate).HasColumnName("promised_date");
+            e.Property(x => x.DeadlineDate).HasColumnName("deadline_date");
+            e.Property(x => x.Source).HasColumnName("source");
+            e.Property(x => x.CapturedBy).HasColumnName("captured_by");
+            e.Property(x => x.ConfirmedBy).HasColumnName("confirmed_by");
+            e.Property(x => x.AiSuggestionId).HasColumnName("ai_suggestion_id");
+            e.Property(x => x.ChequeId).HasColumnName("cheque_id");
+            e.Property(x => x.SupersededById).HasColumnName("superseded_by_id");
+            e.Property(x => x.CancelReason).HasColumnName("cancel_reason");
+            e.Property(x => x.EvaluatedAt).HasColumnName("evaluated_at");
+            e.Property(x => x.ReceivedInWindow).HasColumnName("received_in_window").HasColumnType("numeric(19,3)");
+            e.Property(x => x.EvaluationNote).HasColumnName("evaluation_note");
+            e.Property(x => x.Notes).HasColumnName("notes");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
+        });
+
+        model.Entity<PtpInvoice>(e =>
+        {
+            e.ToTable("ptp_invoices");
+            e.HasKey(x => new { x.TenantId, x.PtpId, x.InvoiceId });
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.PtpId).HasColumnName("ptp_id");
+            e.Property(x => x.InvoiceId).HasColumnName("invoice_id");
+        });
+
+        model.Entity<TenantHoliday>(e =>
+        {
+            e.ToTable("tenant_holidays");
+            e.HasKey(x => new { x.TenantId, x.Date });
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.Date).HasColumnName("date");
+            e.Property(x => x.Name).HasColumnName("name");
         });
     }
 }

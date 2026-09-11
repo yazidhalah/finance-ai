@@ -21,6 +21,15 @@ public sealed class CaseException(string code, string? field = null, IReadOnlyDi
 public interface ICaseHooks
 {
     Task InvoiceChangedAsync(Guid invoiceId, Guid? actorUserId, CancellationToken ct);
+
+    /// <summary>A-05 / SM-51: a post-dated cheque may become a promise. Returns the promise id, if one was created.</summary>
+    Task<Guid?> ChequeReceivedAsync(Cheque cheque, Guid? actorUserId, CancellationToken ct);
+
+    /// <summary>E2: a bounced cheque breaks its promise and reopens the case at raised priority.</summary>
+    Task ChequeBouncedAsync(Cheque cheque, Guid? actorUserId, CancellationToken ct);
+
+    /// <summary>SM-54: quiet is required before a write-off.</summary>
+    Task<bool> HasActivePromiseAsync(Guid invoiceId, CancellationToken ct);
 }
 
 /// <summary>
@@ -28,8 +37,14 @@ public interface ICaseHooks
 /// <see cref="CaseMachine.Next"/>, write, audit row, activity row, rescore — one method, one transaction
 /// (SM-02). The sweep (<see cref="SweepAsync"/>) is the daily job of SM-06 and is idempotent.
 /// </summary>
-public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProvider time) : ICaseHooks
+public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProvider time, IServiceProvider services) : ICaseHooks
 {
+    /// <summary>
+    /// Slice 6 D-6: promises depend on this service for transitions, and this service must reach promises from the
+    /// ledger's hook (SM-50 order: recompute → PTP → case). Resolved at call time to avoid a constructor cycle.
+    /// </summary>
+    private IPromiseHooks Promises => (IPromiseHooks)services.GetService(typeof(IPromiseHooks))!;
+
     public sealed record Context(DateOnly Today, string Timezone, TenantSettings Settings, PriorityWeights Weights);
 
     public sealed record SweepResult(int Created, int Resolved, int Resumed, int FollowedUp, int Rescored);
@@ -76,6 +91,10 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
             await OpenCaseAsync(customerId, context, null, ct);
             created++;
         }
+
+        // SM-33: promises whose deadline has arrived are judged before the cases are looked at, so a case
+        // released by a broken promise is rescored in the same run.
+        await Promises.EvaluateDueAsync(ct);
 
         // Existing active cases: scope, time-based transitions, score.
         var active = await db.Cases.Where(c => c.Status != CaseStatus.Resolved && c.Status != CaseStatus.Abandoned).ToListAsync(ct);
@@ -307,7 +326,8 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
                 c.HoldUntil = null;
                 c.HoldReason = null;
                 break;
-            case CaseEvent.FollowUpDue or CaseEvent.ContactLogged or CaseEvent.ReplyReceived:
+            case CaseEvent.FollowUpDue or CaseEvent.ContactLogged or CaseEvent.ReplyReceived
+                or CaseEvent.PtpBroken or CaseEvent.PtpCancelled or CaseEvent.PtpKept:
                 c.NextActionAt = null;
                 c.NextActionReason = null;
                 break;
@@ -462,9 +482,43 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
         }
 
         await LockAsync(c.Id, ct);
+        await Promises.InvoiceChangedAsync(invoiceId, actorUserId, ct);   // SM-50: PTP evaluation before C10
+        await db.Entry(c).ReloadAsync(ct);
         var context = await ContextAsync(ct);
         await RefreshScopeAsync(c, context, actorUserId, "ledger", ct);
     }
+
+    public Task<Guid?> ChequeReceivedAsync(Cheque cheque, Guid? actorUserId, CancellationToken ct) => Promises.ChequeReceivedAsync(cheque, actorUserId, ct);
+
+    public Task ChequeBouncedAsync(Cheque cheque, Guid? actorUserId, CancellationToken ct) => Promises.ChequeBouncedAsync(cheque, actorUserId, ct);
+
+    public Task<bool> HasActivePromiseAsync(Guid invoiceId, CancellationToken ct) => Promises.HasActivePromiseAsync(invoiceId, ct);
+
+    // ---------------------------------------------------------------------------------------
+    // For the promise service (slice 6): system transitions and suppression, one place each
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>A system-driven transition with no user guard; the machine still decides legality.</summary>
+    public async Task FireAsync(CollectionCase c, CaseEvent @event, Guid? actorUserId, string reasonCode, string? note, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(c);
+        await LockAsync(c.Id, ct);
+        await db.Entry(c).ReloadAsync(ct);
+        await ApplyTransitionAsync(c, @event, actorUserId, reasonCode, note, null, await ContextAsync(ct), ct);
+    }
+
+    /// <summary>C4: hold the case out of the queue until a moment (null lifts it). Not a state change.</summary>
+    public async Task SuppressAsync(CollectionCase c, DateTimeOffset? until, string? reason, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(c);
+        c.NextActionAt = until;
+        c.NextActionReason = until is null ? null : reason;
+        c.UpdatedAt = time.GetUtcNow();
+        c.RowVersion++;
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task RescoreOnlyAsync(CollectionCase c, CancellationToken ct) => await RescoreAsync(c, await ContextAsync(ct), ct);
 
     // ---------------------------------------------------------------------------------------
     // Helpers
@@ -476,7 +530,7 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
         return await db.Cases.FirstOrDefaultAsync(c => c.Id == caseId, ct) ?? throw new CaseException("case_not_found");
     }
 
-    private async Task<CaseActivity> AddActivityAsync(CollectionCase c, string kind, Guid? actorUserId, string summary, object? detail, CancellationToken ct)
+    public async Task<CaseActivity> AddActivityAsync(CollectionCase c, string kind, Guid? actorUserId, string summary, object? detail, CancellationToken ct)
     {
         var activity = new CaseActivity
         {

@@ -169,6 +169,10 @@ stateDiagram-v2
 | C10 | any → `Resolved` | `balance_zero` | system | every invoice in scope is `Settled`, `WrittenOff` or `Void` | closes PTPs (`Kept`/`Superseded`), cancels follow-ups |
 | C11 | any → `Abandoned` | `abandon` | Admin/Owner | reason required | invoices stay `Open` in aging unless separately written off — abandonment is **not** a write-off (FIN-33) |
 
+> **Amended in slice 6 (F-1).** Added `PromiseActive → InProgress` on `ptp_kept`: a promise kept in
+> full that was for less than the balance leaves money owed, and the case returns to work rather
+> than staying suppressed. `ptp_kept_and_balance_zero` is unchanged.
+
 **SM-25** While a case is `Disputed`, the system MUST NOT send any dunning message
 referencing a disputed invoice. Messages about *undisputed* invoices in the same case
 are allowed only if the tenant setting `allow_split_dunning_during_dispute` is on
