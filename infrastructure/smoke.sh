@@ -5,7 +5,7 @@
 #   infrastructure/smoke.sh [base-url]        default http://localhost:${WEB_PORT:-8080}
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-if [ -f "$ROOT/.env" ]; then set -a; . "$ROOT/.env"; set +a; fi
+. "$ROOT/infrastructure/load-env.sh" "$ROOT/.env"
 BASE="${1:-http://localhost:${WEB_PORT:-8080}}"
 fail() { echo "SMOKE FAIL: $*" >&2; exit 1; }
 

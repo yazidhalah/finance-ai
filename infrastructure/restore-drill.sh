@@ -5,7 +5,7 @@
 #   infrastructure/restore-drill.sh [backup-file]      # without an argument, takes a fresh backup first
 set -euo pipefail
 cd "$(dirname "$0")/.."
-set -a; . ./.env; set +a
+. infrastructure/load-env.sh ./.env
 : "${POSTGRES_HOST:=127.0.0.1}" "${POSTGRES_PORT:=5432}"
 export PGPASSWORD="$POSTGRES_PASSWORD"
 psql_admin() { psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -v ON_ERROR_STOP=1 -Atq "$@"; }

@@ -75,6 +75,23 @@ public sealed class AiIsolationTests(ApiTestFixture fixture)
             Assert.Equal(constraint, ex.ConstraintName);
         }
 
+        // Slice 20: the polymorphic subject has no composite key, so a trigger stands in — a suggestion in B whose
+        // subject is A's message, a message that does not exist, or A's case or tenant, is refused.
+        foreach (var (subjectType, subjectId) in new[] { ("inbound_message", idA), ("inbound_message", Guid.NewGuid()), ("case", caseA), ("tenant", a.Organization.TenantId) })
+        {
+            await using var smuggle = new NpgsqlCommand(
+                """
+                INSERT INTO ai_suggestions (id, tenant_id, operation, subject_type, subject_id, model_name, model_digest, prompt_version, schema_version,
+                                            input_ref, input_hash, output_json, confidence, validation_status, latency_ms)
+                VALUES (gen_random_uuid(), @t, 'classify_customer_reply', @st, @sid, 'm', 'd', 'v1', 'v1', '{}', repeat('0', 64), '{}', 0.5, 'valid', 1)
+                """, connection);
+            smuggle.Parameters.AddWithValue("t", b.Organization.TenantId);
+            smuggle.Parameters.AddWithValue("st", subjectType);
+            smuggle.Parameters.AddWithValue("sid", subjectId);
+            var ex = await Assert.ThrowsAsync<PostgresException>(() => smuggle.ExecuteNonQueryAsync());
+            Assert.Equal("ai_suggestions_subject_exists", ex.ConstraintName);
+        }
+
         // Layer 2 alone: with B's tenant set, A's rows do not exist.
         await using var asB = fixture.Database.OpenApp();
         await using var tx = await asB.BeginTransactionAsync();

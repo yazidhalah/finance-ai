@@ -4,10 +4,10 @@
 # (with ALERT_WEBHOOK_TOKEN as a bearer when that is set), always prints to stderr, and exits 0 either way: an
 # alert that cannot be delivered must not mask the failure that raised it.
 #   infrastructure/alert.sh <kind> <summary>
-#   kinds: backup_failed | restore_drill_failed
+#   kinds: backup_failed | restore_drill_failed | nightly_performance_failed
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-if [ -f "$ROOT/.env" ]; then set -a; . "$ROOT/.env"; set +a; fi
+. "$ROOT/infrastructure/load-env.sh" "$ROOT/.env"
 kind="${1:?kind}"; summary="${2:?summary}"
 now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "ALERT [$kind] $now: $summary" >&2

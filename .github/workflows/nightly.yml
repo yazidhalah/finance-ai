@@ -38,3 +38,10 @@ jobs:
           sed -i "s|^MFA_KEK_BASE64=.*|MFA_KEK_BASE64=$(openssl rand -base64 32)|" .env
       - run: dotnet build --configuration Release
       - run: dotnet test tests/integration/FinanceAi.IntegrationTests --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=normal"
+      # SEC-102: a failed nightly pages through the same webhook as the product's alerts, when the repository has the secret.
+      - name: Alert on failure
+        if: failure()
+        env:
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+          ALERT_WEBHOOK_TOKEN: ${{ secrets.ALERT_WEBHOOK_TOKEN }}
+        run: infrastructure/alert.sh nightly_performance_failed "nightly performance run ${{ github.run_id }} failed on ${{ github.sha }}"
