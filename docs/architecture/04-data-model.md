@@ -907,7 +907,27 @@ CREATE TABLE ai_suggestions (
 CREATE INDEX ai_suggestions_subject_idx ON ai_suggestions (tenant_id, subject_type, subject_id);
 CREATE INDEX ai_suggestions_pending_idx ON ai_suggestions (tenant_id, human_decision)
   WHERE human_decision = 'pending';
+```
 
+> **Amended in slice 9 (DM-28a).** As built (`database/migrations/0010_ai_inbound.sql`):
+> - `inbound_messages` gains `match_method` (`contact_email` / `manual` / `reply_to`), `matched_by`,
+>   `classification` (mirrors the latest suggestion or the human label), `human_classification` /
+>   `human_classified_by` / `human_classified_at` (CHECK: `HumanClassified` needs both),
+>   `last_suggestion_id` (composite FK to `ai_suggestions`), `truncated_for_ai`, `created_by` and the
+>   §3.1 timestamps + `row_version`. `detected_language` is `text` in the model's five-value set, not
+>   `char(2)`. Composite FKs to `customers`, `collection_cases` and `messages` (`in_reply_to_message_id`).
+>   `body_raw` is capped at 100,000 characters; the model sees at most 4,000 (AI-22).
+> - `ai_suggestions` gains `classification`, `requires_human_review`, `suspicious` (AI-25),
+>   `outcome_type` / `outcome_id` / `guard_reason` (what the backend did with the output, per the doc 07
+>   §4.3 safety table, or why it withheld it), `decision_reason`, and a CHECK that a decided row carries
+>   `decided_by` + `decided_at`. `input_hash` is constrained to 64 lowercase hex. `subject_id` is
+>   polymorphic and carries no FK (flagged in the slice 9 review); the inbound side is closed by
+>   `inbound_messages.last_suggestion_id` instead.
+> - Both tables: `UNIQUE (tenant_id, id)`, RLS enabled and forced, no DELETE grant. A suggestion is
+>   decided, never deleted; a message is labelled, never deleted. `Ignored` is reserved.
+> - The 90-day inference log of AI-32 is not built; only `input_hash` and the references are stored.
+
+```sql
 CREATE TABLE daily_briefings (
   id              uuid PRIMARY KEY,
   tenant_id       uuid NOT NULL,

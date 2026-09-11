@@ -17,9 +17,10 @@ Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), sl
 | 6 | [slices/slice-06-promise-to-pay.md](slices/slice-06-promise-to-pay.md) · [review](slices/slice-06-review.md) | Implemented and tested; `ptp_kept` added to the case machine (F-1) |
 | 7 | [slices/slice-07-disputes.md](slices/slice-07-disputes.md) · [review](slices/slice-07-review.md) | Implemented and tested; SLA lengths are constants (D-1); the dunning guard is enforced by slice 8's send path |
 | 8 | [slices/slice-08-email-reminders.md](slices/slice-08-email-reminders.md) · [review](slices/slice-08-review.md) | Implemented and tested; SMTP is the `.env` host for every tenant (D-1); the review names the four send paths |
+| 9 | [slices/slice-09-ai-reply-classification.md](slices/slice-09-ai-reply-classification.md) · [review](slices/slice-09-review.md) · [evaluation](decisions/0006-ai-evaluation-2026-09-11-qwen3-4b-classify-v1.md) | Implemented and tested; the corpus is author-written and small (D-5); the model is steerable by injection, the backend is not |
 
 **Open questions still outstanding.** Q-01, Q-02, Q-04 and Q-06 in document 00 remain unanswered.
-Slices 1–8 proceeded on the documented defaults (A-01…A-05, A-11, A-12). **Slice 3b built E1 on a
+Slices 1–9 proceeded on the documented defaults (A-01…A-05, A-11, A-12). **Slice 3b built E1 on a
 placeholder 5% withholding rate (Q-01)**; the product computes nothing from the rate, so a real
 example changes only the fixture. Q-02 (the pilot's invoice source) still shapes the first import
 mapping a pilot will need.

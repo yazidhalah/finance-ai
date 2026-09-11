@@ -18,3 +18,4 @@ Thumbs.db
 *.sqlite3
 /infrastructure/data/
 *.tsbuildinfo
+.pytest_cache/

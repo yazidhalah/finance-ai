@@ -33,7 +33,15 @@ podman compose -f infrastructure/compose.yml up -d            # PostgreSQL 16 + 
 dotnet run --project apps/api/FinanceAi.Migrator -- up        # least-privilege roles, then migrations
 dotnet run --project apps/api/FinanceAi.Api                   # http://127.0.0.1:5080
 npm --prefix apps/web install && npm --prefix apps/web run dev # http://127.0.0.1:5173
+
+# Local AI (slice 9): Ollama with Qwen3 4B, and the FastAPI service on 127.0.0.1:8090.
+ollama pull qwen3:4b                                          # Apache-2.0 weights, ~2.5 GB
+python3 -m venv services/ai/.venv && services/ai/.venv/bin/pip install -r services/ai/requirements.txt
+services/ai/run.sh                                            # needs AI_SERVICE_TOKEN in .env (openssl rand -hex 24)
 ```
+
+Without the AI service the product still works: replies wait in the inbox and are labelled by hand;
+`/ai/health` drives the degraded banner.
 
 `.env` is git-ignored and no credential is ever written into source (SEC-67). The migrator's
 `bootstrap` step is the only thing that uses the administrative connection; the application connects
@@ -46,6 +54,8 @@ dotnet format --verify-no-changes     # formatting
 dotnet build --configuration Release  # build
 dotnet test  --configuration Release  # unit + integration + tenant-isolation, against real PostgreSQL
 npm --prefix apps/web run test        # web units: i18n parity, RTL, permission-filtered navigation
+services/ai/.venv/bin/python -m pytest -c services/ai/pytest.ini   # the AI service, with a fake model
+AI_LIVE_TESTS=1 services/ai/.venv/bin/python -m pytest -c services/ai/pytest.ini   # + the injection corpus against Ollama (slow)
 ```
 
 The .NET suites provision their own throwaway database per run, apply the real migrations to it, and
@@ -76,10 +86,10 @@ apps/api          ASP.NET Core modular monolith (.NET 10, pinned in global.json)
   FinanceAi.Migrator        the migration job — the only thing that performs DDL
 apps/web          React + TypeScript + Vite + Tailwind (bilingual, RTL-first)
 apps/worker       Scheduled jobs (case creation, PTP evaluation, invariants, briefings) — not yet built
-services/ai       Python + FastAPI, Qwen3 via Ollama; prompts, schemas, evaluations — not yet built
+services/ai       Python + FastAPI, Qwen3 via Ollama; prompts, schemas, evaluations (slice 9: classify_customer_reply)
 database          bootstrap (roles) and forward-only SQL migrations (PostgreSQL 16 + pgvector)
 infrastructure    Podman Compose and deployment
-tests             unit · integration · security · support (e2e and ai-evaluation not yet built)
+tests             unit · integration · security · support (e2e not yet built; the AI evaluation lives in services/ai/evaluations)
 docs              The specification, plus a per-slice acceptance record under docs/slices
 ```
 

@@ -5,6 +5,7 @@ import { useSession } from '../auth/SessionProvider'
 import { Button, Card, ErrorNotice, Field, Isolate, Select, TextInput } from '../components/ui'
 import { useLocale } from '../i18n/LocaleProvider'
 import { locales } from '../i18n'
+import { AiSettingsPanel } from './Inbox'
 
 type Organization = Awaited<ReturnType<typeof api.organization>>
 type Member = Awaited<ReturnType<typeof api.members>>['items'][number]
@@ -66,6 +67,7 @@ export function OrganizationPage() {
     <div className="space-y-6">
       <OrganizationForm organization={organization} onSaved={setOrganization} />
       <MembersCard members={members} forbidden={membersForbidden} />
+      <AiSettingsPanel />
       <PermissionsCard />
     </div>
   )

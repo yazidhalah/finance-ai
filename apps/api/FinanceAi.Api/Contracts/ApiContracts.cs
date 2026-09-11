@@ -634,3 +634,53 @@ public sealed record OutboundSettingsRequest(bool? OutboundSendingEnabled, int? 
 public sealed record StatementResponse(
     Guid CustomerId, string AsOf, IReadOnlyList<CustomerPositionDto> Positions, IReadOnlyList<AgedInvoiceDto> OpenInvoices,
     IReadOnlyList<PaymentResponse> Payments, IReadOnlyList<MessageResponse> Messages);
+
+// ---------------------------------------------------------------------------------------------
+// Slice 9 — inbound messages and AI suggestions (doc 05 slice 9, doc 07 §4)
+// ---------------------------------------------------------------------------------------------
+
+public sealed record CreateInboundMessageRequest(string? Channel, string? FromAddress, string? Subject, string? Body, string? ReceivedAt, Guid? CustomerId, Guid? InReplyToMessageId);
+
+public sealed record MatchCustomerRequest(Guid? CustomerId);
+
+public sealed record ManualClassificationRequest(string? Classification, string? Note);
+
+/// <summary><c>body</c> is the customer's text, verbatim; the client renders it as quoted content only (SEC-42).</summary>
+public sealed record InboundMessageResponse(
+    Guid Id, Guid? CustomerId, string? CustomerName, Guid? CaseId, long? CaseNumber, string Channel, string? FromAddress, string? Subject, string Body,
+    string? DetectedLanguage, string ReceivedAt, Guid? InReplyToMessageId, string? MatchMethod, string? MatchConfidence, string ClassificationStatus,
+    string? Classification, string? HumanClassification, Guid? HumanClassifiedBy, string? HumanClassifiedAt, Guid? LastSuggestionId,
+    bool TruncatedForAi, string CreatedAt, long RowVersion, AiSuggestionResponse? LastSuggestion);
+
+public sealed record InboundMessageListResponse(IReadOnlyList<InboundMessageResponse> Items, int TotalCount);
+
+public sealed record AiSecondaryDto(string Classification, string Confidence);
+
+public sealed record AiExtractedDto(
+    string? MentionedAmountText, string? MentionedAmountNumeric, string? MentionedCurrency, string? MentionedDateText, string? MentionedDateIso,
+    bool? DateIsRelative, IReadOnlyList<string> ReferencedInvoiceNumbers, string? PaymentMethodMentioned, string? PaymentReferenceText);
+
+/// <summary>
+/// The audit fields of AI-06 are all here: model, digest, prompt version, schema version, input hash, confidence, validation
+/// status, and the human decision. <c>extracted</c> is advisory and displayed as the model's reading, never pre-filled into a money field.
+/// </summary>
+public sealed record AiSuggestionResponse(
+    Guid Id, string Operation, string SubjectType, Guid SubjectId, string ModelName, string ModelDigest, string PromptVersion, string SchemaVersion,
+    string InputHash, string Confidence, string? Classification, string? ReasonCode, string ValidationStatus, bool RequiresHumanReview, bool Suspicious,
+    int LatencyMs, string? OutcomeType, Guid? OutcomeId, string? GuardReason, string? DetectedLanguage, string? Sentiment, string? Rationale,
+    AiExtractedDto? Extracted, IReadOnlyList<AiSecondaryDto> Secondary, string CreatedAt, string HumanDecision, Guid? DecidedBy, string? DecidedAt,
+    string? DecisionReason, InboundMessageResponse? Message);
+
+public sealed record AiSuggestionListResponse(IReadOnlyList<AiSuggestionResponse> Items, int TotalCount);
+
+public sealed record ApproveSuggestionRequest(string? Note);
+
+public sealed record EditAndApproveSuggestionRequest(string? Classification, Guid? InvoiceId, IReadOnlyList<Guid>? InvoiceIds, MoneyInput? Amount, string? PromisedDate, string? DisputeReasonCode, string? Note);
+
+public sealed record RejectSuggestionRequest(string? Reason);
+
+public sealed record AiHealthResponse(bool Configured, bool Reachable, bool Ready, string? ModelName, string? Digest, string? PromptVersion, string? Error, bool AiEnabled);
+
+public sealed record AiSettingsResponse(bool AiEnabled, string AiMinConfidence, string ServiceUrlHost);
+
+public sealed record AiSettingsRequest(bool? AiEnabled, string? AiMinConfidence);

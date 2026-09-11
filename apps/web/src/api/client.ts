@@ -1119,3 +1119,122 @@ export const messagingApi = {
   updateOutbound: (body: { outboundSendingEnabled?: boolean; dailySendCap?: number }) => request<OutboundSettings>('/organization/outbound', { method: 'PUT', body }),
   statement: (customerId: string) => request<Statement>(`/customers/${customerId}/statement`),
 }
+
+// ---------------------------------------------------------------------------------------------
+// Slice 9 — inbound replies and AI suggestions (doc 05 slice 9, doc 07 §4)
+// ---------------------------------------------------------------------------------------------
+
+export const aiClassifications = [
+  'payment_claimed', 'promise_to_pay', 'partial_payment_offer', 'payment_plan_request', 'dispute_raised', 'invoice_not_received', 'information_request',
+  'wrong_recipient', 'out_of_office', 'acknowledgement', 'refusal_to_pay', 'hardship_or_delay_notice', 'complaint_or_escalation', 'unrelated', 'unclassified',
+] as const
+export type AiClassification = (typeof aiClassifications)[number]
+
+export interface AiExtracted {
+  mentionedAmountText: string | null
+  mentionedAmountNumeric: string | null
+  mentionedCurrency: string | null
+  mentionedDateText: string | null
+  mentionedDateIso: string | null
+  dateIsRelative: boolean | null
+  referencedInvoiceNumbers: string[]
+  paymentMethodMentioned: string | null
+  paymentReferenceText: string | null
+}
+
+/** Every AI-06 audit field is on the wire so the review card can show model, prompt version and confidence beside the label. */
+export interface AiSuggestion {
+  id: string
+  operation: string
+  subjectType: string
+  subjectId: string
+  modelName: string
+  modelDigest: string
+  promptVersion: string
+  schemaVersion: string
+  inputHash: string
+  confidence: string
+  classification: AiClassification | null
+  reasonCode: string | null
+  validationStatus: 'valid' | 'schema_invalid' | 'below_threshold' | 'rejected_by_guard'
+  requiresHumanReview: boolean
+  suspicious: boolean
+  latencyMs: number
+  outcomeType: 'verification_task' | 'promise_proposed' | 'dispute_open' | 'activity' | 'none' | null
+  outcomeId: string | null
+  guardReason: string | null
+  detectedLanguage: string | null
+  sentiment: string | null
+  rationale: string | null
+  extracted: AiExtracted | null
+  secondary: { classification: AiClassification; confidence: string }[]
+  createdAt: string
+  humanDecision: 'pending' | 'approved' | 'edited' | 'rejected' | 'expired'
+  decidedBy: string | null
+  decidedAt: string | null
+  decisionReason: string | null
+  message: InboundMessage | null
+}
+
+/** `body` is the customer's text verbatim — untrusted, rendered as a quotation and never as a control (SEC-42). */
+export interface InboundMessage {
+  id: string
+  customerId: string | null
+  customerName: string | null
+  caseId: string | null
+  caseNumber: number | null
+  channel: 'email' | 'whatsapp_pasted' | 'manual'
+  fromAddress: string | null
+  subject: string | null
+  body: string
+  detectedLanguage: string | null
+  receivedAt: string
+  inReplyToMessageId: string | null
+  matchMethod: string | null
+  matchConfidence: string | null
+  classificationStatus: 'Unprocessed' | 'Classified' | 'Unclassified' | 'HumanClassified' | 'Ignored'
+  classification: AiClassification | null
+  humanClassification: AiClassification | null
+  humanClassifiedBy: string | null
+  humanClassifiedAt: string | null
+  lastSuggestionId: string | null
+  truncatedForAi: boolean
+  createdAt: string
+  rowVersion: number
+  lastSuggestion: AiSuggestion | null
+}
+
+export interface AiHealth {
+  configured: boolean
+  reachable: boolean
+  ready: boolean
+  modelName: string | null
+  digest: string | null
+  promptVersion: string | null
+  error: string | null
+  aiEnabled: boolean
+}
+
+export interface AiSettings {
+  aiEnabled: boolean
+  aiMinConfidence: string
+  serviceUrlHost: string
+}
+
+export const aiApi = {
+  inbox: (q: { status?: string; unmatched?: boolean; customerId?: string; caseId?: string } = {}) => request<{ items: InboundMessage[]; totalCount: number }>(`/inbound-messages${qs(q)}`),
+  message: (id: string) => request<InboundMessage>(`/inbound-messages/${id}`),
+  ingest: (body: { channel: 'email' | 'whatsapp_pasted' | 'manual'; fromAddress?: string; subject?: string; body: string; customerId?: string }) => request<InboundMessage>('/inbound-messages', { method: 'POST', body }),
+  classify: (id: string) => request<AiSuggestion>(`/inbound-messages/${id}/classify`, { method: 'POST', body: {} }),
+  match: (id: string, customerId: string) => request<InboundMessage>(`/inbound-messages/${id}/match-customer`, { method: 'POST', body: { customerId } }),
+  classifyManually: (id: string, classification: AiClassification, note?: string) => request<InboundMessage>(`/inbound-messages/${id}/classify-manually`, { method: 'POST', body: { classification, note } }),
+  suggestions: (q: { decision?: string; classification?: string; review?: boolean; subjectId?: string } = {}) => request<{ items: AiSuggestion[]; totalCount: number }>(`/ai/suggestions${qs(q)}`),
+  suggestion: (id: string) => request<AiSuggestion>(`/ai/suggestions/${id}`),
+  approve: (id: string, note?: string) => request<AiSuggestion>(`/ai/suggestions/${id}/approve`, { method: 'POST', body: { note } }),
+  editAndApprove: (id: string, body: { classification?: AiClassification; invoiceId?: string; invoiceIds?: string[]; amount?: Money; promisedDate?: string; disputeReasonCode?: string; note?: string }) =>
+    request<AiSuggestion>(`/ai/suggestions/${id}/edit-and-approve`, { method: 'POST', body }),
+  reject: (id: string, reason: string) => request<AiSuggestion>(`/ai/suggestions/${id}/reject`, { method: 'POST', body: { reason } }),
+  health: () => request<AiHealth>('/ai/health'),
+  settings: () => request<AiSettings>('/organization/ai-settings'),
+  updateSettings: (body: { aiEnabled?: boolean; aiMinConfidence?: string }) => request<AiSettings>('/organization/ai-settings', { method: 'PATCH', body }),
+}

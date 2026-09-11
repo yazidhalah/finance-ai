@@ -41,7 +41,7 @@ public sealed class PromiseService(TenantDbContext db, IAuditWriter audit, TimeP
     // Recording (SM-30, SM-31, SM-32, SM-36, C4)
     // ---------------------------------------------------------------------------------------
 
-    public async Task<RecordResult> RecordAsync(Guid caseId, IReadOnlyList<Guid> invoiceIds, decimal amount, DateOnly promisedDate, string source, string? notes, Guid actorUserId, Guid? aiSuggestionId, CancellationToken ct)
+    public async Task<RecordResult> RecordAsync(Guid caseId, IReadOnlyList<Guid> invoiceIds, decimal amount, DateOnly promisedDate, string source, string? notes, Guid? actorUserId, Guid? aiSuggestionId, CancellationToken ct)
     {
         if (!PtpSources.All.Contains(source))
         {

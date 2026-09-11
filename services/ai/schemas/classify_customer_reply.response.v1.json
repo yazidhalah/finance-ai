@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "classify_customer_reply.response.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "classification", "confidence", "reason_code",
+               "detected_language", "contains_suspicious_instructions", "model"],
+  "properties": {
+    "schema_version": { "const": "classify_customer_reply.v1" },
+
+    "classification": {
+      "type": "string",
+      "enum": [
+        "payment_claimed",
+        "promise_to_pay",
+        "partial_payment_offer",
+        "payment_plan_request",
+        "dispute_raised",
+        "invoice_not_received",
+        "information_request",
+        "wrong_recipient",
+        "out_of_office",
+        "acknowledgement",
+        "refusal_to_pay",
+        "hardship_or_delay_notice",
+        "complaint_or_escalation",
+        "unrelated",
+        "unclassified"
+      ]
+    },
+
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+
+    "reason_code": {
+      "type": "string",
+      "enum": [
+        "explicit_payment_statement",
+        "explicit_future_date_commitment",
+        "explicit_amount_offer",
+        "installment_request_language",
+        "explicit_disagreement_with_amount",
+        "explicit_goods_or_service_issue",
+        "claims_never_received_invoice",
+        "asks_for_document_or_detail",
+        "states_not_the_right_contact",
+        "automated_absence_reply",
+        "acknowledges_without_commitment",
+        "explicit_refusal",
+        "cites_financial_difficulty",
+        "expresses_dissatisfaction",
+        "no_collections_content",
+        "ambiguous_or_conflicting_signals",
+        "below_confidence_threshold",
+        "text_too_short_to_classify",
+        "language_not_supported"
+      ]
+    },
+
+    "detected_language": { "type": "string", "enum": ["ar", "en", "ar_latin", "mixed", "other"] },
+
+    "extracted": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "VERBATIM extractions only. Never computed. Backend re-validates all of it.",
+      "properties": {
+        "mentioned_amount_text":   { "type": ["string","null"], "maxLength": 64,
+          "description": "Exactly as written by the customer, e.g. '1500' or 'الف وخمسمائة'. NOT normalized." },
+        "mentioned_amount_numeric": { "type": ["string","null"], "pattern": "^\\d{1,16}\\.\\d{3}$",
+          "description": "Best-effort normalization. ADVISORY ONLY. Backend never uses it as a value without human confirmation." },
+        "mentioned_currency":      { "type": ["string","null"], "pattern": "^[A-Z]{3}$" },
+        "mentioned_date_text":     { "type": ["string","null"], "maxLength": 64 },
+        "mentioned_date_iso":      { "type": ["string","null"], "format": "date",
+          "description": "Resolved against context.today. ADVISORY ONLY." },
+        "date_is_relative":        { "type": ["boolean","null"],
+          "description": "true for 'next week', 'بعد العيد' — a strong signal that a human must set the date." },
+        "referenced_invoice_numbers": { "type": "array", "maxItems": 20,
+          "items": { "type": "string", "maxLength": 64 } },
+        "payment_method_mentioned": { "type": ["string","null"],
+          "enum": ["bank_transfer","cheque","cash","cliq","card","other",null] },
+        "payment_reference_text":  { "type": ["string","null"], "maxLength": 128 }
+      }
+    },
+
+    "secondary_classifications": {
+      "type": "array", "maxItems": 2,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["classification", "confidence"],
+        "properties": {
+          "classification": { "$ref": "#/properties/classification" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      },
+      "description": "A message can both dispute one invoice and promise on another."
+    },
+
+    "sentiment": { "type": "string", "enum": ["cooperative","neutral","frustrated","hostile"] },
+    "requires_human_review": { "type": "boolean" },
+    "contains_suspicious_instructions": { "type": "boolean" },
+    "rationale": { "type": "string", "maxLength": 300,
+      "description": "Human-readable only. The backend MUST NOT parse this field." },
+
+    "model": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name","digest","prompt_version"],
+      "properties": {
+        "name": { "type": "string" }, "digest": { "type": "string" },
+        "prompt_version": { "type": "string" }, "latency_ms": { "type": "integer" }
+      }
+    }
+  }
+}

@@ -98,7 +98,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
         // Pinned so that a permission becoming universal is a deliberate, visible change rather than
         // a quiet loss of test coverage.
         Assert.Equal(
-            ["aging.read", "cases.read", "customers.read", "invoices.read", "payments.read", "tenant.read"],
+            ["aging.read", "ai.suggestions.read", "cases.read", "customers.read", "invoices.read", "payments.read", "tenant.read"],
             universal.Distinct(StringComparer.Ordinal).OrderBy(p => p, StringComparer.Ordinal).ToList());
     }
 
@@ -217,7 +217,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     {
         var endpoints = this.Endpoints();
 
-        Assert.Equal(112, endpoints.Count);
+        Assert.Equal(126, endpoints.Count);
         Assert.All(endpoints, e => Assert.True(e.Permission is not null || e.Access is not null));
 
         // The anonymous set is exactly registration, login and refresh — nothing has drifted into it.
@@ -256,7 +256,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     private static string Normalize(string? template) =>
         (template ?? string.Empty).Trim('/');
 
-    private sealed record ForeignIds(Guid MembershipId, Guid CustomerId, Guid ContactId, Guid BatchId, Guid RowId, Guid MappingId, Guid InvoiceId, Guid PaymentId, Guid AllocationId, Guid ChequeId, Guid CreditNoteId, Guid WriteOffId, Guid CaseId, Guid PromiseId, Guid DisputeId, Guid EvidenceId, Guid TaskId, Guid TemplateId, Guid MessageId);
+    private sealed record ForeignIds(Guid MembershipId, Guid CustomerId, Guid ContactId, Guid BatchId, Guid RowId, Guid MappingId, Guid InvoiceId, Guid PaymentId, Guid AllocationId, Guid ChequeId, Guid CreditNoteId, Guid WriteOffId, Guid CaseId, Guid PromiseId, Guid DisputeId, Guid EvidenceId, Guid TaskId, Guid TemplateId, Guid MessageId, Guid InboundId, Guid SuggestionId);
 
     /// <summary>One real row of every {id}-addressed entity, inside organization B.</summary>
     private async Task<ForeignIds> CreateEntitiesInAsync(ApiScenario.Organization organization)
@@ -338,17 +338,23 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
         // Slice 8: a template and a drafted message on the case.
         var template = Post("/api/v1/templates", new { key = "sweep_template", channel = "email", language = "en", subject = "Sweep {{invoice_number}}", body = "Hello {{contact_name}}" });
         var message = Post($"/api/v1/cases/{overdueInvoice}/messages", new { channel = "email", language = "en", templateId = template.GetProperty("id").GetGuid() });
+        // Slice 9: an inbound reply on the customer and one scripted classification of it.
+        var inbound = Post("/api/v1/inbound-messages", new { channel = "manual", body = "Received, thanks.", customerId });
+        fixture.Api.Ai.Enqueue(AiScript.Response("acknowledgement", 0.9m));
+        var suggestion = Post($"/api/v1/inbound-messages/{inbound.GetProperty("id").GetGuid()}/classify", new { });
 
         Assert.NotEqual(Guid.Empty, membershipId);
         return new ForeignIds(membershipId, customerId, contact.GetProperty("id").GetGuid(), batchId, rowId, mappingId, invoiceId,
             payment.GetProperty("id").GetGuid(), payment.GetProperty("allocations")[0].GetProperty("id").GetGuid(),
-            cheque.GetProperty("id").GetGuid(), note.GetProperty("id").GetGuid(), writeOff.GetProperty("id").GetGuid(), collectionCase.GetProperty("caseId").GetGuid(), promise.GetProperty("id").GetGuid(), dispute.GetProperty("id").GetGuid(), evidence.GetProperty("id").GetGuid(), taskId, template.GetProperty("id").GetGuid(), message.GetProperty("id").GetGuid());
+            cheque.GetProperty("id").GetGuid(), note.GetProperty("id").GetGuid(), writeOff.GetProperty("id").GetGuid(), collectionCase.GetProperty("caseId").GetGuid(), promise.GetProperty("id").GetGuid(), dispute.GetProperty("id").GetGuid(), evidence.GetProperty("id").GetGuid(), taskId, template.GetProperty("id").GetGuid(), message.GetProperty("id").GetGuid(), inbound.GetProperty("id").GetGuid(), suggestion.GetProperty("id").GetGuid());
     }
 
     /// <summary>Which of B's real ids a route is addressed with. A new entity with an {id} route registers here.</summary>
     private static Guid IdFor(EndpointUnderTest endpoint, ForeignIds ids) => endpoint.Template switch
     {
         var t when t.Contains("import-mappings", StringComparison.Ordinal) => ids.MappingId,
+        var t when t.Contains("inbound-messages/{id", StringComparison.Ordinal) => ids.InboundId,
+        var t when t.Contains("ai/suggestions/{id", StringComparison.Ordinal) => ids.SuggestionId,
         var t when t.Contains("promises/{id", StringComparison.Ordinal) => ids.PromiseId,
         var t when t.Contains("disputes/{id", StringComparison.Ordinal) => ids.DisputeId,
         var t when t.Contains("templates/{id", StringComparison.Ordinal) => ids.TemplateId,
