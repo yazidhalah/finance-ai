@@ -27,6 +27,7 @@ cp .env.example .env          # then set the passwords and generate a signing ke
 #   openssl rand -base64 24                                   -> POSTGRES_*_PASSWORD
 #   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 | base64 -w0
 #                                                             -> JWT_SIGNING_KEY_PEM_BASE64
+#   openssl rand -base64 32                                   -> MFA_KEK_BASE64 (TOTP secrets at rest, slice 13)
 
 podman compose -f infrastructure/compose.yml up -d            # PostgreSQL 16 + pgvector, Mailpit
 

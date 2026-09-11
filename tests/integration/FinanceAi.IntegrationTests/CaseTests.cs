@@ -239,6 +239,7 @@ public sealed class CaseTests(ApiTestFixture fixture, Xunit.Abstractions.ITestOu
         await s.Client.PostAsync("/api/v1/payments", new { customerId = s.CustomerId, amount = M(600m), method = "Cash", receivedDate = D(0), allocations = new[] { new { invoiceId = a, amount = M(600m) } } });
         Assert.Equal("Open", (await CaseAsync(s.Client, caseId)).GetProperty("case").GetProperty("status").GetString());
         var proposal = await s.Client.PostAsync($"/api/v1/invoices/{b}/write-off", new { reasonCode = "uncollectible" });
+        await s.Client.ReauthAsync();   // SEC-09 (slice 13)
         await s.Client.PostAsync($"/api/v1/write-offs/{proposal.GetProperty("id").GetGuid()}/approve", new { selfApproved = true });
 
         var after = await CaseAsync(s.Client, caseId);

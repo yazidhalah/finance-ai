@@ -49,8 +49,8 @@ public static class DirectSeeder
 
         await using (var insertMembership = new NpgsqlCommand(
             """
-            INSERT INTO tenant_memberships (id, tenant_id, user_id, role, status)
-            VALUES (@id, @tenant, @user, @role, 'Active')
+            INSERT INTO tenant_memberships (id, tenant_id, user_id, role, status, mfa_grace_until)
+            VALUES (@id, @tenant, @user, @role, 'Active', CASE WHEN @role IN ('Owner','Admin') THEN now() + interval '7 days' END)
             """, connection))
         {
             insertMembership.Parameters.AddWithValue("id", membershipId);
@@ -95,4 +95,12 @@ public static class DirectSeeder
 
         return await command.ExecuteNonQueryAsync();
     }
+
+    /// <summary>
+    /// Slice 13: a test that pins the clock beyond the seven-day MFA grace would otherwise hit
+    /// <c>mfa_enrollment_required</c> on every business route (SEC-02 doing its job). Tests about other
+    /// things push the grace out of the way; <c>AuthCompletionTests</c> proves the enforcement itself.
+    /// </summary>
+    public static Task WaiveMfaGraceAsync(this DatabaseFixture fixture, Guid tenantId) =>
+        fixture.ExecuteAsync("UPDATE tenant_memberships SET mfa_grace_until = 'infinity' WHERE tenant_id = @t", ("t", tenantId));
 }

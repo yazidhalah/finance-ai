@@ -79,6 +79,17 @@ public static class LedgerScenario
         return await client.GetFromJsonAsync<JsonElement>($"/api/v1/invoices/{id}", ApiScenario.Json);
     }
 
+    /// <summary>Slice 13 (SEC-09): re-authenticates and pins the five-minute proof on the client for the sensitive endpoints.</summary>
+    public static async Task ReauthAsync(this HttpClient client, string password = ApiScenario.ValidPassword, string? totp = null)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        var response = await client.PostAsJsonAsync("/api/v1/auth/reauthenticate", new { password, totp }, ApiScenario.Json);
+        response.EnsureSuccessStatusCode();
+        var proof = (await response.Content.ReadFromJsonAsync<JsonElement>(ApiScenario.Json)).GetProperty("reauthToken").GetString();
+        client.DefaultRequestHeaders.Remove("X-Reauth");
+        client.DefaultRequestHeaders.Add("X-Reauth", proof);
+    }
+
     public static object M(decimal amount, string currency = "JOD") => new { amount = amount.ToString("F3", System.Globalization.CultureInfo.InvariantCulture), currency };
 
     public static string Open(this JsonElement invoiceDetail) => invoiceDetail.GetProperty("invoice").GetProperty("openBalance").GetProperty("amount").GetString()!;

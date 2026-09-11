@@ -21,6 +21,7 @@ Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), sl
 | 10 | [slices/slice-10-daily-briefing.md](slices/slice-10-daily-briefing.md) · [review](slices/slice-10-review.md) | Implemented and tested; metrics reuse the aging and queue computations; the guard drops any untraceable numeral; Arabic prose quality is flagged |
 | 11 | [slices/slice-11-v1-acceptance.md](slices/slice-11-v1-acceptance.md) · [review](slices/slice-11-review.md) | The E2E suite (T-121…T-132, en + ar) and the CI workflow; the fake-model mode of the AI service is test-only |
 | 12 | [slices/slice-12-members-and-restore-drill.md](slices/slice-12-members-and-restore-drill.md) · [review](slices/slice-12-review.md) | Invitations, role change, deactivation; T-121 walks the real flow; the T-150 restore drill runs in CI |
+| 13 | [slices/slice-13-auth-completion.md](slices/slice-13-auth-completion.md) · [review](slices/slice-13-review.md) | TOTP MFA (required for Owner/Admin after a 7-day grace), password reset, re-authentication for ownership transfer and write-off approval |
 
 **Open questions still outstanding.** Q-01, Q-02, Q-04 and Q-06 in document 00 remain unanswered.
 Slices 1–10 proceeded on the documented defaults (A-01…A-05, A-11, A-12). **Slice 3b built E1 on a

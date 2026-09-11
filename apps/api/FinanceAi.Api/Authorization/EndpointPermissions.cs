@@ -21,8 +21,28 @@ public enum DeclaredAccessKind
     AuthenticatedOnly,
 }
 
+/// <summary>Slice 13: an endpoint an Owner/Admin may reach before enrolling a second factor — the profile, the auth routes, enrolment itself.</summary>
+public sealed record AllowedWithoutMfa;
+
+/// <summary>Slice 13 (SEC-09): the endpoint requires a fresh re-authentication proof in <c>X-Reauth</c>.</summary>
+public sealed record RequiresReauthentication;
+
 public static class EndpointPermissionExtensions
 {
+    public static TBuilder AllowsWithoutMfa<TBuilder>(this TBuilder builder)
+        where TBuilder : IEndpointConventionBuilder
+    {
+        builder.WithMetadata(new AllowedWithoutMfa());
+        return builder;
+    }
+
+    public static TBuilder RequiresReauth<TBuilder>(this TBuilder builder)
+        where TBuilder : IEndpointConventionBuilder
+    {
+        builder.WithMetadata(new RequiresReauthentication());
+        return builder;
+    }
+
     /// <summary>Declares the permission this endpoint authorizes on. Never a role name (SEC-12).</summary>
     public static TBuilder RequiresPermission<TBuilder>(this TBuilder builder, string permission)
         where TBuilder : IEndpointConventionBuilder

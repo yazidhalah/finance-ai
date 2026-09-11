@@ -19,6 +19,7 @@ import { OrganizationPage } from './pages/Organization'
 import { InboxPage } from './pages/Inbox'
 import { TodayPage } from './pages/Today'
 import { AcceptInvitationPage } from './pages/Members'
+import { ForgotPasswordPage, MfaEnrolment, ResetPasswordPage } from './pages/Security'
 import { RegisterOrganization } from './pages/RegisterOrganization'
 import { SignIn } from './pages/SignIn'
 
@@ -26,6 +27,8 @@ type Screen =
   | { kind: 'signIn' }
   | { kind: 'register' }
   | { kind: 'acceptInvitation' }
+  | { kind: 'forgotPassword' }
+  | { kind: 'resetPassword' }
   | { kind: 'organization' }
   | { kind: 'customers' }
   | { kind: 'customer'; id: string | null }
@@ -54,6 +57,8 @@ type Screen =
  */
 function screenFromPath(path: string): Screen {
   if (path.startsWith('/accept-invitation')) return { kind: 'acceptInvitation' }
+  if (path.startsWith('/reset-password')) return { kind: 'resetPassword' }
+  if (path.startsWith('/forgot-password')) return { kind: 'forgotPassword' }
   const customer = /^\/customers\/(new|[0-9a-f-]{36})$/i.exec(path)
   if (customer) return { kind: 'customer', id: customer[1] === 'new' ? null : customer[1]! }
   if (path.startsWith('/customers')) return { kind: 'customers' }
@@ -82,7 +87,7 @@ function screenFromPath(path: string): Screen {
 
 function Routes() {
   const { t } = useLocale()
-  const { status } = useSession()
+  const { status, session } = useSession()
   const [screen, setScreen] = useState<Screen>(() =>
     typeof window === 'undefined' ? { kind: 'signIn' } : screenFromPath(window.location.pathname),
   )
@@ -124,13 +129,22 @@ function Routes() {
       <RegisterOrganization onSignIn={() => setScreen({ kind: 'signIn' })} />
     ) : screen.kind === 'acceptInvitation' ? (
       <AcceptInvitationPage onSignIn={() => { window.history.replaceState(null, '', '/'); setScreen({ kind: 'signIn' }) }} />
+    ) : screen.kind === 'forgotPassword' ? (
+      <ForgotPasswordPage onSignIn={() => { window.history.replaceState(null, '', '/'); setScreen({ kind: 'signIn' }) }} />
+    ) : screen.kind === 'resetPassword' ? (
+      <ResetPasswordPage onSignIn={() => { window.history.replaceState(null, '', '/'); setScreen({ kind: 'signIn' }) }} />
     ) : (
-      <SignIn onRegister={() => setScreen({ kind: 'register' })} />
+      <SignIn onRegister={() => setScreen({ kind: 'register' })} onForgot={() => setScreen({ kind: 'forgotPassword' })} />
     )
   }
 
   // An already signed-in user opening an invitation link: the token, not the session, is what accepts it.
   if (screen.kind === 'acceptInvitation') return <AcceptInvitationPage onSignIn={() => navigate({ kind: 'organization' }, '/organization')} />
+
+  // SEC-02 (slice 13): past the grace period, an Owner/Admin sees nothing but the enrolment until it is done.
+  if (session?.mfaEnforced && !session.mfaEnrolled) {
+    return <main className="mx-auto max-w-md p-6"><MfaEnrolment forced onDone={() => navigate({ kind: 'today' }, '/today')} /></main>
+  }
 
   const content =
     screen.kind === 'customers' ? (

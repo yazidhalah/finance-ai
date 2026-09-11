@@ -25,7 +25,8 @@ namespace FinanceAi.Infrastructure.Database;
 public sealed class PlatformIdentityStore(
     IDbContextFactory<TenantDbContext> contexts,
     IPasswordHasher passwordHasher,
-    TimeProvider time)
+    TimeProvider time,
+    FinanceAi.Infrastructure.Security.ISecretBox secrets)
 {
     /// <summary>SEC-06: lock the account after 10 consecutive failures, for a bounded window.</summary>
     public const int MaxFailedLogins = 10;
@@ -118,6 +119,7 @@ public sealed class PlatformIdentityStore(
             Role = TenantRole.Owner,
             Status = MembershipStatus.Active,
             CreatedAt = now,
+            MfaGraceUntil = now.Add(FinanceAi.Domain.Security.MfaPolicy.Grace),   // SEC-02, slice 13 D-1
         };
 
         var settings = new TenantSettings { TenantId = tenantId };
@@ -251,7 +253,7 @@ public sealed class PlatformIdentityStore(
         TenantMembership membership;
         if (existing is null)
         {
-            membership = new TenantMembership { TenantId = tenantId, UserId = user.Id, Role = invitation.Role, Status = MembershipStatus.Active, InvitedBy = invitation.InvitedBy, CreatedAt = now };
+            membership = new TenantMembership { TenantId = tenantId, UserId = user.Id, Role = invitation.Role, Status = MembershipStatus.Active, InvitedBy = invitation.InvitedBy, CreatedAt = now, MfaGraceUntil = FinanceAi.Domain.Security.MfaPolicy.Required(invitation.Role) ? now.Add(FinanceAi.Domain.Security.MfaPolicy.Grace) : null };
             db.TenantMemberships.Add(membership);
         }
         else
@@ -294,6 +296,10 @@ public sealed class PlatformIdentityStore(
         /// <summary>Too many failures. Reported separately so the UI can show an unlock time
         /// (doc 06 §6.1) — only ever for an account that has already proved it exists.</summary>
         Locked,
+
+        /// <summary>The password matched and the user has a second factor enrolled, but no code was given (slice 13).
+        /// Reported only after the password matched, so it discloses nothing to anyone without it.</summary>
+        MfaRequired,
     }
 
     public sealed record AuthenticatedSession(
@@ -306,7 +312,8 @@ public sealed class PlatformIdentityStore(
         string BaseCurrency,
         string Timezone,
         string TenantDefaultLocale,
-        TenantRole Role);
+        TenantRole Role,
+        bool MfaUsed = false);
 
     public sealed record AuthenticationResult(
         AuthenticationOutcome Outcome,
@@ -322,8 +329,12 @@ public sealed class PlatformIdentityStore(
     /// user is not a member of.
     /// </para>
     /// </summary>
+    public Task<AuthenticationResult> AuthenticateAsync(
+        string email, string password, IPAddress? actorIp, string? requestId, CancellationToken ct = default) =>
+        this.AuthenticateAsync(email, password, null, actorIp, requestId, ct);
+
     public async Task<AuthenticationResult> AuthenticateAsync(
-        string email, string password, IPAddress? actorIp, string? requestId, CancellationToken ct = default)
+        string email, string password, string? secondFactor, IPAddress? actorIp, string? requestId, CancellationToken ct = default)
     {
         await using var db = await contexts.CreateDbContextAsync(ct);
         await using var scope = await DatabaseScope.EnterPlatformAsync(db, null, null, ct);
@@ -379,6 +390,29 @@ public sealed class PlatformIdentityStore(
             return new AuthenticationResult(AuthenticationOutcome.Failed, null, null);
         }
 
+        // Slice 13 (SEC-02): the second factor, only once the password has matched.
+        var mfaUsed = false;
+        if (user.MfaEnrolled)
+        {
+            if (string.IsNullOrWhiteSpace(secondFactor))
+            {
+                await scope.CompleteAsync(ct);
+                return new AuthenticationResult(AuthenticationOutcome.MfaRequired, null, null);
+            }
+
+            if (!await this.VerifySecondFactorAsync(db, user, secondFactor, now, ct))
+            {
+                // A wrong code counts like a wrong password: the same counter, the same lockout (SEC-06).
+                await this.RecordFailureAsync(db, user, membership, actorIp, requestId, now, ct);
+                await scope.CompleteAsync(ct);
+                return user.IsLockedAt(time.GetUtcNow()) || user.FailedLoginCount >= MaxFailedLogins
+                    ? new AuthenticationResult(AuthenticationOutcome.Locked, null, user.LockedUntil)
+                    : new AuthenticationResult(AuthenticationOutcome.Failed, null, null);
+            }
+
+            mfaUsed = true;
+        }
+
         user.FailedLoginCount = 0;
         user.LockedUntil = null;
         await db.SaveChangesAsync(ct);
@@ -393,8 +427,190 @@ public sealed class PlatformIdentityStore(
             AuthenticationOutcome.Succeeded,
             new AuthenticatedSession(
                 user.Id, user.Email, user.FullName, user.PreferredLocale,
-                tenant.Id, tenant.Name, tenant.BaseCurrency, tenant.Timezone, tenant.DefaultLocale, membership.Role),
+                tenant.Id, tenant.Name, tenant.BaseCurrency, tenant.Timezone, tenant.DefaultLocale, membership.Role, mfaUsed),
             null);
+    }
+
+    /// <summary>A TOTP against the active secret, or a recovery code — which is burnt on use.</summary>
+    private async Task<bool> VerifySecondFactorAsync(TenantDbContext db, User user, string code, DateTimeOffset now, CancellationToken ct)
+    {
+        if (user.MfaSecretEnc is null || !secrets.Available) return false;
+        var trimmed = code.Trim();
+        if (trimmed.Length == FinanceAi.Domain.Security.Totp.Digits)
+        {
+            return FinanceAi.Domain.Security.Totp.Verify(secrets.Open(user.MfaSecretEnc), trimmed, now.ToUnixTimeSeconds());
+        }
+
+        if (!FinanceAi.Domain.Security.RecoveryCodes.LooksLikeRecoveryCode(trimmed)) return false;
+        var hash = FinanceAi.Domain.Security.RecoveryCodes.Hash(trimmed);
+        var recovery = await db.UserRecoveryCodes.FirstOrDefaultAsync(r => r.UserId == user.Id && r.UsedAt == null && r.CodeHash == hash, ct);
+        if (recovery is null) return false;
+        recovery.UsedAt = now;
+        return true;
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // MFA enrolment (slice 13, SEC-02)
+    // ---------------------------------------------------------------------------------------
+
+    public sealed record Enrolment(string SecretBase32, string ProvisioningUri);
+
+    /// <summary>A fresh pending secret; the active one, if any, is untouched until <see cref="VerifyMfaAsync"/> succeeds.</summary>
+    public async Task<Enrolment?> EnrollMfaAsync(Guid userId, CancellationToken ct = default)
+    {
+        if (!secrets.Available) return null;
+        await using var db = await contexts.CreateDbContextAsync(ct);
+        await using var scope = await DatabaseScope.EnterPlatformAsync(db, null, userId, ct);
+        var user = await db.Users.IgnoreQueryFilters().FirstAsync(u => u.Id == userId, ct);
+        var secret = FinanceAi.Domain.Security.Totp.NewSecret();
+        user.MfaPendingSecretEnc = secrets.Seal(secret);
+        await db.SaveChangesAsync(ct);
+        await scope.CompleteAsync(ct);
+        return new Enrolment(FinanceAi.Domain.Security.Base32.Encode(secret), FinanceAi.Domain.Security.Totp.ProvisioningUri(secret, "finance-ai", user.Email));
+    }
+
+    public sealed record MfaActivation(bool Activated, IReadOnlyList<string> RecoveryCodes);
+
+    /// <summary>Activates the pending secret when the code matches it; issues the recovery codes exactly once.</summary>
+    public async Task<MfaActivation> VerifyMfaAsync(Guid userId, Guid tenantId, string code, IPAddress? actorIp, string? requestId, CancellationToken ct = default)
+    {
+        if (!secrets.Available) return new MfaActivation(false, []);
+        await using var db = await contexts.CreateDbContextAsync(ct);
+        await using var scope = await DatabaseScope.EnterPlatformAsync(db, tenantId, userId, ct);
+        var user = await db.Users.IgnoreQueryFilters().FirstAsync(u => u.Id == userId, ct);
+        var now = time.GetUtcNow();
+        if (user.MfaPendingSecretEnc is null || !FinanceAi.Domain.Security.Totp.Verify(secrets.Open(user.MfaPendingSecretEnc), code?.Trim(), now.ToUnixTimeSeconds()))
+        {
+            return new MfaActivation(false, []);
+        }
+
+        user.MfaSecretEnc = user.MfaPendingSecretEnc;
+        user.MfaPendingSecretEnc = null;
+        user.MfaEnabledAt = now;
+        foreach (var old in await db.UserRecoveryCodes.Where(r => r.UserId == userId && r.UsedAt == null).ToListAsync(ct))
+        {
+            old.UsedAt = now;   // a re-enrolment invalidates the previous set
+        }
+
+        var codes = FinanceAi.Domain.Security.RecoveryCodes.New();
+        foreach (var c in codes)
+        {
+            db.UserRecoveryCodes.Add(new UserRecoveryCode { UserId = userId, CodeHash = FinanceAi.Domain.Security.RecoveryCodes.Hash(c), CreatedAt = now });
+        }
+
+        await db.SaveChangesAsync(ct);
+        await new AuditWriter(db).WriteAsync(Event("auth.mfa_enabled", "user", userId, tenantId, userId, actorIp, requestId, now), ct);
+        await scope.CompleteAsync(ct);
+        return new MfaActivation(true, codes);
+    }
+
+    /// <summary>SEC-09: the same person, now — the password and, when enrolled, the second factor.</summary>
+    public async Task<bool> ReauthenticateAsync(Guid userId, string password, string? secondFactor, CancellationToken ct = default)
+    {
+        await using var db = await contexts.CreateDbContextAsync(ct);
+        await using var scope = await DatabaseScope.EnterPlatformAsync(db, null, userId, ct);
+        var user = await db.Users.IgnoreQueryFilters().FirstAsync(u => u.Id == userId, ct);
+        var now = time.GetUtcNow();
+        var ok = user.PasswordHash is not null && passwordHasher.Verify(password, user.PasswordHash) && !user.IsLockedAt(now);
+        if (ok && user.MfaEnrolled)
+        {
+            ok = !string.IsNullOrWhiteSpace(secondFactor) && await this.VerifySecondFactorAsync(db, user, secondFactor, now, ct);
+        }
+
+        await db.SaveChangesAsync(ct);
+        await scope.CompleteAsync(ct);
+        return ok;
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Password reset (slice 13, SEC-07)
+    // ---------------------------------------------------------------------------------------
+
+    public sealed record ResetRequest(Guid UserId, string Email, string Locale, string Token);
+
+    /// <summary>Null when the address is not a user — the endpoint answers 202 either way and only the mail differs.</summary>
+    public async Task<ResetRequest?> ForgotPasswordAsync(string email, CancellationToken ct = default)
+    {
+        await using var db = await contexts.CreateDbContextAsync(ct);
+        await using var scope = await DatabaseScope.EnterPlatformAsync(db, null, null, ct);
+        var user = await db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Email == email && u.Status == UserStatus.Active, ct);
+        if (user is null)
+        {
+            await scope.CompleteAsync(ct);
+            return null;
+        }
+
+        var now = time.GetUtcNow();
+        foreach (var old in await db.PasswordResetTokens.Where(t => t.UserId == user.Id && t.UsedAt == null).ToListAsync(ct))
+        {
+            old.UsedAt = now;   // one live link per user
+        }
+
+        var token = InvitationTokens.NewToken();
+        db.PasswordResetTokens.Add(new PasswordResetToken { UserId = user.Id, TokenHash = InvitationTokens.Hash(token), ExpiresAt = now.Add(PasswordResetToken.Validity), CreatedAt = now });
+        await db.SaveChangesAsync(ct);
+        await scope.CompleteAsync(ct);
+        return new ResetRequest(user.Id, user.Email, user.PreferredLocale, token);
+    }
+
+    /// <summary>Sets the new hash and ends every session of the user. Every unusable token is one outcome: false.</summary>
+    public async Task<bool> ResetPasswordAsync(string token, string newPassword, IPAddress? actorIp, string? requestId, CancellationToken ct = default)
+    {
+        if (!InvitationTokens.LooksLikeToken(token)) return false;
+        var hash = InvitationTokens.Hash(token);
+        var now = time.GetUtcNow();
+        await using var db = await contexts.CreateDbContextAsync(ct);
+        await using var scope = await DatabaseScope.EnterPlatformAsync(db, null, null, ct);
+        var reset = await db.PasswordResetTokens.FirstOrDefaultAsync(t => t.TokenHash == hash, ct);
+        if (reset is null || !reset.IsUsable(now))
+        {
+            await scope.CompleteAsync(ct);
+            return false;
+        }
+
+        var user = await db.Users.IgnoreQueryFilters().FirstAsync(u => u.Id == reset.UserId, ct);
+        user.PasswordHash = passwordHasher.Hash(newPassword);
+        user.FailedLoginCount = 0;
+        user.LockedUntil = null;
+        user.EmailVerifiedAt ??= now;
+        reset.UsedAt = now;
+        Guid? anyTenant = null;
+        foreach (var rt in await db.RefreshTokens.IgnoreQueryFilters().Where(t => t.UserId == user.Id && t.RevokedAt == null).ToListAsync(ct))
+        {
+            rt.RevokedAt = now;
+            rt.RevokedReason = "password_reset";
+            anyTenant ??= rt.TenantId;
+        }
+
+        await db.SaveChangesAsync(ct);
+        anyTenant ??= await db.TenantMemberships.IgnoreQueryFilters().Where(m => m.UserId == user.Id).Select(m => (Guid?)m.TenantId).FirstOrDefaultAsync(ct);
+        if (anyTenant is { } tid)
+        {
+            await DatabaseScope.SetTenantAsync(db, tid, user.Id, ct);
+            await new AuditWriter(db).WriteAsync(Event("auth.password_reset", "user", user.Id, tid, user.Id, actorIp, requestId, now), ct);
+        }
+
+        await scope.CompleteAsync(ct);
+        return true;
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Session state for the middleware (slice 13)
+    // ---------------------------------------------------------------------------------------
+
+    public sealed record SessionState(TenantRole Role, bool MfaEnrolled, DateTimeOffset? MfaGraceUntil);
+
+    /// <summary>Everything the middleware decides on, in one round trip: the active role, whether a second factor is enrolled, and the grace deadline.</summary>
+    public async Task<SessionState?> ResolveSessionAsync(Guid userId, Guid tenantId, CancellationToken ct = default)
+    {
+        await using var db = await contexts.CreateDbContextAsync(ct);
+        await using var scope = await DatabaseScope.EnterPlatformAsync(db, null, userId, ct);
+        var membership = await db.TenantMemberships.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(m => m.UserId == userId && m.TenantId == tenantId && m.Status == MembershipStatus.Active, ct);
+        var user = membership is null ? null : await db.Users.IgnoreQueryFilters().Where(u => u.Id == userId && u.Status == UserStatus.Active).Select(u => new { u.MfaEnabledAt, u.MfaSecretEnc }).FirstOrDefaultAsync(ct);
+        var tenantIsActive = user is not null && await db.Tenants.IgnoreQueryFilters().AnyAsync(t => t.Id == tenantId && t.Status == TenantStatus.Active, ct);
+        await scope.CompleteAsync(ct);
+        return tenantIsActive ? new SessionState(membership!.Role, user!.MfaEnabledAt is not null && user.MfaSecretEnc is not null, membership.MfaGraceUntil) : null;
     }
 
     private async Task RecordFailureAsync(
@@ -524,7 +740,7 @@ public sealed class PlatformIdentityStore(
         return new AuthenticatedSession(
             user.Id, user.Email, user.FullName, user.PreferredLocale,
             target.Id, target.Name, target.BaseCurrency, target.Timezone,
-            target.DefaultLocale, membership.Role);
+            target.DefaultLocale, membership.Role, user.MfaEnrolled);
     }
 
     /// <summary>
@@ -669,7 +885,7 @@ public sealed class PlatformIdentityStore(
             RefreshOutcome.Rotated,
             new AuthenticatedSession(
                 user.Id, user.Email, user.FullName, user.PreferredLocale,
-                tenant.Id, tenant.Name, tenant.BaseCurrency, tenant.Timezone, tenant.DefaultLocale, membership.Role),
+                tenant.Id, tenant.Name, tenant.BaseCurrency, tenant.Timezone, tenant.DefaultLocale, membership.Role, user.MfaEnrolled),   // an enrolled user only ever logged in with the second factor
             replacement);
     }
 

@@ -74,6 +74,7 @@ public sealed class AgingTests(ApiTestFixture fixture, Xunit.Abstractions.ITestO
     {
         var s = await fixture.Api.NewCustomerAsync();
         await fixture.Database.ExecuteAsync("UPDATE tenants SET timezone = @tz WHERE id = @t", ("tz", timezone), ("t", s.Organization.TenantId));
+        await fixture.Database.WaiveMfaGraceAsync(s.Organization.TenantId);   // the clock is pinned months ahead below
         var due = DateOnly.FromDateTime(DateTime.Parse(beforeMidnight, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AdjustToUniversal));
         // For the UTC+ zones the local date before midnight equals the UTC date; the invoice is due on that local day.
         var localDue = TimeZoneInfo.ConvertTime(DateTimeOffset.Parse(beforeMidnight, System.Globalization.CultureInfo.InvariantCulture), TimeZoneInfo.FindSystemTimeZoneById(timezone)).Date;
@@ -120,6 +121,7 @@ public sealed class AgingTests(ApiTestFixture fixture, Xunit.Abstractions.ITestO
         var first = (await s.Client.InvoiceAsync(invoice)).GetProperty("history").EnumerateArray().First(h => h.GetProperty("amount").GetProperty("amount").GetString() == "400.000").GetProperty("id").GetGuid();
         await s.Client.PostAsync($"/api/v1/allocations/{first}/reverse", new { reason = "test" });
         var proposal = await s.Client.PostAsync($"/api/v1/invoices/{invoice}/write-off", new { reasonCode = "uncollectible" });
+        await s.Client.ReauthAsync();   // SEC-09 (slice 13)
         await s.Client.PostAsync($"/api/v1/write-offs/{proposal.GetProperty("id").GetGuid()}/approve", new { selfApproved = true });
         Assert.Equal("WrittenOff", (await s.Client.InvoiceAsync(invoice)).Status());
         _ = payment;

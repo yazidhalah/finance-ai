@@ -46,6 +46,7 @@ public sealed class LedgerRuleTests(ApiTestFixture fixture)
                         if (open <= 0m || detail.Status() != "Open") break;
                         var (ps, pb) = await s.Client.TryPostAsync($"/api/v1/invoices/{invoice}/write-off", new { reasonCode = "random_walk" });
                         if (ps != 201) break;
+                        await s.Client.ReauthAsync();   // SEC-09 (slice 13)
                         var (aps, _) = await s.Client.TryPostAsync($"/api/v1/write-offs/{pb.GetProperty("id").GetGuid()}/approve", new { selfApproved = true });
                         Assert.True(aps is 200 or 422, $"approve returned {aps} (seed {seed})");
                         break;
@@ -332,6 +333,7 @@ public sealed class LedgerRuleTests(ApiTestFixture fixture)
         var writeOffId = proposed.GetProperty("id").GetGuid();
 
         // The proposer cannot approve their own proposal.
+        await s.Client.ReauthAsync();   // SEC-09 (slice 13)
         var (selfStatus, selfBody) = await s.Client.TryPostAsync($"/api/v1/write-offs/{writeOffId}/approve", new { });
         Assert.Equal(422, selfStatus);
         Assert.Equal("four_eyes_required", selfBody.GetProperty("errors")[0].GetProperty("code").GetString());
@@ -342,8 +344,10 @@ public sealed class LedgerRuleTests(ApiTestFixture fixture)
         var accountant = await fixture.Database.AddMemberAsync(s.Organization.TenantId, TenantRole.Accountant);
         using var accountantClient = fixture.Api.AuthenticatedClient(await fixture.Api.LoginAsync(accountant.Email, accountant.Password));
 
+        await accountantClient.ReauthAsync();   // SEC-09 (slice 13)
         Assert.Equal(403, (await accountantClient.TryPostAsync($"/api/v1/write-offs/{writeOffId}/approve", new { })).Status);
 
+        await adminClient.ReauthAsync();   // SEC-09 (slice 13)
         var approved = await adminClient.PostAsync($"/api/v1/write-offs/{writeOffId}/approve", new { });
         Assert.Equal("Approved", approved.GetProperty("status").GetString());
         Assert.False(approved.GetProperty("selfApproved").GetBoolean());
@@ -364,6 +368,7 @@ public sealed class LedgerRuleTests(ApiTestFixture fixture)
 
         // A one-person tenant may self-approve, but only by saying so, and it is recorded.
         var second = await s.Client.PostAsync($"/api/v1/invoices/{invoice}/write-off", new { reasonCode = "uncollectible" });
+        await s.Client.ReauthAsync();   // SEC-09 (slice 13)
         var selfApproved = await s.Client.PostAsync($"/api/v1/write-offs/{second.GetProperty("id").GetGuid()}/approve", new { selfApproved = true });
         Assert.True(selfApproved.GetProperty("selfApproved").GetBoolean());
         Assert.Equal("WrittenOff", (await s.Client.InvoiceAsync(invoice)).Status());
@@ -381,6 +386,7 @@ public sealed class LedgerRuleTests(ApiTestFixture fixture)
         var invoice = await fixture.Database.OpenInvoiceAsync(s.Organization.TenantId, s.CustomerId, "WO3", 100.000m);
         var payment = await s.Client.PostAsync("/api/v1/payments", new { customerId = s.CustomerId, amount = M(60m), method = "Cash", receivedDate = "2026-09-10", allocations = new[] { new { invoiceId = invoice, amount = M(60m) } } });
         var proposal = await s.Client.PostAsync($"/api/v1/invoices/{invoice}/write-off", new { reasonCode = "uncollectible" });
+        await s.Client.ReauthAsync();   // SEC-09 (slice 13)
         await s.Client.PostAsync($"/api/v1/write-offs/{proposal.GetProperty("id").GetGuid()}/approve", new { selfApproved = true });
         Assert.Equal("WrittenOff", (await s.Client.InvoiceAsync(invoice)).Status());
 
@@ -400,6 +406,7 @@ public sealed class LedgerRuleTests(ApiTestFixture fixture)
         var s = await fixture.Api.NewCustomerAsync();
         var invoice = await fixture.Database.OpenInvoiceAsync(s.Organization.TenantId, s.CustomerId, "WO2", 100.000m);
         var proposal = await s.Client.PostAsync($"/api/v1/invoices/{invoice}/write-off", new { reasonCode = "uncollectible" });
+        await s.Client.ReauthAsync();   // SEC-09 (slice 13)
         await s.Client.PostAsync($"/api/v1/write-offs/{proposal.GetProperty("id").GetGuid()}/approve", new { selfApproved = true });
         Assert.Equal("WrittenOff", (await s.Client.InvoiceAsync(invoice)).Status());
 
@@ -522,6 +529,7 @@ public sealed class LedgerRuleTests(ApiTestFixture fixture)
         await s.Client.PostAsync($"/api/v1/cheques/{cheque}/transitions", new { @event = "clear", allocations = new[] { new { invoiceId = invoice, amount = M(100m) } } });
         await s.Client.PostAsync($"/api/v1/cheques/{cheque}/transitions", new { @event = "bounce", reason = "nsf" });
         var wo = await s.Client.PostAsync($"/api/v1/invoices/{invoice}/write-off", new { reasonCode = "uncollectible" });
+        await s.Client.ReauthAsync();   // SEC-09 (slice 13)
         await s.Client.PostAsync($"/api/v1/write-offs/{wo.GetProperty("id").GetGuid()}/approve", new { selfApproved = true });
         await s.Client.PostAsync($"/api/v1/write-offs/{wo.GetProperty("id").GetGuid()}/reverse", new { reason = "y" });
 

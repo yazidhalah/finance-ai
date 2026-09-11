@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ApiError, assignableRoles, membersApi } from '../api/client'
+import { ApiError, assignableRoles, authApi, membersApi } from '../api/client'
 import type { AssignableRole, Invitation, Member } from '../api/client'
 import { useSession } from '../auth/SessionProvider'
 import { Button, Card, ErrorNotice, Field, Isolate, Select, TextInput } from '../components/ui'
 import { useLocale } from '../i18n/LocaleProvider'
+import { ReauthDialog } from './Security'
 
 type Problem = { messageKey: string; traceId?: string }
 const toProblem = (e: unknown): Problem =>
@@ -20,6 +21,7 @@ export function MembersPanel({ members, onChanged }: { members: Member[]; onChan
   const [sent, setSent] = useState(false)
   const [problem, setProblem] = useState<Problem | null>(null)
   const [busy, setBusy] = useState(false)
+  const [transferring, setTransferring] = useState<Member | null>(null)
   const canInvite = can('users.invite')
 
   const load = useCallback(async () => {
@@ -68,7 +70,10 @@ export function MembersPanel({ members, onChanged }: { members: Member[]; onChan
           </ul>
         </Card>
       ) : null}
-      {(can('users.role.write') || can('users.deactivate')) ? (
+      {transferring ? (
+        <ReauthDialog title={t('members.transfer.title', { name: transferring.fullName })} onClose={() => setTransferring(null)} onProof={async (proof) => { const target = transferring; setTransferring(null); await act(() => authApi.transferOwnership(target.id, proof)) }} />
+      ) : null}
+      {(can('users.role.write') || can('users.deactivate') || can('tenant.transfer_ownership')) ? (
         <ul className="divide-y divide-slate-100 text-sm" data-testid="member-actions">
           {members.filter((m) => m.status !== 'Disabled').map((m) => {
             const isSelf = m.userId === session?.user.id
@@ -84,6 +89,7 @@ export function MembersPanel({ members, onChanged }: { members: Member[]; onChan
                 ) : <span>{t(`role.${m.role}`)}</span>}
                 {isOwner ? <span className="text-xs text-slate-500" data-testid="owner-note">{t('members.ownerNote')}</span> : null}
                 {can('users.deactivate') && !isSelf && !isOwner ? <Button variant="ghost" busy={busy} onClick={() => void act(() => membersApi.deactivate(m.id))} data-testid={`deactivate-${m.id}`}>{t('members.deactivate')}</Button> : null}
+                {can('tenant.transfer_ownership') && !isSelf && !isOwner ? <Button variant="ghost" busy={busy} onClick={() => setTransferring(m)} data-testid={`transfer-${m.id}`}>{t('members.transfer.button')}</Button> : null}
               </li>
             )
           })}

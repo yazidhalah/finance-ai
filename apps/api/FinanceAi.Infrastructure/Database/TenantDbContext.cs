@@ -87,6 +87,10 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
 
     public DbSet<MemberInvitation> MemberInvitations => this.Set<MemberInvitation>();
 
+    public DbSet<UserRecoveryCode> UserRecoveryCodes => this.Set<UserRecoveryCode>();
+
+    public DbSet<PasswordResetToken> PasswordResetTokens => this.Set<PasswordResetToken>();
+
     public override int SaveChanges()
     {
         this.StampTenant();
@@ -119,6 +123,7 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
         ConfigureAi(model);
         ConfigureBriefings(model);
         ConfigureInvitations(model);
+        ConfigureAuthRecords(model);
 
         this.ApplyTenantQueryFilters(model);
 
@@ -194,6 +199,9 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.FullName).HasColumnName("full_name");
             e.Property(x => x.PreferredLocale).HasColumnName("preferred_locale");
             e.Property(x => x.MfaSecretEnc).HasColumnName("mfa_secret_enc");
+            e.Property(x => x.MfaPendingSecretEnc).HasColumnName("mfa_pending_secret_enc");
+            e.Property(x => x.MfaEnabledAt).HasColumnName("mfa_enabled_at");
+            e.Ignore(x => x.MfaEnrolled);
             e.Property(x => x.Status).HasColumnName("status").HasConversion<string>();
             e.Property(x => x.FailedLoginCount).HasColumnName("failed_login_count");
             e.Property(x => x.LockedUntil).HasColumnName("locked_until");
@@ -211,6 +219,7 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.Role).HasColumnName("role").HasConversion<string>();
             e.Property(x => x.Status).HasColumnName("status").HasConversion<string>();
             e.Property(x => x.InvitedBy).HasColumnName("invited_by");
+            e.Property(x => x.MfaGraceUntil).HasColumnName("mfa_grace_until");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
             e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
         });
@@ -972,6 +981,32 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.AcceptedUserId).HasColumnName("accepted_user_id");
             e.Property(x => x.RevokedAt).HasColumnName("revoked_at");
             e.Property(x => x.RevokedBy).HasColumnName("revoked_by");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+        });
+    }
+
+    private static void ConfigureAuthRecords(ModelBuilder model)
+    {
+        model.Entity<UserRecoveryCode>(e =>
+        {
+            e.ToTable("user_recovery_codes");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.UserId).HasColumnName("user_id");
+            e.Property(x => x.CodeHash).HasColumnName("code_hash");
+            e.Property(x => x.UsedAt).HasColumnName("used_at");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+        });
+
+        model.Entity<PasswordResetToken>(e =>
+        {
+            e.ToTable("password_reset_tokens");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.UserId).HasColumnName("user_id");
+            e.Property(x => x.TokenHash).HasColumnName("token_hash");
+            e.Property(x => x.ExpiresAt).HasColumnName("expires_at");
+            e.Property(x => x.UsedAt).HasColumnName("used_at");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
         });
     }

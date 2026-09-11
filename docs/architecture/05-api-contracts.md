@@ -120,6 +120,16 @@ machinery proven end-to-end before any business data exists.
 > yourself and the last Owner, and revokes the member's refresh tokens. Transfer of ownership remains deferred.
 | GET | `/audit` | `audit.read` | Filter by entity, actor, type, date range. |
 
+> **Amended in slice 13 (API-01b).** As built: `POST /auth/login` takes `totp` (a TOTP or a recovery code) and answers
+> `401 mfa_required` only after the password matched; `POST /auth/mfa/enroll` returns `{ secret, provisioningUri }`,
+> `POST /auth/mfa/verify` `{ code }` returns the eight recovery codes once; `POST /auth/reauthenticate`
+> `{ password, totp? }` returns a five-minute proof carried in `X-Reauth` by `POST /organization/transfer-ownership`
+> `{ targetMembershipId }` and `POST /write-offs/{id}/approve` (`403 reauthentication_required` without it);
+> `POST /auth/forgot-password` is `202` always and `POST /auth/reset-password` `{ token, password }` answers
+> `400 reset_invalid` for every unusable link. `GET /me` adds `mfaEnrolled`, `mfaRequired`, `mfaGraceUntil`,
+> `mfaEnforced`; past the grace an Owner/Admin without a second factor gets `403 mfa_enrollment_required` on every
+> route except `/me` and `/auth/*`. Access tokens carry `amr` (`pwd` | `mfa`).
+
 **Example — login**
 
 ```http

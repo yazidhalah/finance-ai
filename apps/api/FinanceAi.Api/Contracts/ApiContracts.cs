@@ -26,7 +26,7 @@ public sealed record RegisterResponse(string Status)
     public static RegisterResponse Accepted { get; } = new("pending");
 }
 
-public sealed record LoginRequest(string? Email, string? Password);
+public sealed record LoginRequest(string? Email, string? Password, string? Totp = null);
 
 public sealed record UserDto(Guid Id, string FullName, string PreferredLocale, string Email);
 
@@ -51,7 +51,11 @@ public sealed record MeResponse(
     UserDto User,
     TenantDto Tenant,
     string Role,
-    IReadOnlyList<string> Permissions);
+    IReadOnlyList<string> Permissions,
+    bool MfaEnrolled = false,
+    bool MfaRequired = false,
+    string? MfaGraceUntil = null,
+    bool MfaEnforced = false);
 
 public sealed record UpdateMeRequest(string? FullName, string? PreferredLocale);
 
@@ -718,3 +722,29 @@ public sealed record AcceptInvitationRequest(string? Token, string? FullName, st
 public sealed record AcceptInvitationResponse(string Email, string OrganizationName, bool CreatedAccount);
 
 public sealed record ChangeRoleRequest(string? Role);
+
+// ---------------------------------------------------------------------------------------------
+// Slice 13 — MFA, password reset, re-authentication, transfer of ownership
+// ---------------------------------------------------------------------------------------------
+
+public sealed record MfaEnrolmentResponse(string Secret, string ProvisioningUri);
+
+public sealed record MfaVerifyRequest(string? Code);
+
+/// <summary>The recovery codes appear here once and are never returned again (SEC-02).</summary>
+public sealed record MfaActivatedResponse(bool Enabled, IReadOnlyList<string> RecoveryCodes);
+
+public sealed record ReauthenticateRequest(string? Password, string? Totp);
+
+public sealed record ReauthenticateResponse(string ReauthToken, int ExpiresIn);
+
+public sealed record ForgotPasswordRequest(string? Email);
+
+public sealed record ResetPasswordRequest(string? Token, string? Password);
+
+/// <summary>Byte-identical for a known and an unknown address (SEC-07).</summary>
+public sealed record AcceptedResponse(bool Accepted);
+
+public sealed record TransferOwnershipRequest(Guid? TargetMembershipId);
+
+public sealed record TransferOwnershipResponse(MemberDto NewOwner, MemberDto PreviousOwner);

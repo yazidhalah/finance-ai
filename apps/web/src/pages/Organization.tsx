@@ -8,6 +8,7 @@ import { locales } from '../i18n'
 import { AiSettingsPanel } from './Inbox'
 import { BriefingSettingsPanel } from './Today'
 import { MembersPanel } from './Members'
+import { SecurityCard } from './Security'
 
 type Organization = Awaited<ReturnType<typeof api.organization>>
 type Member = Awaited<ReturnType<typeof api.members>>['items'][number]
@@ -68,6 +69,7 @@ export function OrganizationPage() {
   return (
     <div className="space-y-6">
       <OrganizationForm organization={organization} onSaved={setOrganization} />
+      <SecurityCard />
       <MembersCard members={members} forbidden={membersForbidden} />
       {members !== null ? <MembersPanel members={members} onChanged={() => void load()} /> : null}
       <AiSettingsPanel />

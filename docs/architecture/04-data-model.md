@@ -1,6 +1,6 @@
 # 04 — PostgreSQL Entity Model
 
-Status: DRAFT, amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), slice 3 (DM-23a), slice 3b (DM-24a), slice 4 (DM-31a), slice 5 (DM-25a), slice 6 (DM-24a), slice 7 (DM-26a) and slice 8 (DM-27a). The DDL below is **illustrative
+Status: DRAFT, amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), slice 3 (DM-23a), slice 3b (DM-24a), slice 4 (DM-31a), slice 5 (DM-25a), slice 6 (DM-24a), slice 7 (DM-26a), slice 8 (DM-27a), slice 9 (DM-28a), slice 10 (DM-29a), slice 12 (DM-30a) and slice 13 (DM-32a). The DDL below is **illustrative
 specification**, not a migration.
 Migrations are written inside their vertical slice (doc 10) and must match this
 document or amend it.
@@ -1020,6 +1020,15 @@ violate FIN-01 at the audit layer.
 >   forced with the platform-scope clause (like `refresh_tokens`: the accept flow reads by hash before a tenant is
 >   known, and only `PlatformIdentityStore` may open that scope). No DELETE.
 > - `refresh_tokens.revoked_reason` gains `membership_deactivated`.
+
+> **Amended in slice 13 (DM-32a).** As built (`database/migrations/0013_auth_completion.sql`):
+> - `users` gains `mfa_pending_secret_enc` (enrolled, not yet verified) and `mfa_enabled_at`; `mfa_secret_enc`
+>   holds the active secret, AES-256-GCM under `MFA_KEK_BASE64`.
+> - `user_recovery_codes` (user_id, code_hash sha-256, used_at) and `password_reset_tokens` (user_id, token_hash,
+>   expires_at, used_at) are platform tables under forced RLS: recovery codes are visible to the platform scope and
+>   to `app_current_user()` only; reset tokens to the platform scope only.
+> - `tenant_memberships.mfa_grace_until` (Owner/Admin: creation + 7 days; existing rows got 7 days from the migration).
+> - `refresh_tokens.revoked_reason` gains `password_reset`.
 
 ## 6. Views and functions
 

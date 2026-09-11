@@ -253,6 +253,7 @@ public sealed class DisputeTests(ApiTestFixture fixture)
     public async Task Sla_PausesAndBreaches()
     {
         var x = await OpenAsync("Sla");
+        await fixture.Database.WaiveMfaGraceAsync(x.S.Organization.TenantId);   // the clock is pinned weeks ahead below
         var id = (await x.S.Client.PostAsync($"/api/v1/invoices/{x.Invoice}/disputes", Raise(1_000m))).GetProperty("id").GetGuid();
         var raised = await DisputeAsync(x.S.Client, id);
         var due = DateTimeOffset.Parse(raised.GetProperty("resolutionDueAt").GetString()!);
