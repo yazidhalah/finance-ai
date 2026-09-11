@@ -19,6 +19,7 @@ import { OrganizationPage } from './pages/Organization'
 import { InboxPage } from './pages/Inbox'
 import { TodayPage } from './pages/Today'
 import { AcceptInvitationPage } from './pages/Members'
+import { AuditPage } from './pages/Audit'
 import { ForgotPasswordPage, MfaEnrolment, ResetPasswordPage } from './pages/Security'
 import { RegisterOrganization } from './pages/RegisterOrganization'
 import { SignIn } from './pages/SignIn'
@@ -49,6 +50,7 @@ type Screen =
   | { kind: 'outbox' }
   | { kind: 'inbox' }
   | { kind: 'today' }
+  | { kind: 'audit' }
 
 /**
  * A screen switch driven by the URL path, not a routing library: three authenticated destinations
@@ -82,6 +84,7 @@ function screenFromPath(path: string): Screen {
   if (path.startsWith('/outbox')) return { kind: 'outbox' }
   if (path.startsWith('/inbox')) return { kind: 'inbox' }
   if (path.startsWith('/today')) return { kind: 'today' }
+  if (path.startsWith('/audit')) return { kind: 'audit' }
   return { kind: 'organization' }
 }
 
@@ -188,6 +191,8 @@ function Routes() {
       <InboxPage onOpenCase={(id) => navigate({ kind: 'case', id }, `/cases/${id}`)} />
     ) : screen.kind === 'today' ? (
       <TodayPage onOpenCase={(id) => navigate({ kind: 'case', id }, `/cases/${id}`)} />
+    ) : screen.kind === 'audit' ? (
+      <AuditPage />
     ) : (
       <OrganizationPage />
     )

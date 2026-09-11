@@ -57,6 +57,7 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
     private FinanceAi.Infrastructure.Messaging.IMessagingHooks Messaging => (FinanceAi.Infrastructure.Messaging.IMessagingHooks)services.GetService(typeof(FinanceAi.Infrastructure.Messaging.IMessagingHooks))!;
 
     private IBriefingHooks Briefings => (IBriefingHooks)services.GetService(typeof(IBriefingHooks))!;
+    private IOpsHooks Ops => (IOpsHooks)services.GetService(typeof(IOpsHooks))!;
 
     public sealed record Context(DateOnly Today, string Timezone, TenantSettings Settings, PriorityWeights Weights, DateTimeOffset Now);
 
@@ -153,6 +154,9 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
         // Slice 10: after everything above has settled, the day's figures are final enough to brief on.
         var briefed = await Briefings.RunScheduledAsync(ct);
 
+        // Slice 15: last of all, check the day's work against the invariants (doc 03 §7(b)) and the SEC-102 detectors.
+        var invariants = await Ops.RunAsync(InvariantRunTrigger.Sweep, null, ct);
+
         await audit.WriteAsync(new AuditEvent
         {
             TenantId = db.CurrentTenantId,
@@ -161,7 +165,7 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
             EventType = "collection_case.sweep_run",
             EntityType = "tenant",
             EntityId = db.CurrentTenantId,
-            Changes = JsonSerializer.Serialize(new { created, resolved, resumed, followedUp, rescored, drafted = cadence.Drafted, queued = cadence.Queued, sent = dispatch.Sent, briefed, day = context.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) }, JsonOptions),
+            Changes = JsonSerializer.Serialize(new { created, resolved, resumed, followedUp, rescored, drafted = cadence.Drafted, queued = cadence.Queued, sent = dispatch.Sent, briefed, invariants = invariants.Status, day = context.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) }, JsonOptions),
         }, ct);
 
         return new SweepResult(created, resolved, resumed, followedUp, rescored);
@@ -596,6 +600,12 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
 }
 
 /// <summary>Slice 10's hook into the sweep, resolved at call time like the others.</summary>
+/// <summary>Slice 15: the invariant job and the SEC-102 detectors, run last in the sweep.</summary>
+public interface IOpsHooks
+{
+    Task<InvariantRun> RunAsync(string trigger, Guid? actorUserId, CancellationToken ct);
+}
+
 public interface IBriefingHooks
 {
     /// <summary>Generates and delivers today's briefing once tenant-local time has passed <c>briefing_send_at</c>. Returns true when a briefing was created.</summary>

@@ -6,6 +6,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 set -a; . ./.env; set +a
+trap 'rc=$?; if [ $rc -ne 0 ]; then infrastructure/alert.sh backup_failed "pg_dump of ${POSTGRES_DB:-?} failed (exit $rc)"; fi' EXIT   # SEC-102
 : "${POSTGRES_HOST:=127.0.0.1}" "${POSTGRES_PORT:=5432}"
 out="${1:-backups/${POSTGRES_DB}-$(date -u +%Y%m%dT%H%M%SZ).dump}"
 mkdir -p "$(dirname "$out")"

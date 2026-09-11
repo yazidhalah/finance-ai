@@ -1,6 +1,9 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using FinanceAi.Domain.Entities;
 
 namespace FinanceAi.Infrastructure.Audit;
@@ -45,11 +48,37 @@ public static class AuditHash
             .Append(e.ToState ?? string.Empty).Append(FieldSeparator)
             .Append(e.ReasonCode ?? string.Empty).Append(FieldSeparator)
             .Append(e.Note ?? string.Empty).Append(FieldSeparator)
-            .Append(e.Changes ?? string.Empty).Append(FieldSeparator)
+            .Append(CanonicalJson(e.Changes)).Append(FieldSeparator)
             .Append(e.AiSuggestionId?.ToString() ?? string.Empty).Append(FieldSeparator)
             .Append(e.RequestId ?? string.Empty)
             .ToString();
 
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)));
     }
+
+    private static readonly JsonSerializerOptions CanonicalOptions = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, WriteIndented = false };
+
+    /// <summary>
+    /// <c>changes</c> is <c>jsonb</c>, and jsonb hands back a different string from the one written (its own key order,
+    /// its own spacing, no escapes). Hashing the string as written would make every row that carries changes fail
+    /// verification (slice 15 found exactly that). Both the writer and the verifier hash this canonical form instead:
+    /// object keys sorted ordinally at every level, no whitespace, no escaping — the same string from either side.
+    /// </summary>
+    public static string CanonicalJson(string? json)
+    {
+        if (string.IsNullOrEmpty(json))
+        {
+            return string.Empty;
+        }
+
+        var node = JsonNode.Parse(json);
+        return node is null ? "null" : Sort(node).ToJsonString(CanonicalOptions);
+    }
+
+    private static JsonNode Sort(JsonNode node) => node switch
+    {
+        JsonObject o => new JsonObject(o.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => KeyValuePair.Create(p.Key, p.Value is null ? null : Sort(p.Value)))),
+        JsonArray a => new JsonArray(a.Select(v => v is null ? null : Sort(v)).ToArray()),
+        _ => node.DeepClone(),
+    };
 }

@@ -260,6 +260,8 @@ public static class OrganizationEndpoints
         CancellationToken ct,
         string? entityType = null,
         Guid? entityId = null,
+        string? eventType = null,
+        Guid? actorUserId = null,
         int limit = 50,
         long? cursor = null)
     {
@@ -270,6 +272,17 @@ public static class OrganizationEndpoints
         if (entityType is not null)
         {
             query = query.Where(e => e.EntityType == entityType);
+        }
+
+        // Slice 15 (doc 06 §6.11): the viewer also filters by event type and actor.
+        if (eventType is not null)
+        {
+            query = query.Where(e => e.EventType == eventType);
+        }
+
+        if (actorUserId is not null)
+        {
+            query = query.Where(e => e.ActorUserId == actorUserId);
         }
 
         if (entityId is not null)

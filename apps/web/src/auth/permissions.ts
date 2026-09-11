@@ -29,7 +29,7 @@ export const navigation: NavItem[] = [
   { key: 'writeOffs', labelKey: 'nav.writeOffs', permission: 'payments.read', href: '/payments/write-offs', available: true },
   { key: 'aging', labelKey: 'nav.aging', permission: 'aging.read', href: '/aging', available: true },
   { key: 'import', labelKey: 'nav.import', permission: 'invoices.import', href: '/import', available: true },
-  { key: 'audit', labelKey: 'nav.audit', permission: 'audit.read', href: '/audit', available: false },
+  { key: 'audit', labelKey: 'nav.audit', permission: 'audit.read', href: '/audit', available: true },
   { key: 'settings', labelKey: 'nav.settings', permission: 'tenant.read', href: '/organization', available: true },
 ]
 

@@ -120,7 +120,25 @@ as `finance`, `stack.sh --profile full up -d --no-build migrate api` (the migrat
 
 ---
 
-## 6. Symptoms → first look
+## 6. Alerts (SEC-102) — what pages, and the first thing to do
+
+Alerts are raised by the sweep's last step (the invariant job and the detectors, slice 15) and by the two scripts.
+Every alert is a row on the tenant's Audit screen, a `Critical`/`Warning` JSON log line, an email to `ALERT_EMAIL`
+and a POST to `ALERT_WEBHOOK_URL` — set both in `.env`. One page per tenant, kind and UTC day; acknowledging on
+the Audit screen marks it handled and is audited.
+
+| Kind | Severity | Means | First |
+|------|----------|-------|-------|
+| `invariant_violation` | critical | A doc 03 §7 invariant fails on stored rows: the run lists which (`INV-xx`) with up to five ids. **P1.** | Stop the sweep? No — it only reads. Open the ids on the Ledger, compare `balance_cache` with the allocations; do not "fix" by SQL until the cause is known. The run is `GET /organization/invariants`. |
+| `audit_chain_break` | critical | An audit row was rewritten after the fact (SEC-53). The first broken id is in the alert. | Treat as a security incident: who has DDL rights (§1), when the trigger was disabled (`pg_stat_user_functions` / server log), revoke sessions (§3). |
+| `ai_guard_rejection_spike` | warning | ≥ 50 % of ≥ 10 suggestions in 24 h were rejected by the schema check or the guard. | `logs ai`; check `ollama` is healthy and the model digest is the pinned one (`GET /ai/health`); consider `aiEnabled: false` for the tenant (§2) until it settles. |
+| `send_volume_anomaly` | warning | ≥ 20 sends in 24 h and ≥ 3× the trailing seven-day mean. | Look at the tenant's Outbox: a bulk import followed by cadence is normal; a template loop is not. The tenant switch (§2) stops it in one call. |
+| `backup_failed` | critical (script) | `infrastructure/backup.sh` exited non-zero. | Disk, credentials, `pg_dump` version. Re-run by hand. No backup tonight means yesterday's is the RPO. |
+| `restore_drill_failed` | critical (script) | The drill restored but counts differed, or the restore itself failed. | The backup may be unusable. Take a fresh one, re-run the drill; if it fails again the dump format or a migration is the suspect. |
+
+The two script alerts go to the webhook only (they run where there is no API); their stderr is in cron's mail.
+
+## 7. Symptoms → first look
 
 | Symptom | Look at |
 |---------|---------|

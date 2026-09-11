@@ -48,6 +48,9 @@ public class ApiFactory : WebApplicationFactory<Program>
     /// </summary>
     public ScriptedAiClient Ai { get; } = new();
 
+    /// <summary>The alert webhook (slice 15), captured: every envelope the alert path delivered, and a switch to make it fail.</summary>
+    public CapturingAlertWebhook Webhook { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
@@ -57,6 +60,7 @@ public class ApiFactory : WebApplicationFactory<Program>
             services.AddSingleton<TimeProvider>(this.Clock);
             services.AddSingleton<FinanceAi.Infrastructure.Messaging.IMailTransport>(this.Mail);
             services.AddSingleton<FinanceAi.Infrastructure.Ai.IAiClient>(this.Ai);
+            services.AddSingleton<FinanceAi.Infrastructure.Ops.IAlertWebhook>(this.Webhook);
         });
     }
 
@@ -144,6 +148,28 @@ public sealed class SwitchableMailTransport : FinanceAi.Infrastructure.Messaging
 
         this.Sent++;
         return this.inner.SendAsync(mail, ct);
+    }
+}
+
+/// <summary>Stands in for <c>ALERT_WEBHOOK_URL</c>: records every delivery; <see cref="Configured"/> and <see cref="FailNext"/> shape the path under test.</summary>
+public sealed class CapturingAlertWebhook : FinanceAi.Infrastructure.Ops.IAlertWebhook
+{
+    public bool Configured { get; set; } = true;
+
+    public int FailNext { get; set; }
+
+    public List<FinanceAi.Infrastructure.Ops.AlertEnvelope> Delivered { get; } = [];
+
+    public Task DeliverAsync(FinanceAi.Infrastructure.Ops.AlertEnvelope envelope, CancellationToken ct)
+    {
+        if (this.FailNext > 0)
+        {
+            this.FailNext--;
+            throw new HttpRequestException("simulated webhook failure");
+        }
+
+        this.Delivered.Add(envelope);
+        return Task.CompletedTask;
     }
 }
 

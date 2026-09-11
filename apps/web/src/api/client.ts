@@ -1357,3 +1357,40 @@ export const authApi = {
   resetPassword: (token: string, password: string) => request<{ accepted: boolean }>('/auth/reset-password', { method: 'POST', body: { token, password } }),
   transferOwnership: (targetMembershipId: string, reauth: string) => request<{ newOwner: Member; previousOwner: Member }>('/organization/transfer-ownership', { method: 'POST', body: { targetMembershipId }, reauth }),
 }
+
+
+// ---------------------------------------------------------------------------------------------
+// Slice 15 — the audit log viewer, the invariant job and the alert path (doc 03 §7, SEC-102)
+
+export type AuditEvent = {
+  id: number; occurredAt: string; actorUserId: string | null; actorKind: string; eventType: string; entityType: string; entityId: string
+  fromState: string | null; toState: string | null; reasonCode: string | null; requestId: string | null; hash: string
+}
+export type InvariantCheck = { id: string; description: string; violations: number; samples: string[] }
+export type InvariantRun = { id: string; ranAt: string; trigger: 'sweep' | 'manual'; actorUserId: string | null; status: 'ok' | 'violations'; durationMs: number; checks: InvariantCheck[] }
+export type AlertKind = 'invariant_violation' | 'audit_chain_break' | 'ai_guard_rejection_spike' | 'send_volume_anomaly'
+export type Alert = {
+  id: string; kind: AlertKind; severity: 'critical' | 'warning'; summary: string; details: Record<string, unknown>; raisedAt: string
+  emailDelivery: 'sent' | 'skipped' | 'failed'; webhookDelivery: 'sent' | 'skipped' | 'failed'; acknowledgedAt: string | null; acknowledgedBy: string | null
+}
+
+export const auditApi = {
+  list: (q: { entityType?: string; entityId?: string; eventType?: string; actorUserId?: string; cursor?: number | null; limit?: number } = {}) => {
+    const p = new URLSearchParams()
+    if (q.entityType) p.set('entityType', q.entityType)
+    if (q.entityId) p.set('entityId', q.entityId)
+    if (q.eventType) p.set('eventType', q.eventType)
+    if (q.actorUserId) p.set('actorUserId', q.actorUserId)
+    if (q.cursor) p.set('cursor', String(q.cursor))
+    if (q.limit) p.set('limit', String(q.limit))
+    const s = p.toString()
+    return request<{ items: AuditEvent[]; nextCursor: string | null }>(`/audit${s ? `?${s}` : ''}`)
+  },
+}
+
+export const opsApi = {
+  latestRun: () => request<{ run: InvariantRun | null }>('/organization/invariants'),
+  run: () => request<InvariantRun>('/organization/invariants/run', { method: 'POST', body: {} }),
+  alerts: (all = false) => request<{ items: Alert[]; openCount: number }>(`/organization/alerts${all ? '?all=1' : ''}`),
+  acknowledge: (id: string) => request<Alert>(`/organization/alerts/${id}/acknowledge`, { method: 'POST', body: {} }),
+}

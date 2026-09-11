@@ -25,6 +25,7 @@ public sealed class ApiTestFixture : IAsyncLifetime
         // dozens of times would trip that, so the limit is raised here and proved separately by the
         // dedicated rate-limit test, which lowers it deliberately.
         Environment.SetEnvironmentVariable("AUTH_RATE_LIMIT_PER_MINUTE", "100000");
+        Environment.SetEnvironmentVariable("ALERT_EMAIL", "ops@finance-ai.test");   // slice 15: the alert path's email leg, captured by Mailpit
 
         // Slice 13: the TOTP secrets' key-encryption key. Random per run; nothing persists across runs.
         Environment.SetEnvironmentVariable("MFA_KEK_BASE64", Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)));
