@@ -98,7 +98,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
         // Pinned so that a permission becoming universal is a deliberate, visible change rather than
         // a quiet loss of test coverage.
         Assert.Equal(
-            ["aging.read", "customers.read", "invoices.read", "payments.read", "tenant.read"],
+            ["aging.read", "cases.read", "customers.read", "invoices.read", "payments.read", "tenant.read"],
             universal.Distinct(StringComparer.Ordinal).OrderBy(p => p, StringComparer.Ordinal).ToList());
     }
 
@@ -216,7 +216,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     {
         var endpoints = this.Endpoints();
 
-        Assert.Equal(65, endpoints.Count);
+        Assert.Equal(76, endpoints.Count);
         Assert.All(endpoints, e => Assert.True(e.Permission is not null || e.Access is not null));
 
         // The anonymous set is exactly registration, login and refresh — nothing has drifted into it.
@@ -255,7 +255,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     private static string Normalize(string? template) =>
         (template ?? string.Empty).Trim('/');
 
-    private sealed record ForeignIds(Guid MembershipId, Guid CustomerId, Guid ContactId, Guid BatchId, Guid RowId, Guid MappingId, Guid InvoiceId, Guid PaymentId, Guid AllocationId, Guid ChequeId, Guid CreditNoteId, Guid WriteOffId);
+    private sealed record ForeignIds(Guid MembershipId, Guid CustomerId, Guid ContactId, Guid BatchId, Guid RowId, Guid MappingId, Guid InvoiceId, Guid PaymentId, Guid AllocationId, Guid ChequeId, Guid CreditNoteId, Guid WriteOffId, Guid CaseId);
 
     /// <summary>One real row of every {id}-addressed entity, inside organization B.</summary>
     private async Task<ForeignIds> CreateEntitiesInAsync(ApiScenario.Organization organization)
@@ -319,16 +319,21 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
         var note = Post("/api/v1/credit-notes", new { customerId, amount = new { amount = "0.100", currency = "JOD" }, issueDate = "2026-09-10", reasonCode = "other" });
         var writeOff = Post($"/api/v1/invoices/{invoiceId}/write-off", new { reasonCode = "sweep" });
 
+        // Slice 5: an overdue invoice so a case can be opened for the customer.
+        await fixture.Database.OpenInvoiceAsync(organization.TenantId, customerId, "SW-OVERDUE", 5m, dueDate: "2026-08-01", issueDate: "2026-07-01");
+        var collectionCase = Post("/api/v1/cases", new { customerId });
+
         Assert.NotEqual(Guid.Empty, membershipId);
         return new ForeignIds(membershipId, customerId, contact.GetProperty("id").GetGuid(), batchId, rowId, mappingId, invoiceId,
             payment.GetProperty("id").GetGuid(), payment.GetProperty("allocations")[0].GetProperty("id").GetGuid(),
-            cheque.GetProperty("id").GetGuid(), note.GetProperty("id").GetGuid(), writeOff.GetProperty("id").GetGuid());
+            cheque.GetProperty("id").GetGuid(), note.GetProperty("id").GetGuid(), writeOff.GetProperty("id").GetGuid(), collectionCase.GetProperty("caseId").GetGuid());
     }
 
     /// <summary>Which of B's real ids a route is addressed with. A new entity with an {id} route registers here.</summary>
     private static Guid IdFor(EndpointUnderTest endpoint, ForeignIds ids) => endpoint.Template switch
     {
         var t when t.Contains("import-mappings", StringComparison.Ordinal) => ids.MappingId,
+        var t when t.Contains("cases", StringComparison.Ordinal) => ids.CaseId,
         var t when t.Contains("payments", StringComparison.Ordinal) => ids.PaymentId,
         var t when t.Contains("allocations/{id", StringComparison.Ordinal) => ids.AllocationId,
         var t when t.Contains("cheques", StringComparison.Ordinal) => ids.ChequeId,

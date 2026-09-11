@@ -9,6 +9,8 @@ import { InvoicesPage } from './pages/Invoices'
 import { ChequesPage, CreditNotesPage, InvoiceDetailPage, WriteOffsPage } from './pages/Ledger'
 import { PaymentsPage } from './pages/Payments'
 import { AgingPage } from './pages/Aging'
+import { QueuePage } from './pages/Queue'
+import { CaseDetailPage } from './pages/CaseDetail'
 import { CustomersPage } from './pages/Customers'
 import { OrganizationPage } from './pages/Organization'
 import { RegisterOrganization } from './pages/RegisterOrganization'
@@ -29,6 +31,8 @@ type Screen =
   | { kind: 'creditNotes' }
   | { kind: 'writeOffs' }
   | { kind: 'aging' }
+  | { kind: 'queue' }
+  | { kind: 'case'; id: string }
 
 /**
  * A screen switch driven by the URL path, not a routing library: three authenticated destinations
@@ -50,6 +54,9 @@ function screenFromPath(path: string): Screen {
   if (path.startsWith('/payments/write-offs')) return { kind: 'writeOffs' }
   if (path.startsWith('/payments')) return { kind: 'payments' }
   if (path.startsWith('/aging')) return { kind: 'aging' }
+  const collectionCase = /^\/cases\/([0-9a-f-]{36})$/i.exec(path)
+  if (collectionCase) return { kind: 'case', id: collectionCase[1]! }
+  if (path.startsWith('/queue') || path.startsWith('/cases')) return { kind: 'queue' }
   return { kind: 'organization' }
 }
 
@@ -126,6 +133,10 @@ function Routes() {
       <WriteOffsPage />
     ) : screen.kind === 'aging' ? (
       <AgingPage />
+    ) : screen.kind === 'queue' ? (
+      <QueuePage onOpen={(id) => navigate({ kind: 'case', id }, `/cases/${id}`)} />
+    ) : screen.kind === 'case' ? (
+      <CaseDetailPage id={screen.id} onBack={() => navigate({ kind: 'queue' }, '/queue')} />
     ) : (
       <OrganizationPage />
     )

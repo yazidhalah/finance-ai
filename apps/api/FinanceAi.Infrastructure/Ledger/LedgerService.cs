@@ -25,7 +25,7 @@ public sealed class LedgerException(string code, string? field = null, IReadOnly
 /// every input is at scale ≤ 3 or refused, and every derived figure is a sum or a difference.
 /// </para>
 /// </summary>
-public sealed class LedgerService(TenantDbContext db, IAuditWriter audit, TimeProvider time)
+public sealed class LedgerService(TenantDbContext db, IAuditWriter audit, TimeProvider time, FinanceAi.Infrastructure.Cases.ICaseHooks cases)
 {
     // ---------------------------------------------------------------------------------------
     // The balance
@@ -85,6 +85,9 @@ public sealed class LedgerService(TenantDbContext db, IAuditWriter audit, TimePr
         invoice.UpdatedBy = actorUserId;
         invoice.RowVersion++;
         await db.SaveChangesAsync(ct);
+
+        // SM-50: the case layer sees every balance change in the same transaction (C10, rescoring).
+        await cases.InvoiceChangedAsync(invoice.Id, actorUserId, ct);
         return invoice;
     }
 
@@ -848,6 +851,7 @@ public sealed class LedgerService(TenantDbContext db, IAuditWriter audit, TimePr
         invoice.RowVersion++;
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync(Transition("invoice", invoice.Id, from.ToString(), nameof(InvoiceStatus.Void), reason, actorUserId), ct);
+        await cases.InvoiceChangedAsync(invoice.Id, actorUserId, ct);
         return invoice;
     }
 

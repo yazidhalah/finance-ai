@@ -102,7 +102,7 @@ public sealed class SettableTimeProvider : TimeProvider
 {
     public DateTimeOffset? Override { get; set; }
 
-    public override DateTimeOffset GetUtcNow() => this.Override ?? DateTimeOffset.UtcNow;
+    public override DateTimeOffset GetUtcNow() => this.Override?.ToUniversalTime() ?? DateTimeOffset.UtcNow;
 }
 
 public sealed record SessionResponse(

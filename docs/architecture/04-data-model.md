@@ -1,6 +1,6 @@
 # 04 — PostgreSQL Entity Model
 
-Status: DRAFT, amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), slice 3 (DM-23a), slice 3b (DM-24a) and slice 4 (DM-31a). The DDL below is **illustrative
+Status: DRAFT, amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), slice 3 (DM-23a), slice 3b (DM-24a), slice 4 (DM-31a) and slice 5 (DM-25a). The DDL below is **illustrative
 specification**, not a migration.
 Migrations are written inside their vertical slice (doc 10) and must match this
 document or amend it.
@@ -675,6 +675,18 @@ CREATE TABLE case_activities (                       -- the case timeline
   FOREIGN KEY (tenant_id, case_id) REFERENCES collection_cases (tenant_id, id)
 );
 CREATE INDEX case_activity_idx ON case_activities (tenant_id, case_id, occurred_at DESC);
+
+> **Amended in slice 5 (DM-25a).** As built (`database/migrations/0006_collection_cases.sql`):
+> - `collection_cases` additionally stores the score's inputs and breakdown (`priority_factors jsonb`,
+>   `scored_at`, `overdue_balance_base`, `max_days_past_due`, `invoice_count`), `next_action_reason`,
+>   the §3.1 timestamps, a unique `(tenant_id, case_number)`, and three CHECKs: `hold_has_reason`,
+>   `escalated_has_reason`, `closed_is_terminal`.
+> - `case_invoices` gains `id` with `UNIQUE (tenant_id, id)` (DM-10) beside the composite primary
+>   key, and `removed_reason`.
+> - `case_activities` gains `UNIQUE (tenant_id, id)` and a CHECK that `ai_assisted` rows carry an
+>   `ai_suggestion_id` (SM-04).
+> - Weights are versioned constants in code selected by `priority_weights_version`; there is no
+>   per-tenant weights table (slice 5 D-1).
 
 CREATE TABLE promises_to_pay (
   id               uuid PRIMARY KEY,
