@@ -8,6 +8,9 @@ the package "Flagged". No third-party code: stdlib only.
 
     infrastructure/check-notices.py            # exit 1 with the offenders listed
     infrastructure/check-notices.py --self-test  # proves both failure modes fire
+    infrastructure/check-notices.py --transitive [--inventory out.md]
+        # slice 20: every package in the lock files (NuGet, npm, pip) — fail on copyleft anywhere in the tree,
+        # MPL-style licences only when the notices carry a Flagged row for the package; optionally write an inventory
 """
 from __future__ import annotations
 
@@ -27,7 +30,77 @@ ALLOWED = {
     "Apache-2.0 OR MIT", "(MIT OR CC0-1.0)", "MIT AND BSD-3-Clause",
 }
 # Licenses accepted only when the notices say "Flagged" beside the package (weak copyleft, file-scoped).
-FLAGGABLE = {"MPL-2.0"}
+FLAGGABLE = {"MPL-2.0", "Mozilla Public License 2.0 (MPL 2.0)", "EPL-2.0", "CDDL-1.0"}
+# Never acceptable in this product (CLAUDE.md → Cost Rules: no proprietary runtime, permissive only).
+COPYLEFT = re.compile(r"\b(A?GPL|LGPL|SSPL|BUSL|EUPL|CC-BY-NC|OSL-3|Commons Clause)\b", re.I)
+# Packages whose metadata carries no SPDX expression; the licence was read from the file the metadata points at.
+KNOWN = {"xunit.abstractions": "Apache-2.0"}   # https://raw.githubusercontent.com/xunit/xunit/master/license.txt
+
+
+def transitive() -> list[tuple[str, str, str, str | None]]:
+    """Every package in the lock files: (ecosystem, name, version, licence or None when not installed here)."""
+    out: list[tuple[str, str, str, str | None]] = []
+    home = os.path.expanduser("~/.nuget/packages")
+    seen: set[tuple[str, str]] = set()
+    for lock in glob.glob(os.path.join(ROOT, "apps", "api", "*", "packages.lock.json")) + glob.glob(os.path.join(ROOT, "tests", "*", "*", "packages.lock.json")):
+        for deps in json.load(open(lock, encoding="utf-8"))["dependencies"].values():
+            for name, info in deps.items():
+                if info.get("type") == "Project" or (name, info["resolved"]) in seen:
+                    continue
+                seen.add((name, info["resolved"]))
+                nuspec = os.path.join(home, name.lower(), info["resolved"].lower(), f"{name.lower()}.nuspec")
+                lic = KNOWN.get(name)
+                if lic is None and os.path.exists(nuspec):
+                    m = re.search(r'<license type="expression">([^<]+)</license>', open(nuspec, encoding="utf-8").read())
+                    lic = norm(m.group(1)) if m else "unknown"
+                out.append(("nuget", name, info["resolved"], lic))
+    for pkg in ("apps/web", "tests/e2e"):
+        lock = json.load(open(os.path.join(ROOT, pkg, "package-lock.json"), encoding="utf-8"))
+        for path, info in lock["packages"].items():
+            if not path:
+                continue
+            name = path.split("node_modules/")[-1]
+            meta = os.path.join(ROOT, pkg, path, "package.json")
+            lic = None
+            if os.path.exists(meta):
+                m = json.load(open(meta, encoding="utf-8"))
+                raw = m.get("license")
+                lic = norm(raw) if isinstance(raw, str) else (raw or {}).get("type", "unknown") if isinstance(raw, dict) else "unknown"
+            elif not info.get("optional"):
+                lic = "unknown"   # a required package that is not installed is a broken install, not a licence gap
+            out.append(("npm", name, info.get("version", "?"), lic))
+    for meta in glob.glob(os.path.join(ROOT, "services", "ai", ".venv", "lib", "python*", "site-packages", "*.dist-info", "METADATA")):
+        text = open(meta, encoding="utf-8", errors="replace").read()
+        name = (re.search(r"^Name: (.+)$", text, re.M) or [None, "?"])[1].strip()
+        version = (re.search(r"^Version: (.+)$", text, re.M) or [None, "?"])[1].strip()
+        m = re.search(r"^License-Expression: (.+)$", text, re.M) or re.search(r"^Classifier: License :: OSI Approved :: (.+)$", text, re.M)
+        lic = norm(m.group(1).strip()) if m else (re.search(r"^License: (.+)$", text, re.M) or [None, "unknown"])[1].strip()[:60]
+        out.append(("pip", name, version, lic))
+    return out
+
+
+def check_transitive(notices_text: str, packages: list[tuple[str, str, str, str | None]]) -> list[str]:
+    problems: list[str] = []
+    for eco, name, version, lic in packages:
+        if lic is None:
+            continue   # an optional platform binary not installed here
+        if COPYLEFT.search(lic):
+            problems.append(f"{eco}: {name} {version} is '{lic}' — copyleft is not acceptable anywhere in the tree (Cost Rules)")
+        elif lic in FLAGGABLE:
+            row = next((line for line in notices_text.splitlines() if re.search(r"`" + re.escape(name) + r"`", line) and "Flagged" in line), None)
+            if row is None:
+                problems.append(f"{eco}: {name} {version} is '{lic}' (weak copyleft) and has no Flagged row in THIRD-PARTY-NOTICES.md")
+        elif lic == "unknown":
+            problems.append(f"{eco}: {name} {version} declares no recognisable licence; add it to KNOWN with the licence read from the package")
+    return problems
+
+
+def write_inventory(path: str, packages: list[tuple[str, str, str, str | None]]) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("# Dependency inventory (generated by infrastructure/check-notices.py --transitive)\n\n")
+        f.write("| Ecosystem | Package | Version | Licence |\n|---|---|---|---|\n")
+        for eco, name, version, lic in sorted(packages):
+            f.write(f"| {eco} | `{name}` | {version} | {lic or '(not installed on this platform)'} |\n")
 
 
 def norm(expr: str | None) -> str | None:
@@ -126,6 +199,18 @@ def check(notices_text: str, deps: dict[str, dict[str, str | None]]) -> list[str
 
 def main() -> int:
     notices = open(NOTICES, encoding="utf-8").read()
+    if "--transitive" in sys.argv:
+        packages = transitive()
+        if "--inventory" in sys.argv:
+            write_inventory(sys.argv[sys.argv.index("--inventory") + 1], packages)
+        problems = check_transitive(notices, packages)
+        if problems:
+            print("\n".join(problems), file=sys.stderr)
+            print(f"check-notices --transitive: {len(problems)} problem(s) across {len(packages)} packages", file=sys.stderr)
+            return 1
+        installed = sum(1 for p in packages if p[3] is not None)
+        print(f"check-notices --transitive: {installed} installed packages ({len(packages)} in the lock files), no copyleft, every weak-copyleft package Flagged")
+        return 0
     deps = {"nuget": nuget_direct(), "npm": npm_direct(), "pip": pip_direct(), "image": images()}
     if "--self-test" in sys.argv:
         broken = notices.replace("`Npgsql`", "`Npgsql-renamed`", 1)
@@ -135,6 +220,9 @@ def main() -> int:
         mpl = {"pip": {"certifi": "MPL-2.0"}}
         assert check(notices, mpl) == [], "MPL-2.0 with a Flagged row must pass"
         assert check(notices.replace("**Flagged:**", ""), mpl) != [], "MPL-2.0 without Flagged must fail"
+        assert check_transitive(notices, [("npm", "left-pad", "1.0.0", "GPL-3.0")]) != [], "copyleft in the tree must fail"
+        assert check_transitive(notices, [("npm", "some-lib", "1.0.0", "MPL-2.0")]) != [], "an unflagged MPL package must fail"
+        assert check_transitive(notices, [("npm", "@rolldown/binding-android-arm64", "1.0.0", None)]) == [], "an uninstalled optional binary is not a problem"
         print("check-notices self-test: ok")
         return 0
     problems = check(notices, deps)

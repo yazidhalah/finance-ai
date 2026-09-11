@@ -9,7 +9,7 @@ source-available license is a blocking review finding, not a discussion.
 
 Versions are pinned; lockfiles (`package-lock.json`, `packages.lock.json`) are committed.
 
-Last updated: slice 16 — CI gates: `Microsoft.AspNetCore.OpenApi` (referenced since slice 1, recorded now), `gitleaks` (CI tool). `infrastructure/check-notices.py` now verifies this file against every direct dependency in CI.
+Last updated: slice 20 — the whole tree is now checked in CI (`check-notices.py --transitive`); `lightningcss` (transitive, dev, MPL-2.0) recorded and Flagged.
 
 ---
 
@@ -60,6 +60,7 @@ ASP.NET Core, the .NET runtime and the base class libraries ship with the .NET 1
 | `jsdom` | 30.0.1 | MIT | Web tests |
 | `@testing-library/react` | 16.3.3 | MIT | Web tests |
 | `pip-audit` | latest | Apache-2.0 | CI only (SEC-68): known-vulnerability check of `services/ai/requirements.txt` |
+| `lightningcss`, `lightningcss-linux-x64-gnu` | 1.32 / 1.33 (transitive, dev) | **MPL-2.0** — see note | Pulled in by `vite` and `@tailwindcss/vite` as a build-time CSS transformer. **Flagged:** MPL-2.0 is file-scoped weak copyleft; it runs only at build time, is never bundled into the served SPA, and is used unmodified. Found by `check-notices.py --transitive` (slice 20). |
 | `gitleaks` | 8.24.3 | MIT | CI secret scan over the history and the optional pre-commit hook (SEC-67, slice 16); a pinned, checksum-verified binary, never shipped |
 | `podman-compose` | 1.5.0 | GPL-2.0 — a **tool** invoked by CI and operators, never linked into or shipped with the product; the compose file is the product's, the tool is the runner's (same footing as `git` or `bash`) | CI stack job; local operators use whatever `podman compose` provider they have |
 | `@testing-library/jest-dom` | 7.0.1 | MIT | Web tests |
