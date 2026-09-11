@@ -35,13 +35,18 @@ public sealed class MessagingService(TenantDbContext db, IAuditWriter audit, Tim
     /// <summary>D-3: the system templates arrive as Draft; a tenant user approves each before automatic use.</summary>
     public async Task EnsureSystemTemplatesAsync(CancellationToken ct)
     {
-        if (await db.Templates.AnyAsync(t => t.IsSystem, ct))
+        // Seeds every (key, channel, language) the tenant does not have yet, so a template added by a later slice
+        // (slice 10's daily_briefing) reaches existing tenants as a Draft too.
+        var existing = await db.Templates.Where(t => t.IsSystem).Select(t => new { t.Key, t.Channel, t.Language }).ToListAsync(ct);
+        var have = existing.Select(t => $"{t.Key}|{t.Channel}|{t.Language}").ToHashSet(StringComparer.Ordinal);
+        var missing = SystemTemplates.All.Where(s => !have.Contains($"{s.Key}|{s.Channel}|{s.Language}")).ToList();
+        if (missing.Count == 0)
         {
             return;
         }
 
         var now = time.GetUtcNow();
-        foreach (var seed in SystemTemplates.All)
+        foreach (var seed in missing)
         {
             db.Templates.Add(new MessageTemplate
             {
@@ -64,7 +69,7 @@ public sealed class MessagingService(TenantDbContext db, IAuditWriter audit, Tim
 
     public async Task<MessageTemplate> CreateTemplateAsync(string key, string channel, string language, string tone, string? subject, string body, Guid actorUserId, CancellationToken ct)
     {
-        ValidateTemplate(channel, language, tone, subject, body);
+        ValidateTemplate(key, channel, language, tone, subject, body);
         var latest = await db.Templates.Where(t => t.Key == key && t.Channel == channel && t.Language == language).MaxAsync(t => (int?)t.Version, ct);
         if (latest is not null)
         {
@@ -95,7 +100,7 @@ public sealed class MessagingService(TenantDbContext db, IAuditWriter audit, Tim
     {
         var previous = await db.Templates.FirstOrDefaultAsync(t => t.Id == templateId && t.DeletedAt == null, ct) ?? throw new CaseException("template_not_found");
         var toneValue = tone ?? previous.Tone;
-        ValidateTemplate(previous.Channel, previous.Language, toneValue, subject ?? previous.Subject, body);
+        ValidateTemplate(previous.Key, previous.Channel, previous.Language, toneValue, subject ?? previous.Subject, body);
         var latest = await db.Templates.Where(t => t.Key == previous.Key && t.Channel == previous.Channel && t.Language == previous.Language).MaxAsync(t => t.Version, ct);
 
         await db.Templates.Where(t => t.Key == previous.Key && t.Channel == previous.Channel && t.Language == previous.Language && t.IsActive)
@@ -137,14 +142,16 @@ public sealed class MessagingService(TenantDbContext db, IAuditWriter audit, Tim
         return template;
     }
 
-    private static void ValidateTemplate(string channel, string language, string tone, string? subject, string body)
+    private static void ValidateTemplate(string key, string channel, string language, string tone, string? subject, string body)
     {
+        // Slice 10 D-3: the staff briefing template has its own closed placeholder set; everything else is a customer message.
+        Func<string, string?> firstUnknown = BriefingPlaceholders.IsBriefingKey(key) ? BriefingPlaceholders.FirstUnknown : Placeholders.FirstUnknown;
         if (channel is not (TemplateChannels.Email or TemplateChannels.Whatsapp)) throw new CaseException("invalid_channel", "channel");
         if (language is not ("ar" or "en")) throw new CaseException("invalid_language", "language");
         if (!TemplateTones.All.Contains(tone)) throw new CaseException("invalid_tone", "tone");
         if (string.IsNullOrWhiteSpace(body)) throw new CaseException("body_required", "body");
         if (channel == TemplateChannels.Email && string.IsNullOrWhiteSpace(subject)) throw new CaseException("subject_required", "subject");
-        if (Placeholders.FirstUnknown(body) is { } unknown || (subject is not null && Placeholders.FirstUnknown(subject) is { } unknownSubject && (unknown = unknownSubject) is not null))
+        if (firstUnknown(body) is { } unknown || (subject is not null && firstUnknown(subject) is { } unknownSubject && (unknown = unknownSubject) is not null))
         {
             throw new CaseException("unknown_placeholder", "body", new Dictionary<string, string> { ["placeholder"] = unknown });
         }

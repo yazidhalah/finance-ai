@@ -455,6 +455,24 @@ any narrative containing a numeral that is not present in `metrics` (doc 07 §7.
 the guard trips or Ollama is down, `narrative` is `null`, `narrativeAvailable` is
 `false`, and the UI shows the metrics alone — the briefing is still useful (PRD-28).
 
+> **Amended in slice 10 (API-22a).** As built:
+> - `metrics` carries, beyond the sketch above, `overdueByCurrency[]`, `overdueChange` (the delta against the
+>   previous briefing, null on the first), `unverifiedPaymentClaims`, `unmatchedReplies`, `repliesNeedingAHuman`
+>   and `pendingAiSuggestions` (slices 7 and 9); `topCases[]` also carries `caseNumber` and `status`.
+>   `collectedYesterday` and `promisesDueToday.amount` are base-currency sums only (payments and promises
+>   carry no fx rate); other currencies appear in `overdueByCurrency`.
+> - The response also carries `highlights[]`, `narrativeStatus`, the model name / prompt version /
+>   confidence of the narration, `generatedAt`, the delivery fields (`sentAt`, `sentToCount`,
+>   `deliveryStatus`), `isToday` and `availableDates[]` (the last 30).
+> - `GET /briefings/today` generates lazily when nothing exists yet (the sweep is the normal producer);
+>   `GET /briefings/{date}` is 404 for an unknown date; `POST /briefings/regenerate` accepts `?date=` and
+>   answers `409 briefing_immutable` for anything but today; `?language=` or `Accept-Language` selects the
+>   language, Arabic by default.
+> - `GET /organization/briefing-settings` is `tenant.read` (it returns the member list to pick recipients
+>   from and whether the briefing template is approved); `PATCH` is `tenant.settings.write` and takes
+>   `briefingSendAt` (`HH:mm`), `briefingLanguage`, `briefingEmailEnabled`, `recipientUserIds` (members
+>   only). Channel is email only.
+
 ---
 
 ## Appendix — Endpoint → permission matrix

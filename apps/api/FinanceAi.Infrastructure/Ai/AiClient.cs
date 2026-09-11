@@ -41,6 +41,40 @@ public sealed record ClassifyRequestPayload(
     [property: JsonPropertyName("context")] AiContextPayload Context,
     [property: JsonPropertyName("options")] AiOptionsPayload Options);
 
+// daily_briefing (doc 07 §6.3): the figures, already computed, as strings (AI-80). Nothing else can be sent.
+
+public sealed record AiBriefingMoney([property: JsonPropertyName("amount")] string Amount, [property: JsonPropertyName("currency")] string Currency);
+
+public sealed record AiBriefingCountAmount([property: JsonPropertyName("count")] string Count, [property: JsonPropertyName("amount")] AiBriefingMoney Amount);
+
+public sealed record AiBriefingTopCase(
+    [property: JsonPropertyName("customer_name")] string CustomerName,
+    [property: JsonPropertyName("amount")] AiBriefingMoney Amount,
+    [property: JsonPropertyName("days_past_due")] string DaysPastDue,
+    [property: JsonPropertyName("status")] string Status);
+
+public sealed record AiBriefingMetrics(
+    [property: JsonPropertyName("total_overdue")] AiBriefingMoney TotalOverdue,
+    [property: JsonPropertyName("overdue_change")] AiBriefingMoney? OverdueChange,
+    [property: JsonPropertyName("collected_yesterday")] AiBriefingMoney CollectedYesterday,
+    [property: JsonPropertyName("promises_due_today")] AiBriefingCountAmount PromisesDueToday,
+    [property: JsonPropertyName("promises_broken_yesterday")] string PromisesBrokenYesterday,
+    [property: JsonPropertyName("new_disputes")] string NewDisputes,
+    [property: JsonPropertyName("disputes_breaching_sla")] string DisputesBreachingSla,
+    [property: JsonPropertyName("queue_size")] string QueueSize,
+    [property: JsonPropertyName("unverified_payment_claims")] string UnverifiedPaymentClaims,
+    [property: JsonPropertyName("unmatched_replies")] string UnmatchedReplies,
+    [property: JsonPropertyName("replies_needing_a_human")] string RepliesNeedingAHuman,
+    [property: JsonPropertyName("pending_ai_suggestions")] string PendingAiSuggestions,
+    [property: JsonPropertyName("top_cases")] IReadOnlyList<AiBriefingTopCase> TopCases);
+
+public sealed record BriefingRequestPayload(
+    [property: JsonPropertyName("request_id")] Guid RequestId,
+    [property: JsonPropertyName("language")] string Language,
+    [property: JsonPropertyName("date")] string Date,
+    [property: JsonPropertyName("company_display_name")] string CompanyDisplayName,
+    [property: JsonPropertyName("metrics")] AiBriefingMetrics Metrics);
+
 public enum AiCallStatus { Ok, Unavailable, Rejected }
 
 /// <summary>What came back, before the backend's own validation. <see cref="Body"/> is opaque JSON until <c>AiResponseValidator</c> accepts it.</summary>
@@ -54,6 +88,8 @@ public sealed record AiHealth(bool Reachable, bool Ready, string? ModelName, str
 public interface IAiClient
 {
     Task<AiCallResult> ClassifyAsync(ClassifyRequestPayload payload, CancellationToken ct);
+
+    Task<AiCallResult> BriefingAsync(BriefingRequestPayload payload, CancellationToken ct);
 
     Task<AiHealth> HealthAsync(CancellationToken ct);
 }
@@ -76,13 +112,17 @@ public sealed class HttpAiClient : IAiClient
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 
-    public async Task<AiCallResult> ClassifyAsync(ClassifyRequestPayload payload, CancellationToken ct)
+    public Task<AiCallResult> ClassifyAsync(ClassifyRequestPayload payload, CancellationToken ct) => PostAsync("classify_customer_reply", payload, ct);
+
+    public Task<AiCallResult> BriefingAsync(BriefingRequestPayload payload, CancellationToken ct) => PostAsync("daily_briefing", payload, ct);
+
+    private static async Task<AiCallResult> PostAsync<T>(string operation, T payload, CancellationToken ct)
     {
         if (Token is null) return AiCallResult.Unavailable("ai_not_configured");
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(Timeout);
         var client = Http;
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/internal/ai/v1/classify_customer_reply") { Content = JsonContent.Create(payload, options: Json) };
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/internal/ai/v1/{operation}") { Content = JsonContent.Create(payload, options: Json) };
         request.Headers.Add("X-Service-Token", Token);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         try

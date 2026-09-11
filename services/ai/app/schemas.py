@@ -13,6 +13,7 @@ SCHEMA_DIR = Path(__file__).resolve().parent.parent / "schemas"
 PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
 RESPONSE_SCHEMA_VERSION = "classify_customer_reply.v1"
+BRIEFING_SCHEMA_VERSION = "daily_briefing.v1"
 
 
 def load_schema(name: str) -> dict[str, Any]:
@@ -26,6 +27,11 @@ RESPONSE_SCHEMA = load_schema("classify_customer_reply.response.v1.json")
 _format_checker = FormatChecker()
 REQUEST_VALIDATOR = Draft202012Validator(REQUEST_SCHEMA, format_checker=_format_checker)
 RESPONSE_VALIDATOR = Draft202012Validator(RESPONSE_SCHEMA, format_checker=_format_checker)
+
+BRIEFING_REQUEST_SCHEMA = load_schema("daily_briefing.request.v1.json")
+BRIEFING_RESPONSE_SCHEMA = load_schema("daily_briefing.response.v1.json")
+BRIEFING_REQUEST_VALIDATOR = Draft202012Validator(BRIEFING_REQUEST_SCHEMA, format_checker=_format_checker)
+BRIEFING_RESPONSE_VALIDATOR = Draft202012Validator(BRIEFING_RESPONSE_SCHEMA, format_checker=_format_checker)
 
 CLASSIFICATIONS: list[str] = RESPONSE_SCHEMA["properties"]["classification"]["enum"]
 REASON_CODES: list[str] = RESPONSE_SCHEMA["properties"]["reason_code"]["enum"]
@@ -84,3 +90,18 @@ def _strip(node: Any, keys: set[str]) -> None:
     elif isinstance(node, list):
         for item in node:
             _strip(item, keys)
+
+
+def briefing_output_schema() -> dict[str, Any]:
+    """The daily_briefing response minus the service-stamped fields, for Ollama's `format` (AI-82)."""
+    s = copy.deepcopy(BRIEFING_RESPONSE_SCHEMA)
+    for key in ("$schema", "$id"):
+        s.pop(key, None)
+    props = s["properties"]
+    props.pop("schema_version")
+    props.pop("model")
+    order = ["language", "highlights", "narrative", "numbers_used", "reason_code", "confidence"]
+    s["properties"] = {k: props[k] for k in order}
+    s["required"] = order
+    _strip(s, {"description", "format"})
+    return s

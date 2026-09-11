@@ -939,6 +939,22 @@ CREATE TABLE daily_briefings (
   generated_at    timestamptz NOT NULL DEFAULT now(),
   UNIQUE (tenant_id, briefing_date, language)
 );
+```
+
+> **Amended in slice 10 (DM-29a).** As built (`database/migrations/0011_daily_briefings.sql`):
+> - `daily_briefings` gains `highlights jsonb`, `narrative_status` (`available` / `unavailable` /
+>   `rejected_by_guard` / `schema_invalid` / `disabled`, with a CHECK that `available` ⇔ a narrative is
+>   present), `generated_by`, the delivery columns `sent_at`, `sent_to_count`, `template_id` +
+>   `template_version` (composite FK to `message_templates`), `delivery_status`, and `row_version`;
+>   `UNIQUE (tenant_id, id)`; a composite FK from `ai_suggestion_id` to `ai_suggestions`; RLS forced; no
+>   DELETE. A `BEFORE UPDATE` trigger refuses to touch a row older than yesterday (UTC) — the application
+>   never updates a past date either (doc 10 acceptance 5).
+> - `tenant_settings` gains `briefing_language` (`ar` / `en`), `briefing_email_enabled` (default off) and
+>   `briefing_recipient_user_ids uuid[]` (members only). `briefing_send_at` was already there.
+> - The briefing email is a `message_templates` row with `key = 'daily_briefing'` (one per language, seeded
+>   as Draft like the others) validated against its own closed placeholder set (`BriefingPlaceholders`).
+
+```sql
 
 CREATE TABLE document_chunks (                 -- pgvector; NOT used in v1 core loop
   id          uuid PRIMARY KEY,

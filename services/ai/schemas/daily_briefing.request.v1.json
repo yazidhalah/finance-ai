@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "daily_briefing.request.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request_id", "language", "date", "metrics"],
+  "properties": {
+    "request_id": { "type": "string", "format": "uuid" },
+    "language": { "type": "string", "enum": ["ar", "en"] },
+    "date": { "type": "string", "format": "date" },
+    "company_display_name": { "type": "string", "maxLength": 200 },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total_overdue", "collected_yesterday", "promises_due_today", "promises_broken_yesterday", "new_disputes",
+                   "disputes_breaching_sla", "queue_size", "unverified_payment_claims", "replies_needing_a_human", "top_cases"],
+      "properties": {
+        "total_overdue":        { "$ref": "#/$defs/money" },
+        "overdue_change":       { "oneOf": [{ "$ref": "#/$defs/money" }, { "type": "null" }] },
+        "collected_yesterday":  { "$ref": "#/$defs/money" },
+        "promises_due_today":   { "type": "object", "additionalProperties": false, "required": ["count", "amount"],
+                                  "properties": { "count": { "$ref": "#/$defs/count" }, "amount": { "$ref": "#/$defs/money" } } },
+        "promises_broken_yesterday": { "$ref": "#/$defs/count" },
+        "new_disputes":         { "$ref": "#/$defs/count" },
+        "disputes_breaching_sla": { "$ref": "#/$defs/count" },
+        "queue_size":           { "$ref": "#/$defs/count" },
+        "unverified_payment_claims": { "$ref": "#/$defs/count" },
+        "unmatched_replies":    { "$ref": "#/$defs/count" },
+        "replies_needing_a_human": { "$ref": "#/$defs/count" },
+        "pending_ai_suggestions": { "$ref": "#/$defs/count" },
+        "top_cases": {
+          "type": "array", "maxItems": 5,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["customer_name", "amount", "days_past_due"],
+            "properties": {
+              "customer_name": { "type": "string", "maxLength": 200 },
+              "amount":        { "$ref": "#/$defs/money" },
+              "days_past_due": { "$ref": "#/$defs/count" },
+              "status":        { "type": "string", "maxLength": 40 }
+            }
+          }
+        }
+      }
+    },
+    "options": { "type": "object", "additionalProperties": false, "properties": { "max_chars": { "type": "integer", "minimum": 200, "maximum": 1200 } } }
+  },
+  "$defs": {
+    "money": { "type": "object", "additionalProperties": false, "required": ["amount", "currency"],
+               "properties": { "amount": { "type": "string", "pattern": "^-?\\d{1,16}\\.\\d{3}$" }, "currency": { "type": "string", "pattern": "^[A-Z]{3}$" } } },
+    "count": { "type": "string", "pattern": "^\\d{1,9}$" }
+  }
+}

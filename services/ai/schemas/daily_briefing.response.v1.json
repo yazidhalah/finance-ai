@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "daily_briefing.response.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "language", "narrative", "highlights", "numbers_used", "confidence", "reason_code", "model"],
+  "properties": {
+    "schema_version": { "const": "daily_briefing.v1" },
+    "language": { "type": "string", "enum": ["ar", "en"] },
+    "narrative": { "type": "string", "minLength": 1, "maxLength": 1200 },
+    "highlights": { "type": "array", "maxItems": 5, "items": { "type": "string", "minLength": 1, "maxLength": 200 } },
+    "numbers_used": { "type": "array", "maxItems": 20, "items": { "type": "string", "enum": [
+      "totalOverdue", "overdueChange", "collectedYesterday", "promisesDueToday", "promisesBrokenYesterday", "newDisputes",
+      "disputesBreachingSla", "queueSize", "unverifiedPaymentClaims", "unmatchedReplies", "repliesNeedingAHuman", "pendingAiSuggestions", "topCases", "overdueByCurrency", "date"
+    ] } },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "reason_code": { "type": "string", "enum": ["generated_from_metrics", "quiet_day", "insufficient_data"] },
+    "model": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "digest", "prompt_version"],
+      "properties": { "name": { "type": "string" }, "digest": { "type": "string" }, "prompt_version": { "type": "string" }, "latency_ms": { "type": "integer" } }
+    }
+  }
+}

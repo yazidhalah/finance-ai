@@ -86,7 +86,7 @@ apps/api          ASP.NET Core modular monolith (.NET 10, pinned in global.json)
   FinanceAi.Migrator        the migration job — the only thing that performs DDL
 apps/web          React + TypeScript + Vite + Tailwind (bilingual, RTL-first)
 apps/worker       Scheduled jobs (case creation, PTP evaluation, invariants, briefings) — not yet built
-services/ai       Python + FastAPI, Qwen3 via Ollama; prompts, schemas, evaluations (slice 9: classify_customer_reply)
+services/ai       Python + FastAPI, Qwen3 via Ollama; prompts, schemas, evaluations (classify_customer_reply, daily_briefing)
 database          bootstrap (roles) and forward-only SQL migrations (PostgreSQL 16 + pgvector)
 infrastructure    Podman Compose and deployment
 tests             unit · integration · security · support (e2e not yet built; the AI evaluation lives in services/ai/evaluations)

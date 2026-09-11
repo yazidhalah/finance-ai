@@ -14,7 +14,7 @@ export interface NavItem {
 }
 
 export const navigation: NavItem[] = [
-  { key: 'today', labelKey: 'nav.today', permission: 'cases.read', href: '/today', available: false },
+  { key: 'today', labelKey: 'nav.today', permission: 'cases.read', href: '/today', available: true },
   { key: 'queue', labelKey: 'nav.queue', permission: 'cases.read', href: '/queue', available: true },
   { key: 'promises', labelKey: 'nav.promises', permission: 'cases.read', href: '/promises', available: true },
   { key: 'disputes', labelKey: 'nav.disputes', permission: 'cases.read', href: '/disputes', available: true },

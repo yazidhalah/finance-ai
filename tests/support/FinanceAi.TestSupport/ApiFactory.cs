@@ -143,6 +143,23 @@ public sealed class ScriptedAiClient : FinanceAi.Infrastructure.Ai.IAiClient
     /// <summary>Every request the backend sent, so a test can assert the projection (AI-30) and the threshold it carried.</summary>
     public List<FinanceAi.Infrastructure.Ai.ClassifyRequestPayload> Requests { get; } = [];
 
+    private readonly Queue<Func<FinanceAi.Infrastructure.Ai.BriefingRequestPayload, FinanceAi.Infrastructure.Ai.AiCallResult>> briefingQueue = new();
+
+    /// <summary>Every briefing request (slice 10): the figures the backend handed the model, as strings (AI-80).</summary>
+    public List<FinanceAi.Infrastructure.Ai.BriefingRequestPayload> BriefingRequests { get; } = [];
+
+    /// <summary>Scripts the narrative for the next briefing call; a function receives the request so a test can echo its figures back.</summary>
+    public void EnqueueBriefing(Func<FinanceAi.Infrastructure.Ai.BriefingRequestPayload, string> responseJson, string validationStatus = "valid") =>
+        this.briefingQueue.Enqueue(r => new FinanceAi.Infrastructure.Ai.AiCallResult(FinanceAi.Infrastructure.Ai.AiCallStatus.Ok, JsonDocument.Parse(responseJson(r)).RootElement.Clone(), validationStatus, new string('b', 64), null));
+
+    public void EnqueueBriefingUnavailable() => this.briefingQueue.Enqueue(_ => FinanceAi.Infrastructure.Ai.AiCallResult.Unavailable("ai_unavailable"));
+
+    public Task<FinanceAi.Infrastructure.Ai.AiCallResult> BriefingAsync(FinanceAi.Infrastructure.Ai.BriefingRequestPayload payload, CancellationToken ct)
+    {
+        this.BriefingRequests.Add(payload);
+        return Task.FromResult(this.briefingQueue.Count == 0 ? FinanceAi.Infrastructure.Ai.AiCallResult.Unavailable("ai_unavailable") : this.briefingQueue.Dequeue()(payload));
+    }
+
     public bool Healthy { get; set; } = true;
 
     public void Enqueue(string responseJson, string validationStatus = "valid") =>
@@ -150,7 +167,11 @@ public sealed class ScriptedAiClient : FinanceAi.Infrastructure.Ai.IAiClient
 
     public void EnqueueUnavailable(string code = "ai_unavailable") => this.queue.Enqueue(_ => FinanceAi.Infrastructure.Ai.AiCallResult.Unavailable(code));
 
-    public void Clear() => this.queue.Clear();
+    public void Clear()
+    {
+        this.queue.Clear();
+        this.briefingQueue.Clear();
+    }
 
     public Task<FinanceAi.Infrastructure.Ai.AiCallResult> ClassifyAsync(FinanceAi.Infrastructure.Ai.ClassifyRequestPayload payload, CancellationToken ct)
     {
@@ -165,6 +186,20 @@ public sealed class ScriptedAiClient : FinanceAi.Infrastructure.Ai.IAiClient
 /// <summary>Builds model outputs exactly as the service would return them (schema v1), so tests script realistic JSON.</summary>
 public static class AiScript
 {
+    /// <summary>A daily_briefing.v1 output. Pass the narrative the "model" wrote; the guard decides whether a person sees it.</summary>
+    public static string Briefing(string language, string narrative, IReadOnlyList<string>? highlights = null, IReadOnlyList<string>? numbersUsed = null, decimal confidence = 0.9m, string reason = "generated_from_metrics") =>
+        JsonSerializer.Serialize(new Dictionary<string, object?>
+        {
+            ["schema_version"] = "daily_briefing.v1",
+            ["language"] = language,
+            ["narrative"] = narrative,
+            ["highlights"] = highlights ?? [],
+            ["numbers_used"] = numbersUsed ?? ["totalOverdue"],
+            ["confidence"] = confidence,
+            ["reason_code"] = reason,
+            ["model"] = new Dictionary<string, object?> { ["name"] = "qwen3:4b", ["digest"] = "359d7dd4bcda", ["prompt_version"] = "daily_briefing.v1", ["latency_ms"] = 2000 },
+        });
+
     public static string Response(
         string classification, decimal confidence, string reasonCode = "acknowledges_without_commitment", string language = "en",
         string? amountText = null, string? amountNumeric = null, string? currency = null, string? dateText = null, string? dateIso = null, bool? dateRelative = null,

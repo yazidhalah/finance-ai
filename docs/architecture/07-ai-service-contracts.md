@@ -419,6 +419,19 @@ the guard cross-checks against this too), `confidence`, `reason_code`, `model`.
 **AI-83** The briefing is generated per language separately. The Arabic briefing is
 generated in Arabic; it is not a translation of the English one (PRD-03).
 
+> **Amended in slice 10 (AI-83a).** As built (`services/ai/app/briefing.py`, `schemas/daily_briefing.*.v1.json`,
+> `prompts/daily_briefing/v1.md`, `NumericFidelityGuard` in the Domain):
+> - The request schema carries every figure as a string (`^\\d{1,9}$` for counts, three-decimal money) and
+>   the top cases as display name + amount + days past due; there is no field for an id or an address.
+> - The service runs the same numeral check before answering and uses its one repair retry on a guard
+>   failure ("these numbers are not among the figures: …"); the backend's guard is still the authority
+>   and re-checks independently. A full date is one token; the year alone is allowed; a bare day or month
+>   is not (it would let any small number through).
+> - `numbers_used` also accepts `overdueByCurrency` and `date`.
+> - Observed on Qwen3 4B (2026-09-11): English narratives pass the guard first time; Arabic narratives pass
+>   the guard but read poorly (the model invents terms for "promise" and abbreviates the currency). The
+>   native-speaker review that doc 10 acceptance 3 requires has not happened; see the slice 10 review.
+
 ### 6.4 `match_remittance` (optional, ships with or after slice 9)
 
 Extracts invoice references and amounts from a remittance advice or bank narrative

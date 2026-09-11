@@ -15,10 +15,11 @@ from typing import Any
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 
+from . import briefing as briefing_op
 from . import classify as classify_op
 from .config import Settings
 from .model_client import ModelClient, ModelUnavailable, OllamaClient
-from .schemas import REQUEST_VALIDATOR, RESPONSE_SCHEMA_VERSION, validation_errors
+from .schemas import BRIEFING_REQUEST_VALIDATOR, BRIEFING_SCHEMA_VERSION, REQUEST_VALIDATOR, RESPONSE_SCHEMA_VERSION, validation_errors
 
 log = logging.getLogger("finance_ai.ai_service")
 
@@ -73,7 +74,7 @@ def create_app(settings: Settings, client: ModelClient | None = None) -> FastAPI
 
     @app.get("/health")
     async def health() -> dict[str, Any]:
-        return {"status": "ok", "operation": classify_op.OPERATION, "prompt_version": classify_op.PROMPT_VERSION}
+        return {"status": "ok", "operations": [classify_op.OPERATION, briefing_op.OPERATION], "prompt_version": classify_op.PROMPT_VERSION, "prompt_versions": {classify_op.OPERATION: classify_op.PROMPT_VERSION, briefing_op.OPERATION: briefing_op.PROMPT_VERSION}}
 
     @app.get("/ready")
     async def ready() -> Response:
@@ -95,6 +96,10 @@ def create_app(settings: Settings, client: ModelClient | None = None) -> FastAPI
                 "prompt_version": classify_op.PROMPT_VERSION,
                 "prompt_sha256": classify_op.PROMPT_SHA256,
                 "schema_version": RESPONSE_SCHEMA_VERSION,
+                "operations": {
+                    classify_op.OPERATION: {"prompt_version": classify_op.PROMPT_VERSION, "prompt_sha256": classify_op.PROMPT_SHA256, "schema_version": RESPONSE_SCHEMA_VERSION},
+                    briefing_op.OPERATION: {"prompt_version": briefing_op.PROMPT_VERSION, "prompt_sha256": briefing_op.PROMPT_SHA256, "schema_version": BRIEFING_SCHEMA_VERSION},
+                },
                 "options": {"temperature": 0, "top_p": 1, "seed": settings.seed, "num_predict": settings.num_predict, "num_ctx": settings.num_ctx},
                 "timeout_seconds": settings.timeout_seconds,
             }
@@ -161,6 +166,53 @@ def create_app(settings: Settings, client: ModelClient | None = None) -> FastAPI
             "X-Ai-Truncated": "true" if outcome.truncated else "false",
             "X-Ai-Attempts": str(outcome.attempts),
         }
+        return JSONResponse(outcome.body, headers=headers)
+
+    @app.post("/internal/ai/v1/daily_briefing", dependencies=[Depends(require_token)])
+    async def daily_briefing(request: Request) -> Response:
+        started = time.perf_counter()
+        try:
+            body = await request.json()
+        except ValueError:
+            raise HTTPException(status_code=400, detail={"code": "request_invalid", "errors": ["(root): not JSON"]})
+        errs = validation_errors(BRIEFING_REQUEST_VALIDATOR, body)
+        if errs:
+            raise HTTPException(status_code=400, detail={"code": "request_invalid", "errors": errs})
+        request_id = body["request_id"]
+        try:
+            await asyncio.wait_for(slots.acquire(), timeout=settings.queue_wait_seconds)
+        except TimeoutError:
+            raise HTTPException(status_code=429, detail={"code": "ai_busy"})
+        try:
+            try:
+                info = await model_client.info()
+                outcome = await briefing_op.narrate(body, model_client, info, settings)
+            except ModelUnavailable as e:
+                log.warning("model_unavailable", extra={"fields": {"request_id": request_id, "operation": briefing_op.OPERATION, "reason": str(e), "latency_ms": int((time.perf_counter() - started) * 1000)}})
+                raise HTTPException(status_code=503, detail={"code": "model_unavailable", "reason": str(e)})
+        finally:
+            slots.release()
+        # The figures are not secrets, but the log stays numbers-only by the same rule as classification (AI-103).
+        log.info(
+            "briefed",
+            extra={
+                "fields": {
+                    "request_id": request_id,
+                    "operation": briefing_op.OPERATION,
+                    "prompt_version": briefing_op.PROMPT_VERSION,
+                    "schema_version": BRIEFING_SCHEMA_VERSION,
+                    "language": body["language"],
+                    "latency_ms": outcome.latency_ms,
+                    "attempts": outcome.attempts,
+                    "validation_status": outcome.validation_status,
+                    "untraceable_count": len(outcome.untraceable),
+                    "narrative_chars": len(outcome.body.get("narrative", "")),
+                    "input_hash": outcome.input_hash[:16],
+                    "validation_errors": outcome.errors[:6],
+                }
+            },
+        )
+        headers = {"X-Ai-Validation-Status": outcome.validation_status, "X-Ai-Input-Hash": outcome.input_hash, "X-Ai-Attempts": str(outcome.attempts)}
         return JSONResponse(outcome.body, headers=headers)
 
     @app.exception_handler(HTTPException)

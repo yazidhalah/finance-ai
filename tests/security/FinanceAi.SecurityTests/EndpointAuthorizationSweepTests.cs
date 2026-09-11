@@ -217,7 +217,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     {
         var endpoints = this.Endpoints();
 
-        Assert.Equal(126, endpoints.Count);
+        Assert.Equal(131, endpoints.Count);
         Assert.All(endpoints, e => Assert.True(e.Permission is not null || e.Access is not null));
 
         // The anonymous set is exactly registration, login and refresh — nothing has drifted into it.
@@ -381,6 +381,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
             .Replace("{contactId:guid}", (secondaryId ?? Guid.CreateVersion7()).ToString(), StringComparison.Ordinal)
             .Replace("{rowId:guid}", (secondaryId ?? Guid.CreateVersion7()).ToString(), StringComparison.Ordinal)
             .Replace("{evidenceId:guid}", (secondaryId ?? Guid.CreateVersion7()).ToString(), StringComparison.Ordinal);
+        path = path.Replace("{date}", "2026-09-10", StringComparison.Ordinal);   // slice 10: /briefings/{date}
 
         var request = new HttpRequestMessage(new HttpMethod(endpoint.Method), path);
 
