@@ -35,6 +35,8 @@ public static class CustomerEndpoints
 
         customers.MapGet("/", ListAsync).RequiresPermission(Permissions.CustomersRead).WithName("ListCustomers");
         customers.MapPost("/", CreateAsync).RequiresPermission(Permissions.CustomersWrite).WithName("CreateCustomer");
+        // Slice 23 (DM-21): preview, then confirm with the token the preview returned. Irreversible.
+        customers.MapPost("/{id:guid}/merge", MergeAsync).RequiresPermission(Permissions.CustomersMerge).WithName("MergeCustomer");
         customers.MapGet("/duplicates", DuplicatesAsync).RequiresPermission(Permissions.CustomersRead).WithName("CustomerDuplicates");
         customers.MapGet("/{id:guid}", GetAsync).RequiresPermission(Permissions.CustomersRead).WithName("GetCustomer");
         customers.MapPatch("/{id:guid}", UpdateAsync).RequiresPermission(Permissions.CustomersWrite).WithName("UpdateCustomer");
@@ -607,11 +609,27 @@ public static class CustomerEndpoints
             ? Task.FromResult(false)
             : db.Customers.AnyAsync(c => c.Code != null && c.Code.ToLower() == code.ToLower() && c.Id != exceptId, ct);
 
+    private static async Task<Results<Ok<CustomerMergeResponse>, ProblemHttpResult>> MergeAsync(Guid id, CustomerMergeRequest request, HttpContext context, CurrentUser user, TenantDbContext db, FinanceAi.Infrastructure.Customers.CustomerMergeService merges, CancellationToken ct)
+    {
+        // SEC-13: the row in the route is looked up before the body is judged, so a foreign id is a 404 and nothing else.
+        if (!await db.Customers.AnyAsync(c => c.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
+        if (request.SourceCustomerId is null) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("sourceCustomerId", "required", "errors.validation.sourceCustomerId.required")]);
+        var confirming = !string.IsNullOrWhiteSpace(request.ConfirmToken);
+        var (preview, refusal, notFound) = confirming
+            ? await merges.ConfirmAsync(id, request.SourceCustomerId.Value, request.ConfirmToken!.Trim(), user.UserId, ct)
+            : await merges.PreviewAsync(id, request.SourceCustomerId.Value, ct);
+        if (notFound) return ApiProblems.NotFoundProblem(context);
+        if (refusal is not null) return ApiProblems.BusinessRuleProblem(context, refusal.Code, null, refusal.Meta);
+        return TypedResults.Ok(new CustomerMergeResponse(preview!.TargetId, preview.SourceId, confirming, preview.Moves.Select(m => new MergeTableDto(m.Name, m.Rows)).ToList(),
+            preview.ConflictingInvoiceNumbers, preview.BothHaveOpenCases, confirming ? null : preview.ConfirmToken));
+    }
+
     private static CustomerResponse ToResponse(Customer c) => new(
         c.Id, c.Code, c.NameAr, c.NameEn, c.LegalName, c.TaxRegistrationNo, c.PreferredLanguage, c.PaymentTermsDays,
         c.CreditLimitAmount is { } amount && c.CreditLimitCurrency is { } currency ? MoneyDto.From(amount, currency) : null,
         c.DefaultCurrency, c.RiskFlag.ToString(), c.Status.ToString(), c.BrokenPromiseCount12m, c.BouncedChequeCount12m,
-        c.Notes, [], c.CreatedAt, c.UpdatedAt, c.RowVersion.ToString(CultureInfo.InvariantCulture));
+        c.Notes, [], c.CreatedAt, c.UpdatedAt, c.RowVersion.ToString(CultureInfo.InvariantCulture),
+        c.MergedIntoId);
 
     private static ContactResponse ToResponse(CustomerContact c) => new(
         c.Id, c.CustomerId, c.Name, c.RoleTitle, c.Email, c.PhoneE164, c.IsPrimary, c.IsBilling, c.PreferredLanguage,

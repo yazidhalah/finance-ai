@@ -88,7 +88,9 @@ enforced the coverage floor (decision 0007: Domain 95 / Infrastructure 90 / Api 
 services/ai/evaluations/import_corpus.py (redaction, provenance, T-90/T-91 readiness), `FinanceAi.Migrator
 review-pack`, and the procedure in docs/ops/acceptance-pass.md. Slice 22 typed every handler's result (the
 compiler now checks the OpenAPI contract), documented `Location` on 201s, and let Owners opt into critical-alert
-email (`PATCH /organization/alert-settings`, route pin 148).
+email (`PATCH /organization/alert-settings`, route pin 148). Slice 23 built the doc 05 rows that had never been
+built: holidays, the manual invoice (A-11), invoice edits, the invoice trail and the two-step customer merge
+(DM-21, migration 0017); route pin 155.
 What remains before the First Product is "done" is the
 v1 acceptance pass on a pilot corpus and real hardware (doc 09 §5 AI gates are indicative on the
 author-written corpus; Arabic narrative quality needs a native reviewer; T-140 runs nightly on a shared

@@ -90,7 +90,8 @@ api.MapLedgerEndpoints()
     .MapMessagingEndpoints()
     .MapAiEndpoints()
     .MapBriefingEndpoints()
-    .MapOpsEndpoints();
+    .MapOpsEndpoints()
+    .MapHolidayEndpoints();
 
 // SEC-10: refuse to boot if any endpoint forgot to declare how it is authorized. This runs before
 // the first request is served, so the failure mode of a forgotten declaration is a crash at deploy
@@ -157,6 +158,8 @@ public static class ApiServiceRegistration
         services.AddScoped<FinanceAi.Domain.Entities.ICustomerBalanceGuard, FinanceAi.Infrastructure.Import.OpenInvoiceBalanceGuard>();
         services.AddScoped<FinanceAi.Infrastructure.Import.ImportService>();
         services.AddScoped<FinanceAi.Infrastructure.Ledger.LedgerService>();
+        services.AddScoped<FinanceAi.Infrastructure.Ledger.ManualInvoiceService>();
+        services.AddScoped<FinanceAi.Infrastructure.Customers.CustomerMergeService>();
         services.AddScoped<FinanceAi.Infrastructure.Ledger.BalanceReconciliation>();
         services.AddScoped<FinanceAi.Infrastructure.Reports.AgingService>();
         services.AddScoped<FinanceAi.Infrastructure.Cases.CaseService>();

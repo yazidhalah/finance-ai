@@ -3869,6 +3869,108 @@
         "x-permission": "customers.write"
       }
     },
+    "/api/v1/customers/{id}/merge": {
+      "post": {
+        "tags": [
+          "CustomerEndpoints"
+        ],
+        "operationId": "MergeCustomer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerMergeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerMergeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session (SEC-03), or MFA enrolment is required (403 mfa_enrollment_required is also possible).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role does not hold 'customers.merge', or the session is not strong enough (mfa_enrollment_required, reauthentication_required).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such row in this tenant — the same answer whether it exists elsewhere or not at all (SEC-14).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is malformed or fails validation; `errors` names each field.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A business rule refused the request; `errors[0].code` is the rule (doc 03, doc 02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited (API-13); `Retry-After` is set.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "customers.merge"
+      }
+    },
     "/api/v1/customers/duplicates": {
       "get": {
         "tags": [
@@ -5601,6 +5703,95 @@
           }
         },
         "x-permission": "invoices.read"
+      },
+      "post": {
+        "tags": [
+          "ImportEndpoints"
+        ],
+        "operationId": "CreateInvoice",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualInvoiceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session (SEC-03), or MFA enrolment is required (403 mfa_enrollment_required is also possible).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role does not hold 'invoices.write', or the session is not strong enough (mfa_enrollment_required, reauthentication_required).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is malformed or fails validation; `errors` names each field.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A business rule refused the request; `errors[0].code` is the rule (doc 03, doc 02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited (API-13); `Retry-After` is set.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "invoices.write"
       }
     },
     "/api/v1/invoices/{id}": {
@@ -5673,6 +5864,178 @@
           }
         },
         "x-permission": "invoices.read"
+      },
+      "patch": {
+        "tags": [
+          "ImportEndpoints"
+        ],
+        "operationId": "EditInvoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceEditRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session (SEC-03), or MFA enrolment is required (403 mfa_enrollment_required is also possible).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role does not hold 'invoices.write', or the session is not strong enough (mfa_enrollment_required, reauthentication_required).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such row in this tenant — the same answer whether it exists elsewhere or not at all (SEC-14).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is malformed or fails validation; `errors` names each field.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A business rule refused the request; `errors[0].code` is the rule (doc 03, doc 02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited (API-13); `Retry-After` is set.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "invoices.write"
+      }
+    },
+    "/api/v1/invoices/{id}/audit": {
+      "get": {
+        "tags": [
+          "ImportEndpoints"
+        ],
+        "operationId": "InvoiceAudit",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session (SEC-03), or MFA enrolment is required (403 mfa_enrollment_required is also possible).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role does not hold 'audit.read', or the session is not strong enough (mfa_enrollment_required, reauthentication_required).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such row in this tenant — the same answer whether it exists elsewhere or not at all (SEC-14).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited (API-13); `Retry-After` is set.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "audit.read"
       }
     },
     "/api/v1/payments": {
@@ -11859,6 +12222,211 @@
         },
         "x-permission": "ai.settings.write"
       }
+    },
+    "/api/v1/organization/holidays": {
+      "get": {
+        "tags": [
+          "HolidayEndpoints"
+        ],
+        "operationId": "ListHolidays",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HolidayListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session (SEC-03), or MFA enrolment is required (403 mfa_enrollment_required is also possible).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role does not hold 'tenant.settings.write', or the session is not strong enough (mfa_enrollment_required, reauthentication_required).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited (API-13); `Retry-After` is set.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "tenant.settings.write"
+      },
+      "post": {
+        "tags": [
+          "HolidayEndpoints"
+        ],
+        "operationId": "CreateHoliday",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HolidayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "Location": {
+                "description": "The URL of the created resource.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HolidayDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session (SEC-03), or MFA enrolment is required (403 mfa_enrollment_required is also possible).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role does not hold 'tenant.settings.write', or the session is not strong enough (mfa_enrollment_required, reauthentication_required).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is malformed or fails validation; `errors` names each field.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A business rule refused the request; `errors[0].code` is the rule (doc 03, doc 02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited (API-13); `Retry-After` is set.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "tenant.settings.write"
+      }
+    },
+    "/api/v1/organization/holidays/{id}": {
+      "delete": {
+        "tags": [
+          "HolidayEndpoints"
+        ],
+        "operationId": "DeleteHoliday",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "No valid session (SEC-03), or MFA enrolment is required (403 mfa_enrollment_required is also possible).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role does not hold 'tenant.settings.write', or the session is not strong enough (mfa_enrollment_required, reauthentication_required).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such row in this tenant — the same answer whether it exists elsewhere or not at all (SEC-14).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited (API-13); `Retry-After` is set.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "tenant.settings.write"
+      }
     }
   },
   "components": {
@@ -14600,6 +15168,76 @@
         },
         "additionalProperties": false
       },
+      "CustomerMergeRequest": {
+        "required": [
+          "sourceCustomerId",
+          "confirmToken"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceCustomerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "confirmToken": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerMergeResponse": {
+        "required": [
+          "targetCustomerId",
+          "sourceCustomerId",
+          "merged",
+          "moves",
+          "conflictingInvoiceNumbers",
+          "bothHaveOpenCases",
+          "confirmToken"
+        ],
+        "type": "object",
+        "properties": {
+          "targetCustomerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceCustomerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "merged": {
+            "type": "boolean"
+          },
+          "moves": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MergeTableDto"
+            }
+          },
+          "conflictingInvoiceNumbers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "bothHaveOpenCases": {
+            "type": "boolean"
+          },
+          "confirmToken": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "CustomerPositionDto": {
         "required": [
           "currency",
@@ -14865,6 +15503,13 @@
           },
           "rowVersion": {
             "type": "string"
+          },
+          "mergedIntoId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         },
         "additionalProperties": false
@@ -15453,6 +16098,64 @@
         "type": "object",
         "properties": {
           "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "HolidayDto": {
+        "required": [
+          "id",
+          "date",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "HolidayListResponse": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HolidayDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "HolidayRequest": {
+        "required": [
+          "date",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "name": {
             "type": [
               "null",
               "string"
@@ -16271,6 +16974,35 @@
         },
         "additionalProperties": false
       },
+      "InvoiceEditRequest": {
+        "required": [
+          "dueDate",
+          "poReference",
+          "notes"
+        ],
+        "type": "object",
+        "properties": {
+          "dueDate": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "poReference": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "InvoiceListResponse": {
         "required": [
           "items",
@@ -16508,6 +17240,99 @@
         },
         "additionalProperties": false
       },
+      "ManualInvoiceRequest": {
+        "required": [
+          "customerId",
+          "invoiceNumber",
+          "issueDate",
+          "dueDate",
+          "currency",
+          "netAmount",
+          "taxAmount",
+          "totalAmount",
+          "fxRateToBase",
+          "poReference",
+          "notes",
+          "externalId"
+        ],
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "invoiceNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "issueDate": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "dueDate": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "currency": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "netAmount": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "taxAmount": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "totalAmount": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fxRateToBase": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "poReference": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "externalId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "MatchCustomerRequest": {
         "required": [
           "customerId"
@@ -16657,6 +17482,27 @@
           "mfaEnforced": {
             "type": "boolean",
             "default": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "MergeTableDto": {
+        "required": [
+          "name",
+          "rows"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "rows": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -19680,6 +20526,9 @@
     },
     {
       "name": "ReportEndpoints"
+    },
+    {
+      "name": "HolidayEndpoints"
     }
   ]
 }

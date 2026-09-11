@@ -332,6 +332,8 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.UpdatedBy).HasColumnName("updated_by");
             e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
             e.Property(x => x.DeletedAt).HasColumnName("deleted_at");
+            e.Property(x => x.MergedIntoId).HasColumnName("merged_into_id");
+            e.Property(x => x.MergedAt).HasColumnName("merged_at");
         });
 
     private static void ConfigureCustomerContacts(ModelBuilder model) =>

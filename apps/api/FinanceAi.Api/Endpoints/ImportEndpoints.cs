@@ -8,6 +8,7 @@ using FinanceAi.Domain.Authorization;
 using FinanceAi.Domain.Entities;
 using FinanceAi.Infrastructure.Database;
 using FinanceAi.Infrastructure.Import;
+using FinanceAi.Infrastructure.Ledger;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceAi.Api.Endpoints;
@@ -47,6 +48,10 @@ public static class ImportEndpoints
         var invoices = api.MapGroup("/invoices");
         invoices.MapGet("/", ListInvoicesAsync).RequiresPermission(Permissions.InvoicesRead).WithName("ListInvoices");
         invoices.MapGet("/{id:guid}", GetInvoiceAsync).RequiresPermission(Permissions.InvoicesRead).WithName("GetInvoice");
+        // Slice 23 (doc 05): manual entry (A-11), the three editable fields, the one-click audit trail (doc 06 §6.11).
+        invoices.MapPost("/", CreateInvoiceAsync).RequiresPermission(Permissions.InvoicesWrite).WithName("CreateInvoice");
+        invoices.MapPatch("/{id:guid}", EditInvoiceAsync).RequiresPermission(Permissions.InvoicesWrite).WithName("EditInvoice");
+        invoices.MapGet("/{id:guid}/audit", InvoiceAuditAsync).RequiresPermission(Permissions.AuditRead).WithName("InvoiceAudit");
 
         return api;
     }
@@ -418,6 +423,79 @@ public static class ImportEndpoints
     {
         var invoice = await db.Invoices.FirstOrDefaultAsync(i => i.Id == id, ct);
         return invoice is null ? ApiProblems.NotFoundProblem(context) : TypedResults.Ok(await LedgerEndpoints.InvoiceDetailAsync(invoice, db, ct));
+    }
+
+    private static async Task<Results<Created<InvoiceDetailResponse>, ProblemHttpResult>> CreateInvoiceAsync(ManualInvoiceRequest request, HttpContext context, CurrentUser user, TenantDbContext db, ManualInvoiceService invoices, CancellationToken ct)
+    {
+        var validation = new Validation().Require("invoiceNumber", request.InvoiceNumber).MaxLength("invoiceNumber", request.InvoiceNumber, 100).Currency("currency", request.Currency);
+        if (request.CustomerId is null) validation.Require("customerId", null);
+        if (!TryDate(request.IssueDate, out var issueDate)) validation.Require("issueDate", null, "invalid_date");
+        DateOnly? dueDate = null;
+        if (request.DueDate is not null) { if (TryDate(request.DueDate, out var d)) dueDate = d; else validation.Require("dueDate", null, "invalid_date"); }
+        decimal? net = null, tax = null, total = null, fx = null;
+        if (request.NetAmount is not null && !TryMoney(request.NetAmount, out net)) validation.Require("netAmount", null, "invalid_amount");
+        if (request.TaxAmount is not null && !TryMoney(request.TaxAmount, out tax)) validation.Require("taxAmount", null, "invalid_amount");
+        if (request.TotalAmount is not null && !TryMoney(request.TotalAmount, out total)) validation.Require("totalAmount", null, "invalid_amount");
+        if (request.FxRateToBase is not null)
+        {
+            if (decimal.TryParse(request.FxRateToBase, System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var rate) && rate > 0m) fx = rate;
+            else validation.Require("fxRateToBase", null, "invalid_fx_rate");
+        }
+
+        if (validation.HasErrors) return ApiProblems.ValidationProblem(context, validation.Errors);
+
+        var (invoice, refusal) = await invoices.CreateAsync(
+            new ManualInvoiceService.Draft(request.CustomerId!.Value, request.InvoiceNumber!, issueDate, dueDate, request.Currency!.ToUpperInvariant(), net, tax, total, fx, request.PoReference, request.Notes, request.ExternalId), user.UserId, ct);
+        if (refusal is not null)
+        {
+            return refusal.Code == ImportErrorCodes.CustomerNotFound
+                ? ApiProblems.NotFoundProblem(context)
+                : ApiProblems.BusinessRuleProblem(context, refusal.Code, refusal.Field, refusal.Detail is null ? null : new Dictionary<string, string> { ["detail"] = refusal.Detail });
+        }
+
+        return TypedResults.Created($"/api/v1/invoices/{invoice!.Id}", await LedgerEndpoints.InvoiceDetailAsync(invoice, db, ct));
+    }
+
+    private static async Task<Results<Ok<InvoiceDetailResponse>, ProblemHttpResult>> EditInvoiceAsync(Guid id, InvoiceEditRequest request, HttpContext context, CurrentUser user, TenantDbContext db, ManualInvoiceService invoices, CancellationToken ct)
+    {
+        DateOnly? dueDate = null;
+        if (request.DueDate is not null)
+        {
+            if (!TryDate(request.DueDate, out var d)) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("dueDate", "invalid_date", "errors.validation.dueDate.invalid_date")]);
+            dueDate = d;
+        }
+
+        // A field left out (null) is untouched; an empty string clears it. That keeps PATCH honest with a record body.
+        var (invoice, refusal) = await invoices.EditAsync(id,
+            new ManualInvoiceService.Edit(dueDate, request.PoReference is not null, string.IsNullOrEmpty(request.PoReference) ? null : request.PoReference.Trim(), request.Notes is not null, string.IsNullOrEmpty(request.Notes) ? null : request.Notes.Trim()),
+            user.UserId, ct);
+        if (refusal is not null)
+        {
+            return refusal.Code == "not_found" ? ApiProblems.NotFoundProblem(context) : ApiProblems.BusinessRuleProblem(context, refusal.Code, refusal.Field, null);
+        }
+
+        return TypedResults.Ok(await LedgerEndpoints.InvoiceDetailAsync(invoice!, db, ct));
+    }
+
+    /// <summary>Doc 06 §6.11: the invoice's own trail, newest first, with the recorded values.</summary>
+    private static async Task<Results<Ok<AuditListResponse>, ProblemHttpResult>> InvoiceAuditAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
+    {
+        if (!await db.Invoices.AnyAsync(i => i.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
+        var events = await db.AuditEvents.Where(e => e.EntityId == id).OrderByDescending(e => e.Id).Take(200).ToListAsync(ct);
+        var items = events.Select(e => new AuditEventDto(e.Id, e.OccurredAt, e.ActorUserId, e.ActorKind, e.EventType, e.EntityType, e.EntityId, e.FromState, e.ToState, e.ReasonCode, e.RequestId, e.Hash,
+            e.Changes is null ? null : System.Text.Json.JsonDocument.Parse(e.Changes).RootElement.Clone(), e.Note, e.AiSuggestionId)).ToList();
+        return TypedResults.Ok(new AuditListResponse(items, null));
+    }
+
+    private static bool TryDate(string? text, out DateOnly date) =>
+        DateOnly.TryParseExact(text, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out date);
+
+    private static bool TryMoney(string text, out decimal? amount)
+    {
+        amount = null;
+        if (!decimal.TryParse(text, System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var value) || value < 0m || value.Scale > 3) return false;
+        amount = value;
+        return true;
     }
 
     // ---------------------------------------------------------------------------------------
