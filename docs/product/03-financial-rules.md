@@ -44,8 +44,15 @@ allocated_payments(I) = Σ allocations.amount where target = I and allocation is
                         and the source payment/cheque is in a settled state
 allocated_credits(I)  = Σ credit_note_applications.amount where target = I and active
 written_off(I)        = Σ write_offs.amount where target = I and status = Approved
-open_balance(I)       = total_amount - allocated_payments(I) - allocated_credits(I) - written_off(I)
+withheld(I)           = Σ withholding_deductions.withheld_amount where target = I and active
+open_balance(I)       = total_amount - allocated_payments(I) - allocated_credits(I) - written_off(I) - withheld(I)
 ```
+
+> **Amended in slice 3b (F-1).** The original formula had three instruments; worked example E1
+> and assumption A-04 require that tax withheld and remitted by the customer reduces what is
+> owed. `withheld(I)` is the fourth term. The withheld amount is entered from the certificate,
+> never computed from the rate (FIN-29). A withholding deduction is reversed like an allocation —
+> a compensating row, never a delete.
 
 | ID | Rule |
 |----|------|
@@ -80,7 +87,7 @@ specific invoices.
 
 | ID | Rule |
 |----|------|
-| FIN-20 | **Only three instruments change an invoice balance:** an allocation of a payment, an application of a credit note, and an approved write-off. Nothing else. Not a dispute, not a PTP, not an AI output, not a status change. |
+| FIN-20 | **Only four instruments change an invoice balance:** an allocation of a payment, an application of a credit note, an approved write-off, and a withholding deduction (*amended in slice 3b, F-1 — was three*). Nothing else. Not a dispute, not a PTP, not an AI output, not a status change. |
 | FIN-21 | `Σ allocations(P).amount ≤ P.amount` for every payment, enforced by a transactional check plus a database constraint trigger. |
 | FIN-22 | Every allocation line MUST be ≥ 0.001 and ≤ the target invoice's `open_balance` at the time of the write, evaluated under `SELECT … FOR UPDATE` on the invoice row. |
 | FIN-23 | Allocations are **reversible, never deleted**. Reversal writes a compensating row (`reversal_of_id`) and both rows remain. The audit trail must show that money was moved and then moved back. |

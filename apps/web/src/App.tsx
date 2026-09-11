@@ -6,6 +6,8 @@ import { CustomerDetailPage } from './pages/CustomerDetail'
 import { ImportWizard } from './pages/ImportWizard'
 import { ImportsPage } from './pages/Imports'
 import { InvoicesPage } from './pages/Invoices'
+import { ChequesPage, CreditNotesPage, InvoiceDetailPage, WriteOffsPage } from './pages/Ledger'
+import { PaymentsPage } from './pages/Payments'
 import { CustomersPage } from './pages/Customers'
 import { OrganizationPage } from './pages/Organization'
 import { RegisterOrganization } from './pages/RegisterOrganization'
@@ -20,6 +22,11 @@ type Screen =
   | { kind: 'imports' }
   | { kind: 'import'; id: string | null }
   | { kind: 'invoices' }
+  | { kind: 'invoice'; id: string }
+  | { kind: 'payments' }
+  | { kind: 'cheques' }
+  | { kind: 'creditNotes' }
+  | { kind: 'writeOffs' }
 
 /**
  * A screen switch driven by the URL path, not a routing library: three authenticated destinations
@@ -33,7 +40,13 @@ function screenFromPath(path: string): Screen {
   const batch = /^\/import\/(new|[0-9a-f-]{36})$/i.exec(path)
   if (batch) return { kind: 'import', id: batch[1] === 'new' ? null : batch[1]! }
   if (path.startsWith('/import')) return { kind: 'imports' }
+  const invoice = /^\/invoices\/([0-9a-f-]{36})$/i.exec(path)
+  if (invoice) return { kind: 'invoice', id: invoice[1]! }
   if (path.startsWith('/invoices')) return { kind: 'invoices' }
+  if (path.startsWith('/payments/cheques')) return { kind: 'cheques' }
+  if (path.startsWith('/payments/credit-notes')) return { kind: 'creditNotes' }
+  if (path.startsWith('/payments/write-offs')) return { kind: 'writeOffs' }
+  if (path.startsWith('/payments')) return { kind: 'payments' }
   return { kind: 'organization' }
 }
 
@@ -97,7 +110,17 @@ function Routes() {
     ) : screen.kind === 'import' ? (
       <ImportWizard batchId={screen.id} onDone={() => navigate({ kind: 'imports' }, '/import')} onOpenBatch={(id) => window.history.replaceState(null, '', `/import/${id}`)} />
     ) : screen.kind === 'invoices' ? (
-      <InvoicesPage />
+      <InvoicesPage onOpen={(id) => navigate({ kind: 'invoice', id }, `/invoices/${id}`)} />
+    ) : screen.kind === 'invoice' ? (
+      <InvoiceDetailPage id={screen.id} onBack={() => navigate({ kind: 'invoices' }, '/invoices')} />
+    ) : screen.kind === 'payments' ? (
+      <PaymentsPage />
+    ) : screen.kind === 'cheques' ? (
+      <ChequesPage />
+    ) : screen.kind === 'creditNotes' ? (
+      <CreditNotesPage />
+    ) : screen.kind === 'writeOffs' ? (
+      <WriteOffsPage />
     ) : (
       <OrganizationPage />
     )

@@ -1,6 +1,6 @@
 # 04 — PostgreSQL Entity Model
 
-Status: DRAFT, amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a) and slice 3 (DM-23a). The DDL below is **illustrative
+Status: DRAFT, amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), slice 3 (DM-23a) and slice 3b (DM-24a). The DDL below is **illustrative
 specification**, not a migration.
 Migrations are written inside their vertical slice (doc 10) and must match this
 document or amend it.
@@ -594,6 +594,25 @@ CREATE TABLE write_offs (                                 -- FIN-31, four-eyes
     status <> 'Approved' OR self_approved OR approved_by IS DISTINCT FROM proposed_by)
 );
 ```
+
+> **Amended in slice 3b (DM-24a).** As built (`database/migrations/0004_payments_and_allocation.sql`):
+> - Every table above carries `(tenant_id, id)` and the §3.1 audit columns; `payments`, `cheques`
+>   and `credit_notes` carry `row_version`. Self-referencing reversal FKs are composite too.
+> - `payments` gains `idempotency_key` + `request_hash`, unique per tenant among non-null keys
+>   (API-08 for `POST /payments`, D-2). `cheques.payment_id` links a cleared cheque to the
+>   payment it became; `cheques.bounce_reason` and the transition timestamps are stored.
+> - `payment_allocations`, `withholding_deductions` and `credit_note_applications` carry
+>   `reversal_of_id` with a `reversal_is_inactive` CHECK (a compensating row is never active) and a
+>   partial unique index allowing one reversal per row. `withholding_deductions` has the
+>   `certificate_received` chase index.
+> - **Two constraint triggers** repeat the caps outside the application: `allocation_within_payment`
+>   (INV-02 currency match and Σ active allocations ≤ `payments.amount`, FIN-21) and
+>   `application_within_credit_note` (Σ active applications ≤ `credit_notes.amount`, FIN-41).
+> - `write_offs` adds `approved_has_approver`, `rejected_by/at`, `reversed_by/at`, `note`, and a
+>   partial unique index allowing one `Proposed` row per invoice.
+> - **`finance_app` holds SELECT/INSERT/UPDATE only** on all seven tables — no DELETE (FIN-23).
+> - `customers.bounced_cheque_count_12m` is incremented on bounce; the rolling recompute belongs
+>   to the aging slice.
 
 ### 5.5 Collections
 

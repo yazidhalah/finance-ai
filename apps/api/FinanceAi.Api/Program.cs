@@ -50,6 +50,7 @@ api.MapOrganizationEndpoints();
 api.MapAuditEndpoints();
 api.MapCustomerEndpoints();
 api.MapImportEndpoints();
+api.MapLedgerEndpoints();
 
 // SEC-10: refuse to boot if any endpoint forgot to declare how it is authorized. This runs before
 // the first request is served, so the failure mode of a forgotten declaration is a crash at deploy
@@ -114,6 +115,8 @@ public static class ApiServiceRegistration
         // Doc 10 §2.4: a customer with an open invoice cannot be deleted. Real since slice 3.
         services.AddScoped<FinanceAi.Domain.Entities.ICustomerBalanceGuard, FinanceAi.Infrastructure.Import.OpenInvoiceBalanceGuard>();
         services.AddScoped<FinanceAi.Infrastructure.Import.ImportService>();
+        services.AddScoped<FinanceAi.Infrastructure.Ledger.LedgerService>();
+        services.AddScoped<FinanceAi.Infrastructure.Ledger.BalanceReconciliation>();
 
         services.AddSingleton<IPasswordHasher, Argon2idPasswordHasher>();
         services.AddSingleton(TimeProvider.System);

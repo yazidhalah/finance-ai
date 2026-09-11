@@ -9,7 +9,7 @@ import { useLocale } from '../i18n/LocaleProvider'
  * Doc 06 §6.5 invoice list, slice 3a subset: lifecycle status, dates, amounts and the derived
  * open balance. Settlement, overdue and dispute chips arrive with the slices that derive them.
  */
-export function InvoicesPage() {
+export function InvoicesPage({ onOpen }: { onOpen: (id: string) => void }) {
   const { t, locale } = useLocale()
   const [items, setItems] = useState<Invoice[] | null>(null)
   const [totalCount, setTotalCount] = useState(0)
@@ -49,7 +49,7 @@ export function InvoicesPage() {
             <tbody>
               {items.map((i) => (
                 <tr key={i.id} data-testid="invoice-row" className="border-b border-slate-100">
-                  <td className="px-4 py-2"><Isolate className="font-mono text-xs">{i.invoiceNumber}</Isolate></td>
+                  <td className="px-4 py-2"><a href={`/invoices/${i.id}`} className="text-sky-800 underline-offset-2 hover:underline" onClick={(e) => { e.preventDefault(); onOpen(i.id) }}><Isolate className="font-mono text-xs">{i.invoiceNumber}</Isolate></a></td>
                   <td className="px-4 py-2">{t(`invoices.status.${i.status}`)}</td>
                   <td className="px-4 py-2"><Isolate>{date(i.issueDate)}</Isolate></td>
                   <td className="px-4 py-2"><Isolate>{date(i.dueDate)}</Isolate></td>

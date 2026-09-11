@@ -21,8 +21,10 @@ public static class ApiProblems
     public const string NotFound = "not_found";
     public const string ConcurrencyConflict = "concurrency_conflict";
     public const string RateLimited = "rate_limited";
+    public const string BusinessRuleViolated = "business_rule_violated";
 
-    public sealed record FieldError(string Field, string Code, string MessageKey);
+    /// <summary>Doc 05 §0.2: <c>meta</c> carries the live figure that explains a refusal (e.g. the open balance).</summary>
+    public sealed record FieldError(string Field, string Code, string MessageKey, IReadOnlyDictionary<string, string>? Meta = null);
 
     public static ProblemHttpResult Create(
         HttpContext context,
@@ -87,6 +89,12 @@ public static class ApiProblems
             "errors.unexpected_field",
             field is null ? null : [new FieldError(field, UnexpectedField, "errors.unexpected_field")]);
 
+    /// <summary>422 with one field error carrying the rule's code and its explanatory figures.</summary>
+    public static ProblemHttpResult BusinessRuleProblem(HttpContext context, string ruleCode, string? field, IReadOnlyDictionary<string, string>? meta) =>
+        Create(context, StatusCodes.Status422UnprocessableEntity, BusinessRuleViolated,
+            $"Business rule violated: {ruleCode}.", $"errors.rule.{ruleCode}",
+            [new FieldError(field ?? string.Empty, ruleCode, $"errors.rule.{ruleCode}", meta)]);
+
     private static string TitleFor(string code) => code switch
     {
         UnexpectedField => "Unexpected field",
@@ -96,6 +104,7 @@ public static class ApiProblems
         NotFound => "Not found",
         ConcurrencyConflict => "Concurrency conflict",
         RateLimited => "Rate limited",
+        BusinessRuleViolated => "Business rule violated",
         _ => "Request failed",
     };
 }
