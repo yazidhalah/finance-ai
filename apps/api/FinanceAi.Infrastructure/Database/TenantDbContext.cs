@@ -87,6 +87,10 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
 
     public DbSet<MemberInvitation> MemberInvitations => this.Set<MemberInvitation>();
 
+    public DbSet<InvariantRun> InvariantRuns => this.Set<InvariantRun>();
+
+    public DbSet<Alert> Alerts => this.Set<Alert>();
+
     public DbSet<UserRecoveryCode> UserRecoveryCodes => this.Set<UserRecoveryCode>();
 
     public DbSet<PasswordResetToken> PasswordResetTokens => this.Set<PasswordResetToken>();
@@ -124,6 +128,7 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
         ConfigureBriefings(model);
         ConfigureInvitations(model);
         ConfigureAuthRecords(model);
+        ConfigureOps(model);
 
         this.ApplyTenantQueryFilters(model);
 
@@ -982,6 +987,42 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.RevokedAt).HasColumnName("revoked_at");
             e.Property(x => x.RevokedBy).HasColumnName("revoked_by");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
+        });
+    }
+
+    private static void ConfigureOps(ModelBuilder model)
+    {
+        model.Entity<InvariantRun>(e =>
+        {
+            e.ToTable("invariant_runs");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.RanAt).HasColumnName("ran_at");
+            e.Property(x => x.Trigger).HasColumnName("trigger");
+            e.Property(x => x.ActorUserId).HasColumnName("actor_user_id");
+            e.Property(x => x.Status).HasColumnName("status");
+            e.Property(x => x.ChecksJson).HasColumnName("checks").HasColumnType("jsonb");
+            e.Property(x => x.DurationMs).HasColumnName("duration_ms");
+        });
+
+        model.Entity<Alert>(e =>
+        {
+            e.ToTable("alerts");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.Kind).HasColumnName("kind");
+            e.Property(x => x.Severity).HasColumnName("severity");
+            e.Property(x => x.Summary).HasColumnName("summary");
+            e.Property(x => x.DetailsJson).HasColumnName("details").HasColumnType("jsonb");
+            e.Property(x => x.DedupeKey).HasColumnName("dedupe_key");
+            e.Property(x => x.RaisedAt).HasColumnName("raised_at");
+            e.Property(x => x.EmailDelivery).HasColumnName("email_delivery");
+            e.Property(x => x.WebhookDelivery).HasColumnName("webhook_delivery");
+            e.Property(x => x.AcknowledgedAt).HasColumnName("acknowledged_at");
+            e.Property(x => x.AcknowledgedBy).HasColumnName("acknowledged_by");
+            e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
         });
     }
 

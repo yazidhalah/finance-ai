@@ -71,7 +71,10 @@ write-off approval, and transfer of ownership itself. MFA_KEK_BASE64 must be set
 Slice 14 added the deployment: three Containerfiles, infrastructure/compose.yml (profiles full/tls,
 `infrastructure/stack.sh --profile full up -d --build` from a clean clone, only `web` published — SEC-69),
 infrastructure/smoke.sh run by the CI `stack` job, SEC-68 dependency audits in CI, and the operations
-runbook docs/ops/runbook.md (SEC-103). What remains before the First Product is "done" is the
+runbook docs/ops/runbook.md (SEC-103). Slice 15 added the invariant job (doc 03 §7, run last in the sweep and on
+demand), the SEC-102 alert path (alerts table, ALERT_EMAIL, ALERT_WEBHOOK_URL, infrastructure/alert.sh, T-153) and
+the Audit screen; it also fixed SEC-53 verification (audit `changes` is hashed in canonical JSON form).
+What remains before the First Product is "done" is the
 v1 acceptance pass on a pilot corpus and real hardware (doc 09 §5 AI gates are indicative on the
 author-written corpus; Arabic narrative quality needs a native reviewer; T-140 performance in CI is
 open). No second module until that passes. Every AI output enters through the human gates slices 6–10 built (Proposed promises,

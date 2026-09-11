@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FinanceAi.Api.Http;
 using FinanceAi.Domain.Entities;
 
@@ -748,3 +749,17 @@ public sealed record AcceptedResponse(bool Accepted);
 public sealed record TransferOwnershipRequest(Guid? TargetMembershipId);
 
 public sealed record TransferOwnershipResponse(MemberDto NewOwner, MemberDto PreviousOwner);
+
+// ---- Slice 15: operations (doc 03 §7, SEC-102) ----
+
+public sealed record InvariantCheckDto(string Id, string Description, long Violations, IReadOnlyList<string> Samples);
+
+/// <summary><c>run</c> is null until the first sweep or manual run.</summary>
+public sealed record LatestInvariantRunResponse(InvariantRunResponse? Run);
+
+public sealed record InvariantRunResponse(Guid Id, DateTimeOffset RanAt, string Trigger, Guid? ActorUserId, string Status, int DurationMs, IReadOnlyList<InvariantCheckDto> Checks);
+
+/// <summary>Counts, ids and thresholds only — never a customer, an address or an amount (SEC-41).</summary>
+public sealed record AlertDto(Guid Id, string Kind, string Severity, string Summary, JsonElement Details, DateTimeOffset RaisedAt, string EmailDelivery, string WebhookDelivery, DateTimeOffset? AcknowledgedAt, Guid? AcknowledgedBy);
+
+public sealed record AlertListResponse(IReadOnlyList<AlertDto> Items, int OpenCount);

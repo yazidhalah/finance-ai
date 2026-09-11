@@ -17,7 +17,7 @@ echo "backup: $dump ($(( ( $(date +%s) - taken ) ))s old — that is the RPO of 
 
 psql_admin -d postgres -c "DROP DATABASE IF EXISTS \"$drill\""
 psql_admin -d postgres -c "CREATE DATABASE \"$drill\" TEMPLATE template0 ENCODING 'UTF8'"
-trap 'psql_admin -d postgres -c "DROP DATABASE IF EXISTS \"$drill\"" >/dev/null' EXIT
+trap 'rc=$?; psql_admin -d postgres -c "DROP DATABASE IF EXISTS \"$drill\"" >/dev/null; if [ $rc -ne 0 ]; then infrastructure/alert.sh restore_drill_failed "restore drill of ${dump:-?} failed (exit $rc)"; fi' EXIT   # SEC-102
 
 start=$(date +%s)
 # The roles (finance_app, finance_migrator, finance_reporting) already exist on the server; --no-owner keeps the

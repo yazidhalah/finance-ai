@@ -49,6 +49,25 @@ public sealed class AuditHashTests
         }
     }
 
+    /// <summary>
+    /// Slice 15: <c>changes</c> is jsonb, which hands back its own key order, spacing and no escapes. The hash must
+    /// not depend on any of that, or every row with changes fails verification the moment it is read back.
+    /// </summary>
+    [Fact]
+    public void Compute_IsIndifferentToJsonbsFormattingOfChanges()
+    {
+        var written = SampleEvent();
+        written.Changes = "{\"nameAr\":\"\\u0634\\u0631\\u0643\\u0629\",\"creditLimitAmount\":\"12500.500\",\"nested\":{\"z\":[1,2,{\"b\":null,\"a\":true}],\"a\":\"x\"}}";
+        var readBack = SampleEvent();
+        readBack.Changes = "{\"nested\": {\"a\": \"x\", \"z\": [1, 2, {\"a\": true, \"b\": null}]}, \"nameAr\": \"شركة\", \"creditLimitAmount\": \"12500.500\"}";
+
+        Assert.Equal(AuditHash.Compute(written, "prev"), AuditHash.Compute(readBack, "prev"));
+
+        var different = SampleEvent();
+        different.Changes = "{\"nested\": {\"a\": \"x\", \"z\": [1, 2, {\"a\": false, \"b\": null}]}, \"nameAr\": \"شركة\", \"creditLimitAmount\": \"12500.500\"}";
+        Assert.NotEqual(AuditHash.Compute(written, "prev"), AuditHash.Compute(different, "prev"));
+    }
+
     [Fact]
     public void Compute_ChainsOnThePreviousHash()
     {
