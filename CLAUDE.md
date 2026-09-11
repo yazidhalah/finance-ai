@@ -60,9 +60,10 @@ For each vertical slice:
 # Current Phase
 Implementation, one vertical slice at a time, against the approved specification in /docs.
 Slices 1 (Organization & Authentication), 2 (Customers), 3a (Invoice Import), 3b (Payments &
-Allocation), 4 (Aging), 5 (Collection Queue), 6 (Promise-to-Pay) and 7 (Disputes) are complete —
-see /docs/slices/. Slice 8 (Email Templates & Reminders) is next; its send path must call the
-dunning guard of slice 7.
+Allocation), 4 (Aging), 5 (Collection Queue), 6 (Promise-to-Pay), 7 (Disputes) and 8 (Email
+Templates & Reminders) are complete — see /docs/slices/. Slice 9 (Local AI: reply classification)
+is next; every AI output enters through the human gates slices 6–8 built (Proposed promises, Open
+disputes, PendingApproval messages) and never through a direct write.
 Every later slice copies the tenant-isolation
 pattern established there (§5 of that document). Do not start a slice until the previous one's
 definition of done (doc 09 §9) is met.

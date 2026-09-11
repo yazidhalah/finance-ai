@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ApiError, api, casesApi, disputesApi, promisesApi } from '../api/client'
-import type { CaseDetail, CaseInvoice, Dispute, DunningEligibility, PromiseToPay } from '../api/client'
+import { ApiError, api, casesApi, disputesApi, messagingApi, promisesApi } from '../api/client'
+import type { CaseDetail, CaseInvoice, Dispute, DunningEligibility, OutboundMessage, PromiseToPay } from '../api/client'
 import { useSession } from '../auth/SessionProvider'
 import { CustomerName } from '../components/CustomerName'
 import { Button, Card, ErrorNotice, Field, Isolate, Select, TextInput } from '../components/ui'
@@ -10,6 +10,7 @@ import { bucketLabel } from './Aging'
 import { FactorBreakdown, SnoozeDialog, StatusChip } from './Queue'
 import { PromiseCard, RecordPromiseDialog } from './Promises'
 import { DisputeCard, RaiseDisputeDialog } from './Disputes'
+import { ComposeDialog, MessageCard } from './Messaging'
 
 type Problem = { messageKey: string; traceId?: string }
 const toProblem = (e: unknown): Problem => (e instanceof ApiError ? { messageKey: e.problem.messageKey, traceId: e.problem.traceId } : { messageKey: 'errors.unknown' })
@@ -30,13 +31,15 @@ export function CaseDetailPage({ id, onBack }: { id: string; onBack: () => void 
   const [disputes, setDisputes] = useState<Dispute[]>([])
   const [eligibility, setEligibility] = useState<DunningEligibility | null>(null)
   const [disputing, setDisputing] = useState<CaseInvoice | null>(null)
+  const [messages, setMessages] = useState<OutboundMessage[]>([])
+  const [composing, setComposing] = useState(false)
   const [members, setMembers] = useState<{ userId: string; fullName: string; status: string }[]>([])
   const [form, setForm] = useState({ kind: 'call', summary: '', reasonCode: '', note: '', holdUntil: '', userId: '' })
 
   const load = useCallback(async () => {
     try {
-      const [d, p, ds, el] = await Promise.all([casesApi.get(id), promisesApi.list({ caseId: id }), disputesApi.list({ caseId: id }), disputesApi.dunningEligibility(id).catch(() => null)])
-      setDetail(d); setPromises(p.items); setDisputes(ds.items); setEligibility(el)
+      const [d, p, ds, el, ms] = await Promise.all([casesApi.get(id), promisesApi.list({ caseId: id }), disputesApi.list({ caseId: id }), disputesApi.dunningEligibility(id).catch(() => null), messagingApi.messages({ caseId: id })])
+      setDetail(d); setPromises(p.items); setDisputes(ds.items); setEligibility(el); setMessages(ms.items)
     } catch (e) { setProblem(toProblem(e)) }
   }, [id])
   useEffect(() => { void load() }, [load])
@@ -85,7 +88,7 @@ export function CaseDetailPage({ id, onBack }: { id: string; onBack: () => void 
           <div className="flex flex-wrap gap-2" data-testid="action-rail">
             {can('cases.write') ? <Button onClick={() => setPanel('contact')} data-testid="log-contact">{t('cases.logContact')}</Button> : null}
             {/* SM-25 / T-127: the control is disabled with the server's reason while any in-scope invoice is blocked. */}
-            <Button variant="ghost" disabled data-testid="send-message" title={eligibility?.invoices.some((i) => !i.allowed) ? t('disputes.blocksSend') : t('cases.comingLater')}>{t('cases.sendMessage')}{eligibility?.invoices.some((i) => !i.allowed) ? <span className="ms-1 text-xs text-red-800" data-testid="send-blocked">{t('disputes.blocksSend')}</span> : null}</Button>
+            {can('messages.draft') ? <Button variant="ghost" disabled={eligibility?.invoices.some((i) => !i.allowed) || c.automationDisabled} onClick={() => setComposing(true)} data-testid="send-message" title={eligibility?.invoices.some((i) => !i.allowed) ? t('disputes.blocksSend') : undefined}>{t('cases.sendMessage')}{eligibility?.invoices.some((i) => !i.allowed) ? <span className="ms-1 text-xs text-red-800" data-testid="send-blocked">{t('disputes.blocksSend')}</span> : null}</Button> : null}
             {can('ptp.write') ? <Button variant="ghost" onClick={() => setPanel('promise')} data-testid="record-promise">{t('cases.recordPromise')}</Button> : null}
             {can('disputes.write') && detail.invoices.some((i) => i.removedAt === null && i.status === 'Open') ? <Button variant="ghost" onClick={() => setDisputing(detail.invoices.find((i) => i.removedAt === null && i.status === 'Open')!)} data-testid="raise-dispute">{t('cases.raiseDispute')}</Button> : null}
             {can('cases.write') && !c.automationDisabled ? <Button variant="ghost" onClick={() => setPanel('snooze')}>{t('cases.snooze')}</Button> : null}
@@ -135,9 +138,17 @@ export function CaseDetailPage({ id, onBack }: { id: string; onBack: () => void 
               <div className="flex items-end gap-2"><Button busy={busy} onClick={() => void act(() => casesApi.assign(c.caseId, form.userId || null))}>{t('cases.assign')}</Button><Button variant="ghost" onClick={() => setPanel('none')}>{t('state.cancel')}</Button></div>
             </div>
           ) : null}
+          {composing ? <div className="mt-3"><ComposeDialog caseId={c.caseId} invoices={detail.invoices} preferredLanguage={c.customer.preferredLanguage} onClose={() => setComposing(false)} onDone={() => { setComposing(false); void load() }} /></div> : null}
           {disputing ? <div className="mt-3"><RaiseDisputeDialog invoiceId={disputing.invoiceId} invoiceNumber={disputing.invoiceNumber} openBalance={disputing.openBalance} onClose={() => setDisputing(null)} onDone={() => { setDisputing(null); void load() }} /></div> : null}
           {panel === 'promise' ? <div className="mt-3"><RecordPromiseDialog caseId={c.caseId} invoices={detail.invoices} onClose={() => setPanel('none')} onDone={() => { setPanel('none'); void load() }} /></div> : null}
           {panel === 'snooze' ? <div className="mt-3"><SnoozeDialog item={c} onClose={() => setPanel('none')} onDone={() => { setPanel('none'); void load() }} /></div> : null}
+        </Card>
+      ) : null}
+
+      {messages.length > 0 ? (
+        <Card>
+          <h2 className="font-semibold">{t('messages.title')}</h2>
+          <div className="mt-2 space-y-2" data-testid="case-messages">{messages.map((m) => <MessageCard key={m.id} message={m} onChanged={() => void load()} />)}</div>
         </Card>
       ) : null}
 

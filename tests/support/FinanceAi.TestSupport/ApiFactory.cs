@@ -26,11 +26,18 @@ public class ApiFactory : WebApplicationFactory<Program>
 
     public void ResetClock() => this.Clock.Override = null;
 
+    /// <summary>The mail host is Mailpit from .env; a test may make the next sends fail to prove the retry path.</summary>
+    public SwitchableMailTransport Mail { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
         builder.UseEnvironment("Testing");
-        builder.ConfigureServices(services => services.AddSingleton<TimeProvider>(this.Clock));
+        builder.ConfigureServices(services =>
+        {
+            services.AddSingleton<TimeProvider>(this.Clock);
+            services.AddSingleton<FinanceAi.Infrastructure.Messaging.IMailTransport>(this.Mail);
+        });
     }
 
     /// <summary>
@@ -98,6 +105,28 @@ public class ApiFactory : WebApplicationFactory<Program>
 }
 
 /// <summary>Shapes the tests read back from the API. Mirrors the contracts in doc 05.</summary>
+public sealed class SwitchableMailTransport : FinanceAi.Infrastructure.Messaging.IMailTransport
+{
+    private readonly FinanceAi.Infrastructure.Messaging.SmtpMailTransport inner = new();
+
+    /// <summary>How many of the next sends should throw, to exercise retries.</summary>
+    public int FailNext { get; set; }
+
+    public int Sent { get; private set; }
+
+    public Task<string> SendAsync(FinanceAi.Infrastructure.Messaging.OutgoingMail mail, CancellationToken ct)
+    {
+        if (this.FailNext > 0)
+        {
+            this.FailNext--;
+            throw new System.Net.Mail.SmtpException("simulated SMTP failure");
+        }
+
+        this.Sent++;
+        return this.inner.SendAsync(mail, ct);
+    }
+}
+
 public sealed class SettableTimeProvider : TimeProvider
 {
     public DateTimeOffset? Override { get; set; }

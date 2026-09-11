@@ -54,6 +54,8 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
 
     private IDisputeHooks Disputes => (IDisputeHooks)services.GetService(typeof(IDisputeHooks))!;
 
+    private FinanceAi.Infrastructure.Messaging.IMessagingHooks Messaging => (FinanceAi.Infrastructure.Messaging.IMessagingHooks)services.GetService(typeof(FinanceAi.Infrastructure.Messaging.IMessagingHooks))!;
+
     public sealed record Context(DateOnly Today, string Timezone, TenantSettings Settings, PriorityWeights Weights, DateTimeOffset Now);
 
     public sealed record SweepResult(int Created, int Resolved, int Resumed, int FollowedUp, int Rescored);
@@ -133,6 +135,10 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
             }
         }
 
+        // Slice 8: reminders are drafted from the freshly scored cases, then the outbound worker runs once.
+        var cadence = await Messaging.RunCadenceAsync(ct);
+        var dispatch = await Messaging.DispatchAsync(ct);
+
         await audit.WriteAsync(new AuditEvent
         {
             TenantId = db.CurrentTenantId,
@@ -141,7 +147,7 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
             EventType = "collection_case.sweep_run",
             EntityType = "tenant",
             EntityId = db.CurrentTenantId,
-            Changes = JsonSerializer.Serialize(new { created, resolved, resumed, followedUp, rescored, day = context.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) }, JsonOptions),
+            Changes = JsonSerializer.Serialize(new { created, resolved, resumed, followedUp, rescored, drafted = cadence.Drafted, queued = cadence.Queued, sent = dispatch.Sent, day = context.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) }, JsonOptions),
         }, ct);
 
         return new SweepResult(created, resolved, resumed, followedUp, rescored);

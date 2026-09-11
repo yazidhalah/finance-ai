@@ -10,7 +10,7 @@ No other module is designed or built until this one passes its acceptance tests
 
 **Building, from the approved specification.** Slices 1 (Organization & Authentication),
 2 (Customers), 3a (Invoice Import), 3b (Payments & Allocation), 4 (Aging), 5 (Collection Queue),
-6 (Promise-to-Pay) and 7 (Disputes) are implemented and tested; see
+6 (Promise-to-Pay), 7 (Disputes) and 8 (Email Templates & Reminders) are implemented and tested; see
 `docs/slices/`, starting with
 [`docs/slices/slice-01-organization-and-auth.md`](docs/slices/slice-01-organization-and-auth.md)
 for its acceptance criteria, what it deliberately defers, and what its tests found.

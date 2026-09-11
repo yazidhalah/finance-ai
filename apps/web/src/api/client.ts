@@ -1010,3 +1010,112 @@ export async function uploadEvidence(disputeId: string, file: File): Promise<Dis
   if (!response.ok) throw new ApiError(await readProblem(response))
   return (await response.json()) as DisputeEvidence
 }
+
+// ---------------------------------------------------------------------------------------
+// Slice 8 — Email templates & reminders (doc 05 slice 8). Bodies are rendered and frozen by the server.
+// ---------------------------------------------------------------------------------------
+
+export interface Placeholder { name: string; type: string; description: string }
+
+export interface MessageTemplate {
+  id: string
+  key: string
+  channel: 'email' | 'whatsapp'
+  language: 'ar' | 'en'
+  tone: 'polite' | 'neutral' | 'firm' | 'final'
+  subject: string | null
+  body: string
+  version: number
+  status: 'Draft' | 'Approved'
+  isActive: boolean
+  isSystem: boolean
+  approvedBy: string | null
+  approvedAt: string | null
+  placeholders: string[]
+  createdAt: string
+  createdBy: string | null
+}
+
+export type MessageStatus = 'Draft' | 'PendingApproval' | 'Approved' | 'Queued' | 'Sent' | 'Delivered' | 'Bounced' | 'Failed' | 'Cancelled' | 'PreparedForManualSend'
+
+export interface OutboundMessage {
+  id: string
+  caseId: string | null
+  caseNumber: number | null
+  customerId: string
+  contactId: string | null
+  channel: 'email' | 'whatsapp_click_to_chat'
+  language: string
+  templateId: string | null
+  templateKey: string | null
+  templateVersion: number | null
+  toAddress: string | null
+  subject: string | null
+  body: string
+  invoiceIds: string[]
+  status: MessageStatus
+  approvalRequired: boolean
+  approvalReasons: string[]
+  approvalKind: 'message' | 'sender' | 'template' | null
+  aiDrafted: boolean
+  draftedBy: string | null
+  approvedBy: string | null
+  approvedAt: string | null
+  sentBy: string | null
+  sentAt: string | null
+  attempts: number
+  nextAttemptAt: string | null
+  failureReason: string | null
+  cancelReason: string | null
+  createdAt: string
+  rowVersion: number
+}
+
+export interface OutboundSettings {
+  outboundSendingEnabled: boolean
+  globallyEnabled: boolean
+  dailySendCap: number
+  sentToday: number
+  requireApprovalBeforeSend: boolean
+  quietHoursStart: string
+  quietHoursEnd: string
+  dunningCadenceDays: number[]
+}
+
+export interface Statement {
+  customerId: string
+  asOf: string
+  positions: CustomerPosition[]
+  openInvoices: AgedInvoice[]
+  payments: Payment[]
+  messages: OutboundMessage[]
+}
+
+const qs = (q: Record<string, string | boolean | undefined>) => {
+  const params = new URLSearchParams()
+  for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== '' && v !== false) params.set(k, String(v))
+  const text = params.toString()
+  return text ? `?${text}` : ''
+}
+
+export const messagingApi = {
+  placeholders: () => request<{ items: Placeholder[] }>('/templates/placeholders'),
+  templates: (q: { channel?: string; language?: string; key?: string; all?: boolean } = {}) => request<{ items: MessageTemplate[]; totalCount: number }>(`/templates${qs(q)}`),
+  createTemplate: (body: { key: string; channel: string; language: string; tone: string; subject?: string; body: string }) => request<MessageTemplate>('/templates', { method: 'POST', body }),
+  newVersion: (id: string, body: { tone?: string; subject?: string; body: string }) => request<MessageTemplate>(`/templates/${id}`, { method: 'POST', body }),
+  approveTemplate: (id: string) => request<MessageTemplate>(`/templates/${id}/approve`, { method: 'POST', body: {} }),
+  preview: (id: string, caseId: string, invoiceIds?: string[]) => request<{ language: string; subject: string | null; body: string; invoiceNumbers: string[]; amountDue: Money }>(`/templates/${id}/preview`, { method: 'POST', body: { caseId, invoiceIds } }),
+  compose: (caseId: string, body: { channel: 'email' | 'whatsapp_click_to_chat'; language?: string; templateId?: string; subject?: string; body?: string; invoiceIds?: string[]; contactId?: string }) =>
+    request<OutboundMessage>(`/cases/${caseId}/messages`, { method: 'POST', body }),
+  messages: (q: { status?: string; customerId?: string; caseId?: string } = {}) => request<{ items: OutboundMessage[]; totalCount: number }>(`/messages${qs(q)}`),
+  message: (id: string) => request<OutboundMessage>(`/messages/${id}`),
+  approve: (id: string) => request<OutboundMessage>(`/messages/${id}/approve`, { method: 'POST', body: {} }),
+  send: (id: string) => request<OutboundMessage>(`/messages/${id}/send`, { method: 'POST', body: {}, idempotencyKey: crypto.randomUUID() }),
+  cancel: (id: string, reason: string) => request<OutboundMessage>(`/messages/${id}/cancel`, { method: 'POST', body: { reason } }),
+  whatsappLink: (id: string) => request<{ messageId: string; link: string; text: string; status: string; notice: string }>(`/messages/${id}/whatsapp-link`),
+  confirmManualSend: (id: string) => request<OutboundMessage>(`/messages/${id}/confirm-manual-send`, { method: 'POST', body: {} }),
+  dispatch: () => request<{ sent: number; failed: number; skipped: number; skipReason: string | null }>('/messages/dispatch', { method: 'POST', body: {} }),
+  outbound: () => request<OutboundSettings>('/organization/outbound'),
+  updateOutbound: (body: { outboundSendingEnabled?: boolean; dailySendCap?: number }) => request<OutboundSettings>('/organization/outbound', { method: 'PUT', body }),
+  statement: (customerId: string) => request<Statement>(`/customers/${customerId}/statement`),
+}

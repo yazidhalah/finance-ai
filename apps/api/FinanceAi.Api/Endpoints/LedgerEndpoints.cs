@@ -620,7 +620,7 @@ public static class LedgerEndpoints
 
     private static string Iso(DateOnly d) => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
-    private static async Task<PaymentResponse> ToResponseAsync(Payment p, TenantDbContext db, CancellationToken ct)
+    internal static async Task<PaymentResponse> ToResponseAsync(Payment p, TenantDbContext db, CancellationToken ct)
     {
         var allocations = await db.PaymentAllocations.Where(a => a.PaymentId == p.Id).OrderBy(a => a.CreatedAt).ToListAsync(ct);
         var allocated = allocations.Where(a => a.IsActive).Sum(a => a.Amount);
