@@ -18,6 +18,7 @@ public enum CaseEvent
     PtpBroken,              // C5 (slice 6)
     PtpCancelled,           // C5 (slice 6)
     PtpKeptAndBalanceZero,  // slice 6
+    PtpKept,                // slice 6 D-1: a kept partial promise returns the case to work (F-1)
     DisputeOpened,          // C6 (slice 7)
     AllDisputesResolved,    // C7 (slice 7)
     Hold,                   // C8
@@ -64,6 +65,7 @@ public static class CaseMachine
         [(CaseStatus.PromiseActive, CaseEvent.PtpBroken)] = CaseStatus.InProgress,
         [(CaseStatus.PromiseActive, CaseEvent.PtpCancelled)] = CaseStatus.InProgress,
         [(CaseStatus.PromiseActive, CaseEvent.PtpKeptAndBalanceZero)] = CaseStatus.Resolved,
+        [(CaseStatus.PromiseActive, CaseEvent.PtpKept)] = CaseStatus.InProgress,
         // C6
         [(CaseStatus.Open, CaseEvent.DisputeOpened)] = CaseStatus.Disputed,
         [(CaseStatus.InProgress, CaseEvent.DisputeOpened)] = CaseStatus.Disputed,
@@ -133,6 +135,7 @@ public static class CaseMachine
         CaseEvent.PtpBroken => "ptp_broken",
         CaseEvent.PtpCancelled => "ptp_cancelled",
         CaseEvent.PtpKeptAndBalanceZero => "ptp_kept_and_balance_zero",
+        CaseEvent.PtpKept => "ptp_kept",
         CaseEvent.DisputeOpened => "dispute_opened",
         CaseEvent.AllDisputesResolved => "all_disputes_resolved",
         CaseEvent.Hold => "hold",

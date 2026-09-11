@@ -82,7 +82,7 @@ describe('collection queue (slice 5 AC-17)', () => {
       invoices: [{ invoiceId: 'i1', invoiceNumber: 'INV-1', currency: 'JOD', issueDate: '2026-06-01', dueDate: '2026-07-01', totalAmount: M('8200.000'), openBalance: M('8200.000'), daysPastDue: 62, status: 'Open', addedAt: '2026-09-01T00:00:00Z', removedAt: null, removedReason: null }],
       timeline: [{ id: 'x', kind: 'status_change', occurredAt: '2026-09-01T00:00:00Z', actorKind: 'system', actorUserId: null, summary: 'Case #1 opened', detail: null }],
     }
-    const calls = stubFetch([() => detail, () => ({ items: [] }), () => ({ ...item('a', 78, 'Alpha'), status: 'Escalated', automationDisabled: true }), () => ({ ...detail, case: { ...detail.case, status: 'Escalated', automationDisabled: true } })])
+    const calls = stubFetch([() => detail, () => ({ items: [], totalCount: 0, today: '' }), () => ({ items: [] }), () => ({ ...item('a', 78, 'Alpha'), status: 'Escalated', automationDisabled: true }), () => ({ ...detail, case: { ...detail.case, status: 'Escalated', automationDisabled: true } }), () => ({ items: [], totalCount: 0, today: '' })])
     render(wrap(<CaseDetailPage id="a" onBack={() => {}} />))
 
     expect(await screen.findByTestId('priority-score')).toHaveTextContent('78')

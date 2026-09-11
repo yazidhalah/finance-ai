@@ -9,7 +9,7 @@ source-available license is a blocking review finding, not a discussion.
 
 Versions are pinned; lockfiles (`package-lock.json`, `packages.lock.json`) are committed.
 
-Last updated: slice 5 — Collection queue & cases (no dependency added).
+Last updated: slice 6 — Promise-to-Pay (no dependency added).
 
 ---
 

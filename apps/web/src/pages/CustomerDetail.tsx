@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ApiError, customersApi } from '../api/client'
-import type { Contact, Customer, CustomerInput } from '../api/client'
+import { ApiError, customersApi, promisesApi } from '../api/client'
+import type { Contact, Customer, CustomerInput, PromiseToPay, Reliability } from '../api/client'
+import { PromiseCard, ReliabilityBadge } from './Promises'
 import { useSession } from '../auth/SessionProvider'
 import { Button, Card, ErrorNotice, Field, Isolate, Select, TextInput } from '../components/ui'
 import { useLocale } from '../i18n/LocaleProvider'
@@ -275,6 +276,7 @@ export function CustomerDetailPage({ id, onBack }: { id: string | null; onBack: 
             <p className="text-sm text-slate-600" data-testid="balances-empty">{t('customers.balances.empty')}</p>
           </Card>
           <ContactsCard customerId={customer.id} editable={editable} />
+          {can('cases.read') ? <PromiseHistoryCard customerId={customer.id} /> : null}
         </>
       ) : null}
     </div>
@@ -380,6 +382,28 @@ function ContactsCard({ customerId, editable }: { customerId: string; editable: 
           </div>
         </form>
       ) : null}
+    </Card>
+  )
+}
+
+/** Doc 06 §6.8: promise history per customer with the SM-37 reliability badge (denominator always shown). */
+function PromiseHistoryCard({ customerId }: { customerId: string }) {
+  const { t } = useLocale()
+  const [history, setHistory] = useState<{ reliability: Reliability; promises: PromiseToPay[] } | null>(null)
+  const load = useCallback(async () => {
+    try { setHistory(await promisesApi.history(customerId)) } catch { setHistory(null) }
+  }, [customerId])
+  useEffect(() => { void load() }, [load])
+  if (!history) return null
+  return (
+    <Card>
+      <div className="flex items-center gap-3">
+        <h2 className="text-lg font-semibold text-slate-900">{t('promises.history')}</h2>
+        <ReliabilityBadge reliability={history.reliability} />
+      </div>
+      {history.promises.length === 0 ? <p className="mt-2 text-sm text-slate-500">{t('promises.group.empty')}</p> : (
+        <div className="mt-2 space-y-2" data-testid="promise-history">{history.promises.map((p) => <PromiseCard key={p.id} promise={p} onChanged={() => void load()} />)}</div>
+      )}
     </Card>
   )
 }

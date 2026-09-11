@@ -1,6 +1,6 @@
 # 04 — PostgreSQL Entity Model
 
-Status: DRAFT, amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), slice 3 (DM-23a), slice 3b (DM-24a), slice 4 (DM-31a) and slice 5 (DM-25a). The DDL below is **illustrative
+Status: DRAFT, amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), slice 3 (DM-23a), slice 3b (DM-24a), slice 4 (DM-31a), slice 5 (DM-25a) and slice 6 (DM-24a). The DDL below is **illustrative
 specification**, not a migration.
 Migrations are written inside their vertical slice (doc 10) and must match this
 document or amend it.
@@ -766,6 +766,17 @@ CREATE INDEX disputes_open_idx ON disputes (tenant_id, status)
 INSERT/UPDATE` trigger that checks for an existing `Active` PTP covering the same
 invoice, because it spans two tables. The partial-index sketch above is illustrative
 only; the migration uses the trigger plus a nightly invariant check.
+
+> **Amended in slice 6 (DM-24a).** As built (`database/migrations/0007_promises.sql`):
+> - `promises_to_pay` additionally carries `cheque_id` (composite FK to `cheques`, the PDC the promise
+>   stands for), `cancel_reason`, `evaluation_note`, the §3.1 timestamps and `row_version`; a CHECK
+>   `evaluated_has_amount` requires `received_in_window` on any decided promise.
+> - `ptp_invoices` gains `id` with `UNIQUE (tenant_id, id)` (DM-10).
+> - INV-07 is two triggers over one SQL function `ptp_active_clash` — one on inserting a cover row,
+>   one on a promise becoming `Active` — rather than the partial-index sketch.
+> - `tenant_holidays` is created here (slice 6 needs business days) with `id` + `UNIQUE (tenant_id, id)`.
+> - Doc 02 §2 gains the case event `ptp_kept` (`PromiseActive → InProgress`) for a kept partial promise
+>   that leaves a balance (slice 6 F-1).
 
 ### 5.6 Messaging
 

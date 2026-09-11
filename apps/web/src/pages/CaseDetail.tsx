@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ApiError, api, casesApi } from '../api/client'
-import type { CaseDetail } from '../api/client'
+import { ApiError, api, casesApi, promisesApi } from '../api/client'
+import type { CaseDetail, PromiseToPay } from '../api/client'
 import { useSession } from '../auth/SessionProvider'
 import { CustomerName } from '../components/CustomerName'
 import { Button, Card, ErrorNotice, Field, Isolate, Select, TextInput } from '../components/ui'
@@ -8,6 +8,7 @@ import { MoneyText } from '../components/Money'
 import { useLocale } from '../i18n/LocaleProvider'
 import { bucketLabel } from './Aging'
 import { FactorBreakdown, SnoozeDialog, StatusChip } from './Queue'
+import { PromiseCard, RecordPromiseDialog } from './Promises'
 
 type Problem = { messageKey: string; traceId?: string }
 const toProblem = (e: unknown): Problem => (e instanceof ApiError ? { messageKey: e.problem.messageKey, traceId: e.problem.traceId } : { messageKey: 'errors.unknown' })
@@ -23,12 +24,16 @@ export function CaseDetailPage({ id, onBack }: { id: string; onBack: () => void 
   const [detail, setDetail] = useState<CaseDetail | null>(null)
   const [problem, setProblem] = useState<Problem | null>(null)
   const [busy, setBusy] = useState(false)
-  const [panel, setPanel] = useState<'none' | 'contact' | 'hold' | 'escalate' | 'abandon' | 'snooze' | 'assign'>('none')
+  const [panel, setPanel] = useState<'none' | 'contact' | 'hold' | 'escalate' | 'abandon' | 'snooze' | 'assign' | 'promise'>('none')
+  const [promises, setPromises] = useState<PromiseToPay[]>([])
   const [members, setMembers] = useState<{ userId: string; fullName: string; status: string }[]>([])
   const [form, setForm] = useState({ kind: 'call', summary: '', reasonCode: '', note: '', holdUntil: '', userId: '' })
 
   const load = useCallback(async () => {
-    try { setDetail(await casesApi.get(id)) } catch (e) { setProblem(toProblem(e)) }
+    try {
+      const [d, p] = await Promise.all([casesApi.get(id), promisesApi.list({ caseId: id })])
+      setDetail(d); setPromises(p.items)
+    } catch (e) { setProblem(toProblem(e)) }
   }, [id])
   useEffect(() => { void load() }, [load])
   useEffect(() => {
@@ -76,7 +81,7 @@ export function CaseDetailPage({ id, onBack }: { id: string; onBack: () => void 
           <div className="flex flex-wrap gap-2" data-testid="action-rail">
             {can('cases.write') ? <Button onClick={() => setPanel('contact')} data-testid="log-contact">{t('cases.logContact')}</Button> : null}
             <Button variant="ghost" disabled title={t('cases.comingLater')}>{t('cases.sendMessage')}</Button>
-            <Button variant="ghost" disabled title={t('cases.comingLater')}>{t('cases.recordPromise')}</Button>
+            {can('ptp.write') ? <Button variant="ghost" onClick={() => setPanel('promise')} data-testid="record-promise">{t('cases.recordPromise')}</Button> : null}
             <Button variant="ghost" disabled title={t('cases.comingLater')}>{t('cases.raiseDispute')}</Button>
             {can('cases.write') && !c.automationDisabled ? <Button variant="ghost" onClick={() => setPanel('snooze')}>{t('cases.snooze')}</Button> : null}
             {can('cases.write') && c.status !== 'OnHold' && c.status !== 'Escalated' ? <Button variant="ghost" onClick={() => setPanel('hold')} data-testid="hold">{t('cases.hold')}</Button> : null}
@@ -125,7 +130,15 @@ export function CaseDetailPage({ id, onBack }: { id: string; onBack: () => void 
               <div className="flex items-end gap-2"><Button busy={busy} onClick={() => void act(() => casesApi.assign(c.caseId, form.userId || null))}>{t('cases.assign')}</Button><Button variant="ghost" onClick={() => setPanel('none')}>{t('state.cancel')}</Button></div>
             </div>
           ) : null}
+          {panel === 'promise' ? <div className="mt-3"><RecordPromiseDialog caseId={c.caseId} invoices={detail.invoices} onClose={() => setPanel('none')} onDone={() => { setPanel('none'); void load() }} /></div> : null}
           {panel === 'snooze' ? <div className="mt-3"><SnoozeDialog item={c} onClose={() => setPanel('none')} onDone={() => { setPanel('none'); void load() }} /></div> : null}
+        </Card>
+      ) : null}
+
+      {promises.length > 0 ? (
+        <Card>
+          <h2 className="font-semibold">{t('promises.title')}</h2>
+          <div className="mt-2 space-y-2" data-testid="case-promises">{promises.map((p) => <PromiseCard key={p.id} promise={p} onChanged={() => void load()} />)}</div>
         </Card>
       ) : null}
 
