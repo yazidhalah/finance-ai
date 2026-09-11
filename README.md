@@ -48,6 +48,23 @@ Without the AI service the product still works: replies wait in the inbox and ar
 `bootstrap` step is the only thing that uses the administrative connection; the application connects
 as `finance_app`, which owns nothing and cannot bypass row-level security.
 
+## Running the whole stack (Podman Compose, slice 14)
+
+```bash
+cp .env.example .env                                          # fill in every secret (docs/ops/runbook.md §1)
+#   WEB_ORIGINS=https://your.domain   DOMAIN=your.domain   AI_SERVICE_TOKEN=$(openssl rand -hex 24) …
+infrastructure/stack.sh --profile full up -d --build          # postgres, migrate (one-shot), api, ai, ollama + model pull, web
+infrastructure/stack.sh --profile full --profile tls up -d    # … plus Caddy with automatic HTTPS for DOMAIN
+infrastructure/smoke.sh                                       # the published port answers, headers, /api, AI reachable, SEC-69
+```
+
+Images are built from this clone (`apps/api/Containerfile`, `apps/web/Containerfile`, `services/ai/Containerfile`):
+non-root, read-only root filesystems, no capabilities, memory limits. Only `web` publishes a port — PostgreSQL
+(loopback only, for backups), the API, the AI service and Ollama stay on the compose network (SEC-69). The first
+start pulls `qwen3:4b` (~2.5 GB); until it lands the product runs with AI marked unavailable. The refresh cookie
+is `Secure`, so use the `tls` profile or your own TLS edge for anything but `http://localhost`.
+Operations — kill switches, revoking sessions, key rotation, backups — are in [docs/ops/runbook.md](docs/ops/runbook.md).
+
 ## Running the tests
 
 ```bash

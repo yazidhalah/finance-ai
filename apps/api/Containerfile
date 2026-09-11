@@ -1,0 +1,36 @@
+# finance-ai API and migrator (slice 14). One image, two entrypoints:
+#   default → the API on :5080
+#   `migrate` → the migrator (`FinanceAi.Migrator up`), run once before the API starts.
+# Non-root, read-only root filesystem, no capabilities (SEC-69). Secrets arrive as environment (SEC-67).
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+COPY global.json Directory.Build.props ./
+COPY apps/api/FinanceAi.Domain/*.csproj apps/api/FinanceAi.Domain/
+COPY apps/api/FinanceAi.Infrastructure/*.csproj apps/api/FinanceAi.Infrastructure/
+COPY apps/api/FinanceAi.Api/*.csproj apps/api/FinanceAi.Api/
+COPY apps/api/FinanceAi.Migrator/*.csproj apps/api/FinanceAi.Migrator/
+COPY apps/api/FinanceAi.Domain/packages.lock.json apps/api/FinanceAi.Domain/
+COPY apps/api/FinanceAi.Infrastructure/packages.lock.json apps/api/FinanceAi.Infrastructure/
+COPY apps/api/FinanceAi.Api/packages.lock.json apps/api/FinanceAi.Api/
+COPY apps/api/FinanceAi.Migrator/packages.lock.json apps/api/FinanceAi.Migrator/
+RUN dotnet restore apps/api/FinanceAi.Api/FinanceAi.Api.csproj --locked-mode \
+ && dotnet restore apps/api/FinanceAi.Migrator/FinanceAi.Migrator.csproj --locked-mode
+COPY apps/api apps/api
+COPY database database
+RUN dotnet publish apps/api/FinanceAi.Api/FinanceAi.Api.csproj -c Release --no-restore -o /out/api \
+ && dotnet publish apps/api/FinanceAi.Migrator/FinanceAi.Migrator.csproj -c Release --no-restore -o /out/migrator
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
+# libgssapi: Npgsql probes it for Kerberos and logs an error without it; the stack authenticates with passwords.
+RUN apt-get update && apt-get install -y --no-install-recommends libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
+ENV ASPNETCORE_HTTP_PORTS=5080 \
+    ASPNETCORE_ENVIRONMENT=Production \
+    DOTNET_EnableDiagnostics=0
+WORKDIR /app
+COPY --from=build /out/api ./api
+COPY --from=build /out/migrator ./migrator
+COPY apps/api/entrypoint.sh /app/entrypoint.sh
+RUN chmod 0555 /app/entrypoint.sh && chown -R 10001:10001 /app
+USER 10001:10001
+EXPOSE 5080
+ENTRYPOINT ["/app/entrypoint.sh"]

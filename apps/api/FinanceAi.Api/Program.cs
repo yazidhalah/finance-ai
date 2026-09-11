@@ -9,6 +9,7 @@ using FinanceAi.Infrastructure.Audit;
 using FinanceAi.Infrastructure.Configuration;
 using FinanceAi.Infrastructure.Database;
 using FinanceAi.Infrastructure.Security;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -16,10 +17,36 @@ using Microsoft.IdentityModel.Tokens;
 
 DotEnv.Load();
 
+// Slice 14: the container health check. The runtime image has no curl; `dotnet FinanceAi.Api.dll --health` asks the
+// running API on this host for /health and exits 0 or 1. Nothing else starts.
+if (args.Contains("--health", StringComparer.Ordinal))
+{
+    using var probe = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+    var port = Environment.GetEnvironmentVariable("ASPNETCORE_HTTP_PORTS")?.Split(';')[0];
+    var url = port is { Length: > 0 }
+        ? $"http://127.0.0.1:{port}/health"
+        : (Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://127.0.0.1:5080").Split(';')[0].Replace("0.0.0.0", "127.0.0.1", StringComparison.Ordinal).Replace("+", "127.0.0.1", StringComparison.Ordinal).TrimEnd('/') + "/health";
+    try
+    {
+        using var response = await probe.GetAsync(url);
+        return response.IsSuccessStatusCode ? 0 : 1;
+    }
+    catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+    {
+        return 1;
+    }
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
 builder.Logging.AddProvider(new RedactingJsonLoggerProvider(Console.Out));
+
+// Nothing in the API is protected with ASP.NET Data Protection (tokens are RS256 JWTs, the refresh cookie carries an
+// opaque token, TOTP secrets use SecretBox). Saying so explicitly keeps a read-only container from logging key-ring
+// warnings at every start (slice 14); the provider still reports its own in-memory key ring, so appsettings.json
+// keeps that category at Error.
+builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
 
 builder.Services.AddApiServices();
 
@@ -66,6 +93,7 @@ EndpointDeclarationAssertion.AssertEveryEndpointDeclaresAccess(
     app.Services.GetRequiredService<EndpointDataSource>().Endpoints);
 
 await app.RunAsync();
+return 0;
 
 /// <summary>Rate-limit policies (API-13, SEC-70).</summary>
 public static class RateLimitPolicies

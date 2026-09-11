@@ -26,6 +26,18 @@ public class ApiFactory : WebApplicationFactory<Program>
 
     public void ResetClock() => this.Clock.Override = null;
 
+    /// <summary>Pins the clock until the returned scope is disposed — for tests whose outcome must not depend on the hour they run at.</summary>
+    public IDisposable PinClock(DateTimeOffset at)
+    {
+        this.Clock.Override = at;
+        return new ClockScope(this);
+    }
+
+    private sealed class ClockScope(ApiFactory owner) : IDisposable
+    {
+        public void Dispose() => owner.ResetClock();
+    }
+
     /// <summary>The mail host is Mailpit from .env; a test may make the next sends fail to prove the retry path.</summary>
     public SwitchableMailTransport Mail { get; } = new();
 

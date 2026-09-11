@@ -48,6 +48,11 @@ jobs:
       - run: dotnet test tests/unit/FinanceAi.UnitTests --configuration Release --no-build
       - run: dotnet test tests/integration/FinanceAi.IntegrationTests --configuration Release --no-build --filter "Category!=Performance"
       - run: dotnet test tests/security/FinanceAi.SecurityTests --configuration Release --no-build
+      # SEC-68: a known-vulnerable package (any severity the advisory feed reports) fails the build.
+      - name: NuGet vulnerability audit
+        run: |
+          dotnet list package --vulnerable --include-transitive | tee nuget-audit.txt
+          ! grep -q "has the following vulnerable packages" nuget-audit.txt
 
   web:
     name: web · vitest · build
@@ -57,6 +62,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: apps/web/package-lock.json }
       - run: npm --prefix apps/web ci
+      - run: npm --prefix apps/web audit --audit-level=high   # SEC-68
       - run: npm --prefix apps/web test
       - run: npm --prefix apps/web run build
 
@@ -69,6 +75,30 @@ jobs:
         with: { python-version: "3.13" }
       - run: python -m venv services/ai/.venv && services/ai/.venv/bin/pip install -r services/ai/requirements.txt
       - run: services/ai/.venv/bin/python -m pytest -c services/ai/pytest.ini
+      - run: services/ai/.venv/bin/pip install -q pip-audit && services/ai/.venv/bin/pip-audit -r services/ai/requirements.txt   # SEC-68
+
+  stack:
+    name: stack · podman compose · smoke (A-15, SEC-69)
+    runs-on: ubuntu-24.04
+    needs: [api, web, ai-service]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write .env
+        run: |
+          cp .env.example .env
+          sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci_only/; s/^POSTGRES_APP_PASSWORD=.*/POSTGRES_APP_PASSWORD=ci_app/; s/^POSTGRES_MIGRATOR_PASSWORD=.*/POSTGRES_MIGRATOR_PASSWORD=ci_migrator/; s/^POSTGRES_REPORTING_PASSWORD=.*/POSTGRES_REPORTING_PASSWORD=ci_reporting/' .env
+          sed -i "s|^JWT_SIGNING_KEY_PEM_BASE64=.*|JWT_SIGNING_KEY_PEM_BASE64=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null | base64 -w0)|" .env
+          sed -i "s|^AI_SERVICE_TOKEN=.*|AI_SERVICE_TOKEN=$(openssl rand -hex 24)|" .env
+          sed -i "s|^MFA_KEK_BASE64=.*|MFA_KEK_BASE64=$(openssl rand -base64 32)|" .env
+          sed -i "s|^WEB_ORIGINS=.*|WEB_ORIGINS=http://localhost:8080|" .env
+      - run: pipx install podman-compose==1.5.0
+      - name: Build images and start the stack (fake AI model, no Ollama)
+        run: infrastructure/stack.sh -f infrastructure/compose.ci.yml --profile full up -d --build postgres mailpit migrate api ai web
+      - name: Smoke test
+        run: infrastructure/smoke.sh
+      - name: Container logs
+        if: always()
+        run: infrastructure/stack.sh -f infrastructure/compose.ci.yml --profile full logs --no-color migrate api ai web | tail -200
 
   ops:
     name: ops · restore drill (T-150)
