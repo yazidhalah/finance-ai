@@ -1,0 +1,16 @@
+{
+  "name": "finance-ai-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright journeys T-121…T-132 (doc 09 §6), run twice: en and ar.",
+  "scripts": {
+    "test": "playwright test",
+    "test:en": "playwright test --project=en",
+    "test:ar": "playwright test --project=ar",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.2"
+  }
+}

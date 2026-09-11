@@ -9,7 +9,7 @@ source-available license is a blocking review finding, not a discussion.
 
 Versions are pinned; lockfiles (`package-lock.json`, `packages.lock.json`) are committed.
 
-Last updated: slice 10 — Daily briefing (no dependency added; LangGraph deliberately not adopted, slice 10 D-1). Slice 9 added the Python AI service and its dependency tree, the Qwen3 model weights and the Ollama runtime; see the flagged `certifi` entry.
+Last updated: slice 11 — v1 acceptance (Playwright for the E2E suite, test-only). Slice 10 added no dependency (LangGraph deliberately not adopted, slice 10 D-1). Slice 9 added the Python AI service and its dependency tree, the Qwen3 model weights and the Ollama runtime; see the flagged `certifi` entry.
 
 ---
 
@@ -63,6 +63,7 @@ ASP.NET Core, the .NET runtime and the base class libraries ship with the .NET 1
 | `@types/react` | 19.3.0 | MIT | Types only |
 | `@types/react-dom` | 19.3.0 | MIT | Types only |
 | `@types/node` | 22.20.2 | MIT | Types only |
+| `@playwright/test` | 1.63.0 | Apache-2.0 | E2E journeys (`tests/e2e`, slice 11); pulls `playwright` and `playwright-core` (Apache-2.0) and `undici-types` (MIT). Downloads Chromium headless shell (BSD-3-Clause, Chromium) into the user cache at install time — a test browser, never shipped. |
 
 Test-only dependencies do not ship, but they are recorded: a license that forbids commercial use
 would still be a problem in CI.
