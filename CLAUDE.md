@@ -79,7 +79,9 @@ security suite; accept with UPDATE_OPENAPI=1), gitleaks over the history (and `g
 locally), infrastructure/check-notices.py (every direct dependency recorded, licences permissive), and the nightly
 performance workflow (T-140/141). Slice 17 made both keys rotatable: MFA envelopes carry a key id
 (`MFA_KEK_BASE64_PREVIOUS` + `rotate-mfa-kek`), and `JWT_SIGNING_KEY_PEM_BASE64_PREVIOUS` verifies only tokens
-issued before the process started (runbook §4).
+issued before the process started (runbook §4). Slice 18 typed the contract: every operation's response schema
+and problem responses are in docs/api/openapi.json (`.Produces<T>()` beside each mapping; the transformer adds
+the `Problem` component and 401/403/404/400/422/429).
 What remains before the First Product is "done" is the
 v1 acceptance pass on a pilot corpus and real hardware (doc 09 §5 AI gates are indicative on the
 author-written corpus; Arabic narrative quality needs a native reviewer; T-140 performance in CI is

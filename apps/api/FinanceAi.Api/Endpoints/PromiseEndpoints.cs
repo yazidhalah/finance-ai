@@ -20,14 +20,14 @@ public static class PromiseEndpoints
     {
         ArgumentNullException.ThrowIfNull(api);
 
-        api.MapPost("/cases/{id:guid}/promises", RecordAsync).RequiresPermission(Permissions.PtpWrite).WithName("RecordPromise");
+        api.MapPost("/cases/{id:guid}/promises", RecordAsync).Produces<PromiseResponse>(201).RequiresPermission(Permissions.PtpWrite).WithName("RecordPromise");
         var promises = api.MapGroup("/promises");
-        promises.MapGet("/", ListAsync).RequiresPermission(Permissions.CasesRead).WithName("ListPromises");
-        promises.MapGet("/{id:guid}", GetAsync).RequiresPermission(Permissions.CasesRead).WithName("GetPromise");
-        promises.MapPost("/{id:guid}/confirm", ConfirmAsync).RequiresPermission(Permissions.PtpWrite).WithName("ConfirmPromise");
-        promises.MapPost("/{id:guid}/reject", RejectAsync).RequiresPermission(Permissions.PtpWrite).WithName("RejectPromise");
-        promises.MapPost("/{id:guid}/cancel", CancelAsync).RequiresPermission(Permissions.PtpWrite).WithName("CancelPromise");
-        api.MapGet("/customers/{id:guid}/promise-history", HistoryAsync).RequiresPermission(Permissions.CasesRead).WithName("PromiseHistory");
+        promises.MapGet("/", ListAsync).Produces<PromiseListResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("ListPromises");
+        promises.MapGet("/{id:guid}", GetAsync).Produces<PromiseResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("GetPromise");
+        promises.MapPost("/{id:guid}/confirm", ConfirmAsync).Produces<PromiseResponse>(200).RequiresPermission(Permissions.PtpWrite).WithName("ConfirmPromise");
+        promises.MapPost("/{id:guid}/reject", RejectAsync).Produces<PromiseResponse>(200).RequiresPermission(Permissions.PtpWrite).WithName("RejectPromise");
+        promises.MapPost("/{id:guid}/cancel", CancelAsync).Produces<PromiseResponse>(200).RequiresPermission(Permissions.PtpWrite).WithName("CancelPromise");
+        api.MapGet("/customers/{id:guid}/promise-history", HistoryAsync).Produces<PromiseHistoryResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("PromiseHistory");
 
         return api;
     }

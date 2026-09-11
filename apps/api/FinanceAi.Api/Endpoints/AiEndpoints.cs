@@ -27,23 +27,23 @@ public static class AiEndpoints
         ArgumentNullException.ThrowIfNull(api);
 
         var inbound = api.MapGroup("/inbound-messages");
-        inbound.MapGet("/", ListInboundAsync).RequiresPermission(Permissions.CasesRead).WithName("ListInboundMessages");
-        inbound.MapPost("/", CreateInboundAsync).RequiresPermission(Permissions.CasesWrite).WithName("CreateInboundMessage");
-        inbound.MapGet("/{id:guid}", GetInboundAsync).RequiresPermission(Permissions.CasesRead).WithName("GetInboundMessage");
-        inbound.MapPost("/{id:guid}/classify", ClassifyAsync).RequiresPermission(Permissions.CasesWrite).WithName("ClassifyInboundMessage");
-        inbound.MapPost("/{id:guid}/match-customer", MatchAsync).RequiresPermission(Permissions.CasesWrite).WithName("MatchInboundCustomer");
-        inbound.MapPost("/{id:guid}/classify-manually", ClassifyManuallyAsync).RequiresPermission(Permissions.CasesWrite).WithName("ClassifyInboundManually");
+        inbound.MapGet("/", ListInboundAsync).Produces<InboundMessageListResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("ListInboundMessages");
+        inbound.MapPost("/", CreateInboundAsync).Produces<InboundMessageResponse>(201).RequiresPermission(Permissions.CasesWrite).WithName("CreateInboundMessage");
+        inbound.MapGet("/{id:guid}", GetInboundAsync).Produces<InboundMessageResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("GetInboundMessage");
+        inbound.MapPost("/{id:guid}/classify", ClassifyAsync).Produces<AiSuggestionResponse>(200).RequiresPermission(Permissions.CasesWrite).WithName("ClassifyInboundMessage");
+        inbound.MapPost("/{id:guid}/match-customer", MatchAsync).Produces<InboundMessageResponse>(200).RequiresPermission(Permissions.CasesWrite).WithName("MatchInboundCustomer");
+        inbound.MapPost("/{id:guid}/classify-manually", ClassifyManuallyAsync).Produces<InboundMessageResponse>(200).RequiresPermission(Permissions.CasesWrite).WithName("ClassifyInboundManually");
 
         var ai = api.MapGroup("/ai");
-        ai.MapGet("/suggestions", ListSuggestionsAsync).RequiresPermission(Permissions.AiSuggestionsRead).WithName("ListAiSuggestions");
-        ai.MapGet("/suggestions/{id:guid}", GetSuggestionAsync).RequiresPermission(Permissions.AiSuggestionsRead).WithName("GetAiSuggestion");
-        ai.MapPost("/suggestions/{id:guid}/approve", ApproveAsync).RequiresPermission(Permissions.AiSuggestionsApprove).WithName("ApproveAiSuggestion");
-        ai.MapPost("/suggestions/{id:guid}/edit-and-approve", EditAndApproveAsync).RequiresPermission(Permissions.AiSuggestionsApprove).WithName("EditAndApproveAiSuggestion");
-        ai.MapPost("/suggestions/{id:guid}/reject", RejectAsync).RequiresPermission(Permissions.AiSuggestionsApprove).WithName("RejectAiSuggestion");
-        ai.MapGet("/health", HealthAsync).RequiresPermission(Permissions.TenantRead).WithName("AiHealth");
+        ai.MapGet("/suggestions", ListSuggestionsAsync).Produces<AiSuggestionListResponse>(200).RequiresPermission(Permissions.AiSuggestionsRead).WithName("ListAiSuggestions");
+        ai.MapGet("/suggestions/{id:guid}", GetSuggestionAsync).Produces<AiSuggestionResponse>(200).RequiresPermission(Permissions.AiSuggestionsRead).WithName("GetAiSuggestion");
+        ai.MapPost("/suggestions/{id:guid}/approve", ApproveAsync).Produces<AiSuggestionResponse>(200).RequiresPermission(Permissions.AiSuggestionsApprove).WithName("ApproveAiSuggestion");
+        ai.MapPost("/suggestions/{id:guid}/edit-and-approve", EditAndApproveAsync).Produces<AiSuggestionResponse>(200).RequiresPermission(Permissions.AiSuggestionsApprove).WithName("EditAndApproveAiSuggestion");
+        ai.MapPost("/suggestions/{id:guid}/reject", RejectAsync).Produces<AiSuggestionResponse>(200).RequiresPermission(Permissions.AiSuggestionsApprove).WithName("RejectAiSuggestion");
+        ai.MapGet("/health", HealthAsync).Produces<AiHealthResponse>(200).RequiresPermission(Permissions.TenantRead).WithName("AiHealth");
 
-        api.MapGet("/organization/ai-settings", AiSettingsAsync).RequiresPermission(Permissions.TenantRead).WithName("AiSettings");
-        api.MapPatch("/organization/ai-settings", UpdateAiSettingsAsync).RequiresPermission(Permissions.AiSettingsWrite).WithName("UpdateAiSettings");
+        api.MapGet("/organization/ai-settings", AiSettingsAsync).Produces<AiSettingsResponse>(200).RequiresPermission(Permissions.TenantRead).WithName("AiSettings");
+        api.MapPatch("/organization/ai-settings", UpdateAiSettingsAsync).Produces<AiSettingsResponse>(200).RequiresPermission(Permissions.AiSettingsWrite).WithName("UpdateAiSettings");
 
         return api;
     }

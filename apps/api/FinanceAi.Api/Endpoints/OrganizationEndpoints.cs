@@ -23,8 +23,8 @@ public static class OrganizationEndpoints
     {
         ArgumentNullException.ThrowIfNull(api);
 
-        api.MapGet("/me", GetMeAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("GetMe");
-        api.MapPatch("/me", UpdateMeAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("UpdateMe");
+        api.MapGet("/me", GetMeAsync).Produces<MeResponse>(200).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("GetMe");
+        api.MapPatch("/me", UpdateMeAsync).Produces<UserDto>(200).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("UpdateMe");
 
         return api;
     }
@@ -35,22 +35,22 @@ public static class OrganizationEndpoints
 
         var organization = api.MapGroup("/organization");
 
-        organization.MapGet("/", GetOrganizationAsync)
+        organization.MapGet("/", GetOrganizationAsync).Produces<OrganizationResponse>(200)
             .RequiresPermission(Permissions.TenantRead).WithName("GetOrganization");
-        organization.MapPatch("/", UpdateOrganizationAsync)
+        organization.MapPatch("/", UpdateOrganizationAsync).Produces<OrganizationResponse>(200)
             .RequiresPermission(Permissions.TenantSettingsWrite).WithName("UpdateOrganization");
-        organization.MapGet("/members", ListMembersAsync)
+        organization.MapGet("/members", ListMembersAsync).Produces<MemberListResponse>(200)
             .RequiresPermission(Permissions.UsersRead).WithName("ListMembers");
-        organization.MapGet("/members/{id:guid}", GetMemberAsync)
+        organization.MapGet("/members/{id:guid}", GetMemberAsync).Produces<MemberDto>(200)
             .RequiresPermission(Permissions.UsersRead).WithName("GetMember");
         // Slice 12
-        organization.MapPost("/members/invite", InviteAsync).RequiresPermission(Permissions.UsersInvite).WithName("InviteMember");
-        organization.MapGet("/invitations", ListInvitationsAsync).RequiresPermission(Permissions.UsersRead).WithName("ListInvitations");
-        organization.MapPost("/invitations/{id:guid}/revoke", RevokeInvitationAsync).RequiresPermission(Permissions.UsersInvite).WithName("RevokeInvitation");
-        organization.MapPatch("/members/{id:guid}", ChangeRoleAsync).RequiresPermission(Permissions.UsersRoleWrite).WithName("ChangeMemberRole");
-        organization.MapPost("/members/{id:guid}/deactivate", DeactivateMemberAsync).RequiresPermission(Permissions.UsersDeactivate).WithName("DeactivateMember");
+        organization.MapPost("/members/invite", InviteAsync).Produces<InviteAcceptedResponse>(202).RequiresPermission(Permissions.UsersInvite).WithName("InviteMember");
+        organization.MapGet("/invitations", ListInvitationsAsync).Produces<InvitationListResponse>(200).RequiresPermission(Permissions.UsersRead).WithName("ListInvitations");
+        organization.MapPost("/invitations/{id:guid}/revoke", RevokeInvitationAsync).Produces<InvitationDto>(200).RequiresPermission(Permissions.UsersInvite).WithName("RevokeInvitation");
+        organization.MapPatch("/members/{id:guid}", ChangeRoleAsync).Produces<MemberDto>(200).RequiresPermission(Permissions.UsersRoleWrite).WithName("ChangeMemberRole");
+        organization.MapPost("/members/{id:guid}/deactivate", DeactivateMemberAsync).Produces<MemberDto>(200).RequiresPermission(Permissions.UsersDeactivate).WithName("DeactivateMember");
         // Slice 13 (SEC-09): ownership moves only with a fresh re-authentication.
-        organization.MapPost("/transfer-ownership", TransferOwnershipAsync).RequiresPermission(Permissions.TenantTransferOwnership).RequiresReauth().WithName("TransferOwnership");
+        organization.MapPost("/transfer-ownership", TransferOwnershipAsync).Produces<TransferOwnershipResponse>(200).RequiresPermission(Permissions.TenantTransferOwnership).RequiresReauth().WithName("TransferOwnership");
 
         return api;
     }
@@ -59,7 +59,7 @@ public static class OrganizationEndpoints
     {
         ArgumentNullException.ThrowIfNull(api);
 
-        api.MapGet("/audit", ListAuditAsync)
+        api.MapGet("/audit", ListAuditAsync).Produces<AuditListResponse>(200)
             .RequiresPermission(Permissions.AuditRead).WithName("ListAudit");
 
         return api;

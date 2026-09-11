@@ -29,23 +29,23 @@ public static class ImportEndpoints
         // Bearer authentication, not cookies, so the antiforgery token that ASP.NET expects on a
         // multipart form has nothing to protect against (SEC-63). Disabled explicitly rather than
         // left as a runtime surprise.
-        imports.MapPost("/", UploadAsync).RequiresPermission(Permissions.InvoicesImport).WithName("UploadImport").DisableAntiforgery();
-        imports.MapGet("/", ListBatchesAsync).RequiresPermission(Permissions.InvoicesImport).WithName("ListImports");
-        imports.MapGet("/{id:guid}", GetBatchAsync).RequiresPermission(Permissions.InvoicesImport).WithName("GetImport");
-        imports.MapGet("/{id:guid}/rows", ListRowsAsync).RequiresPermission(Permissions.InvoicesImport).WithName("ListImportRows");
-        imports.MapPost("/{id:guid}/mapping", ApplyMappingAsync).RequiresPermission(Permissions.InvoicesImport).WithName("ApplyImportMapping");
-        imports.MapPost("/{id:guid}/rows/{rowId:guid}/resolve", ResolveRowAsync).RequiresPermission(Permissions.InvoicesImport).WithName("ResolveImportRow");
-        imports.MapPost("/{id:guid}/commit", CommitAsync).RequiresPermission(Permissions.InvoicesImport).WithName("CommitImport");
-        imports.MapPost("/{id:guid}/cancel", CancelAsync).RequiresPermission(Permissions.InvoicesImport).WithName("CancelImport");
+        imports.MapPost("/", UploadAsync).Produces<ImportBatchResponse>(201).RequiresPermission(Permissions.InvoicesImport).WithName("UploadImport").DisableAntiforgery();
+        imports.MapGet("/", ListBatchesAsync).Produces<ImportBatchListResponse>(200).RequiresPermission(Permissions.InvoicesImport).WithName("ListImports");
+        imports.MapGet("/{id:guid}", GetBatchAsync).Produces<ImportBatchResponse>(200).RequiresPermission(Permissions.InvoicesImport).WithName("GetImport");
+        imports.MapGet("/{id:guid}/rows", ListRowsAsync).Produces<ImportRowListResponse>(200).RequiresPermission(Permissions.InvoicesImport).WithName("ListImportRows");
+        imports.MapPost("/{id:guid}/mapping", ApplyMappingAsync).Produces<ImportBatchResponse>(200).RequiresPermission(Permissions.InvoicesImport).WithName("ApplyImportMapping");
+        imports.MapPost("/{id:guid}/rows/{rowId:guid}/resolve", ResolveRowAsync).Produces<ImportRowResponse>(200).RequiresPermission(Permissions.InvoicesImport).WithName("ResolveImportRow");
+        imports.MapPost("/{id:guid}/commit", CommitAsync).Produces<CommitResponse>(200).RequiresPermission(Permissions.InvoicesImport).WithName("CommitImport");
+        imports.MapPost("/{id:guid}/cancel", CancelAsync).Produces(204).RequiresPermission(Permissions.InvoicesImport).WithName("CancelImport");
 
         var mappings = api.MapGroup("/import-mappings");
-        mappings.MapGet("/", ListMappingsAsync).RequiresPermission(Permissions.InvoicesImport).WithName("ListImportMappings");
-        mappings.MapPost("/", CreateMappingAsync).RequiresPermission(Permissions.InvoicesImport).WithName("CreateImportMapping");
-        mappings.MapDelete("/{id:guid}", DeleteMappingAsync).RequiresPermission(Permissions.InvoicesImport).WithName("DeleteImportMapping");
+        mappings.MapGet("/", ListMappingsAsync).Produces<ImportMappingListResponse>(200).RequiresPermission(Permissions.InvoicesImport).WithName("ListImportMappings");
+        mappings.MapPost("/", CreateMappingAsync).Produces<ImportMappingResponse>(201).RequiresPermission(Permissions.InvoicesImport).WithName("CreateImportMapping");
+        mappings.MapDelete("/{id:guid}", DeleteMappingAsync).Produces(204).RequiresPermission(Permissions.InvoicesImport).WithName("DeleteImportMapping");
 
         var invoices = api.MapGroup("/invoices");
-        invoices.MapGet("/", ListInvoicesAsync).RequiresPermission(Permissions.InvoicesRead).WithName("ListInvoices");
-        invoices.MapGet("/{id:guid}", GetInvoiceAsync).RequiresPermission(Permissions.InvoicesRead).WithName("GetInvoice");
+        invoices.MapGet("/", ListInvoicesAsync).Produces<InvoiceListResponse>(200).RequiresPermission(Permissions.InvoicesRead).WithName("ListInvoices");
+        invoices.MapGet("/{id:guid}", GetInvoiceAsync).Produces<InvoiceDetailResponse>(200).RequiresPermission(Permissions.InvoicesRead).WithName("GetInvoice");
 
         return api;
     }

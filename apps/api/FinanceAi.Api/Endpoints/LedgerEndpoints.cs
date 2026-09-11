@@ -25,38 +25,38 @@ public static class LedgerEndpoints
         ArgumentNullException.ThrowIfNull(api);
 
         var payments = api.MapGroup("/payments");
-        payments.MapPost("/", RecordPaymentAsync).RequiresPermission(Permissions.PaymentsWrite).WithName("RecordPayment");
-        payments.MapGet("/", ListPaymentsAsync).RequiresPermission(Permissions.PaymentsRead).WithName("ListPayments");
-        payments.MapGet("/{id:guid}", GetPaymentAsync).RequiresPermission(Permissions.PaymentsRead).WithName("GetPayment");
-        payments.MapGet("/{id:guid}/allocation-proposal", ProposeAsync).RequiresPermission(Permissions.PaymentsAllocate).WithName("AllocationProposal");
-        payments.MapPost("/{id:guid}/allocations", AllocateAsync).RequiresPermission(Permissions.PaymentsAllocate).WithName("Allocate");
-        payments.MapPost("/{id:guid}/reverse", ReversePaymentAsync).RequiresPermission(Permissions.PaymentsWrite).WithName("ReversePayment");
+        payments.MapPost("/", RecordPaymentAsync).Produces<PaymentResponse>(201).RequiresPermission(Permissions.PaymentsWrite).WithName("RecordPayment");
+        payments.MapGet("/", ListPaymentsAsync).Produces<PaymentListResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("ListPayments");
+        payments.MapGet("/{id:guid}", GetPaymentAsync).Produces<PaymentResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("GetPayment");
+        payments.MapGet("/{id:guid}/allocation-proposal", ProposeAsync).Produces<AllocationProposalResponse>(200).RequiresPermission(Permissions.PaymentsAllocate).WithName("AllocationProposal");
+        payments.MapPost("/{id:guid}/allocations", AllocateAsync).Produces<AllocationResultResponse>(200).RequiresPermission(Permissions.PaymentsAllocate).WithName("Allocate");
+        payments.MapPost("/{id:guid}/reverse", ReversePaymentAsync).Produces<PaymentResponse>(200).RequiresPermission(Permissions.PaymentsWrite).WithName("ReversePayment");
 
-        api.MapPost("/allocations/{id:guid}/reverse", ReverseAllocationAsync).RequiresPermission(Permissions.PaymentsAllocate).WithName("ReverseAllocation");
+        api.MapPost("/allocations/{id:guid}/reverse", ReverseAllocationAsync).Produces<AllocationDto>(200).RequiresPermission(Permissions.PaymentsAllocate).WithName("ReverseAllocation");
 
         var cheques = api.MapGroup("/cheques");
-        cheques.MapPost("/", RecordChequeAsync).RequiresPermission(Permissions.PaymentsWrite).WithName("RecordCheque");
-        cheques.MapGet("/", ListChequesAsync).RequiresPermission(Permissions.PaymentsRead).WithName("ListCheques");
-        cheques.MapGet("/{id:guid}", GetChequeAsync).RequiresPermission(Permissions.PaymentsRead).WithName("GetCheque");
-        cheques.MapPost("/{id:guid}/transitions", TransitionChequeAsync).RequiresPermission(Permissions.PaymentsWrite).WithName("TransitionCheque");
+        cheques.MapPost("/", RecordChequeAsync).Produces<ChequeResponse>(201).RequiresPermission(Permissions.PaymentsWrite).WithName("RecordCheque");
+        cheques.MapGet("/", ListChequesAsync).Produces<ChequeListResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("ListCheques");
+        cheques.MapGet("/{id:guid}", GetChequeAsync).Produces<ChequeResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("GetCheque");
+        cheques.MapPost("/{id:guid}/transitions", TransitionChequeAsync).Produces<ChequeTransitionResponse>(200).RequiresPermission(Permissions.PaymentsWrite).WithName("TransitionCheque");
 
-        api.MapPost("/invoices/{id:guid}/withholding", RecordWithholdingAsync).RequiresPermission(Permissions.PaymentsWrite).WithName("RecordWithholding");
-        api.MapPost("/invoices/{id:guid}/write-off", ProposeWriteOffAsync).RequiresPermission(Permissions.WriteoffPropose).WithName("ProposeWriteOff");
-        api.MapPost("/invoices/{id:guid}/void", VoidInvoiceAsync).RequiresPermission(Permissions.InvoicesVoid).WithName("VoidInvoice");
+        api.MapPost("/invoices/{id:guid}/withholding", RecordWithholdingAsync).Produces<WithholdingDto>(201).RequiresPermission(Permissions.PaymentsWrite).WithName("RecordWithholding");
+        api.MapPost("/invoices/{id:guid}/write-off", ProposeWriteOffAsync).Produces<WriteOffResponse>(201).RequiresPermission(Permissions.WriteoffPropose).WithName("ProposeWriteOff");
+        api.MapPost("/invoices/{id:guid}/void", VoidInvoiceAsync).Produces<InvoiceResponse>(200).RequiresPermission(Permissions.InvoicesVoid).WithName("VoidInvoice");
 
         var creditNotes = api.MapGroup("/credit-notes");
-        creditNotes.MapPost("/", CreateCreditNoteAsync).RequiresPermission(Permissions.CreditNotesWrite).WithName("CreateCreditNote");
-        creditNotes.MapGet("/", ListCreditNotesAsync).RequiresPermission(Permissions.PaymentsRead).WithName("ListCreditNotes");
-        creditNotes.MapGet("/{id:guid}", GetCreditNoteAsync).RequiresPermission(Permissions.PaymentsRead).WithName("GetCreditNote");
-        creditNotes.MapPost("/{id:guid}/applications", ApplyCreditNoteAsync).RequiresPermission(Permissions.CreditNotesWrite).WithName("ApplyCreditNote");
-        creditNotes.MapPost("/{id:guid}/void", VoidCreditNoteAsync).RequiresPermission(Permissions.CreditNotesWrite).WithName("VoidCreditNote");
+        creditNotes.MapPost("/", CreateCreditNoteAsync).Produces<CreditNoteResponse>(201).RequiresPermission(Permissions.CreditNotesWrite).WithName("CreateCreditNote");
+        creditNotes.MapGet("/", ListCreditNotesAsync).Produces<CreditNoteListResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("ListCreditNotes");
+        creditNotes.MapGet("/{id:guid}", GetCreditNoteAsync).Produces<CreditNoteResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("GetCreditNote");
+        creditNotes.MapPost("/{id:guid}/applications", ApplyCreditNoteAsync).Produces<CreditNoteResponse>(200).RequiresPermission(Permissions.CreditNotesWrite).WithName("ApplyCreditNote");
+        creditNotes.MapPost("/{id:guid}/void", VoidCreditNoteAsync).Produces<CreditNoteResponse>(200).RequiresPermission(Permissions.CreditNotesWrite).WithName("VoidCreditNote");
 
         var writeOffs = api.MapGroup("/write-offs");
-        writeOffs.MapGet("/", ListWriteOffsAsync).RequiresPermission(Permissions.PaymentsRead).WithName("ListWriteOffs");
-        writeOffs.MapGet("/{id:guid}", GetWriteOffAsync).RequiresPermission(Permissions.PaymentsRead).WithName("GetWriteOff");
-        writeOffs.MapPost("/{id:guid}/approve", ApproveWriteOffAsync).RequiresPermission(Permissions.WriteoffApprove).RequiresReauth().WithName("ApproveWriteOff");   // SEC-09, slice 13 closes slice 3b D-6
-        writeOffs.MapPost("/{id:guid}/reject", RejectWriteOffAsync).RequiresPermission(Permissions.WriteoffApprove).WithName("RejectWriteOff");
-        writeOffs.MapPost("/{id:guid}/reverse", ReverseWriteOffAsync).RequiresPermission(Permissions.WriteoffApprove).WithName("ReverseWriteOff");
+        writeOffs.MapGet("/", ListWriteOffsAsync).Produces<WriteOffListResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("ListWriteOffs");
+        writeOffs.MapGet("/{id:guid}", GetWriteOffAsync).Produces<WriteOffResponse>(200).RequiresPermission(Permissions.PaymentsRead).WithName("GetWriteOff");
+        writeOffs.MapPost("/{id:guid}/approve", ApproveWriteOffAsync).Produces<WriteOffResponse>(200).RequiresPermission(Permissions.WriteoffApprove).RequiresReauth().WithName("ApproveWriteOff");   // SEC-09, slice 13 closes slice 3b D-6
+        writeOffs.MapPost("/{id:guid}/reject", RejectWriteOffAsync).Produces<WriteOffResponse>(200).RequiresPermission(Permissions.WriteoffApprove).WithName("RejectWriteOff");
+        writeOffs.MapPost("/{id:guid}/reverse", ReverseWriteOffAsync).Produces<WriteOffResponse>(200).RequiresPermission(Permissions.WriteoffApprove).WithName("ReverseWriteOff");
 
         return api;
     }
