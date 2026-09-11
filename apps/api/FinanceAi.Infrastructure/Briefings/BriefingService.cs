@@ -377,20 +377,26 @@ public static class BriefingResponseValidator
         if (narrative is null || narrative.Length is 0 or > 1200) errs.Add("narrative: length");
         var highlights = new List<string>();
         if (root.GetProperty("highlights").ValueKind != JsonValueKind.Array) errs.Add("highlights: type");
-        else foreach (var h in root.GetProperty("highlights").EnumerateArray())
+        else
+        {
+            foreach (var h in root.GetProperty("highlights").EnumerateArray())
             {
                 if (h.ValueKind != JsonValueKind.String || h.GetString()!.Length is 0 or > 200) errs.Add("highlights: items");
                 else highlights.Add(h.GetString()!);
             }
+        }
 
         if (highlights.Count > 5) errs.Add("highlights: maxItems");
         var used = new List<string>();
         if (root.GetProperty("numbers_used").ValueKind != JsonValueKind.Array) errs.Add("numbers_used: type");
-        else foreach (var k in root.GetProperty("numbers_used").EnumerateArray())
+        else
+        {
+            foreach (var k in root.GetProperty("numbers_used").EnumerateArray())
             {
                 if (k.ValueKind != JsonValueKind.String || !MetricKeys.Contains(k.GetString()!)) errs.Add("numbers_used: enum");
                 else used.Add(k.GetString()!);
             }
+        }
 
         var conf = root.GetProperty("confidence");
         decimal confidence = 0m;

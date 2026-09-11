@@ -2,7 +2,7 @@
 #   default → the API on :5080
 #   `migrate` → the migrator (`FinanceAi.Migrator up`), run once before the API starts.
 # Non-root, read-only root filesystem, no capabilities (SEC-69). Secrets arrive as environment (SEC-67).
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.103 AS build
 WORKDIR /src
 COPY global.json Directory.Build.props ./
 COPY apps/api/FinanceAi.Domain/*.csproj apps/api/FinanceAi.Domain/
