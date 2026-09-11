@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FinanceAi.TestSupport;
 
@@ -16,8 +17,21 @@ public class ApiFactory : WebApplicationFactory<Program>
 {
     private readonly System.Runtime.CompilerServices.ConditionalWeakTable<HttpClient, CookieContainerHandler> jars = new();
 
-    protected override void ConfigureWebHost(IWebHostBuilder builder) =>
-        builder?.UseEnvironment("Testing");
+    /// <summary>
+    /// The host's clock. Defaults to the system clock; a test may pin it (FIN-58's day boundary, token
+    /// expiry) and must reset it with <see cref="ResetClock"/> — tests in a collection run sequentially,
+    /// so a pinned clock cannot leak into a concurrently running test.
+    /// </summary>
+    public SettableTimeProvider Clock { get; } = new();
+
+    public void ResetClock() => this.Clock.Override = null;
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.UseEnvironment("Testing");
+        builder.ConfigureServices(services => services.AddSingleton<TimeProvider>(this.Clock));
+    }
 
     /// <summary>
     /// A client that keeps cookies, so the refresh-token cookie behaves exactly as it does in a
@@ -84,6 +98,13 @@ public class ApiFactory : WebApplicationFactory<Program>
 }
 
 /// <summary>Shapes the tests read back from the API. Mirrors the contracts in doc 05.</summary>
+public sealed class SettableTimeProvider : TimeProvider
+{
+    public DateTimeOffset? Override { get; set; }
+
+    public override DateTimeOffset GetUtcNow() => this.Override ?? DateTimeOffset.UtcNow;
+}
+
 public sealed record SessionResponse(
     string AccessToken,
     int ExpiresIn,

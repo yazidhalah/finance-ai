@@ -24,7 +24,7 @@ public static class LedgerScenario
         return new Setup(organization, client, id);
     }
 
-    public static async Task<Guid> OpenInvoiceAsync(this DatabaseFixture db, Guid tenantId, Guid customerId, string number, decimal total, string currency = "JOD", string dueDate = "2026-09-01", string issueDate = "2026-08-01")
+    public static async Task<Guid> OpenInvoiceAsync(this DatabaseFixture db, Guid tenantId, Guid customerId, string number, decimal total, string currency = "JOD", string dueDate = "2026-09-01", string issueDate = "2026-08-01", decimal fxRateToBase = 1m)
     {
         ArgumentNullException.ThrowIfNull(db);
         var id = Guid.CreateVersion7();
@@ -32,8 +32,8 @@ public static class LedgerScenario
         await using var insert = new NpgsqlCommand(
             """
             INSERT INTO invoices (id, tenant_id, customer_id, invoice_number, status, issue_date, due_date, currency,
-                                  net_amount, tax_amount, total_amount, balance_cache, base_currency)
-            VALUES (@id, @t, @c, @n, 'Open', @issue::date, @due::date, @cur, @total, 0, @total, @total, 'JOD')
+                                  net_amount, tax_amount, total_amount, balance_cache, base_currency, fx_rate_to_base)
+            VALUES (@id, @t, @c, @n, 'Open', @issue::date, @due::date, @cur, @total, 0, @total, @total, 'JOD', @fx)
             """, connection);
         insert.Parameters.AddWithValue("id", id);
         insert.Parameters.AddWithValue("t", tenantId);
@@ -43,6 +43,7 @@ public static class LedgerScenario
         insert.Parameters.AddWithValue("due", dueDate);
         insert.Parameters.AddWithValue("cur", currency);
         insert.Parameters.AddWithValue("total", total);
+        insert.Parameters.AddWithValue("fx", fxRateToBase);
         await insert.ExecuteNonQueryAsync();
         return id;
     }

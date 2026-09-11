@@ -9,7 +9,7 @@ No other module is designed or built until this one passes its acceptance tests
 ## Current phase
 
 **Building, from the approved specification.** Slices 1 (Organization & Authentication),
-2 (Customers), 3a (Invoice Import) and 3b (Payments & Allocation) are implemented and tested; see
+2 (Customers), 3a (Invoice Import), 3b (Payments & Allocation) and 4 (Aging) are implemented and tested; see
 `docs/slices/`, starting with
 [`docs/slices/slice-01-organization-and-auth.md`](docs/slices/slice-01-organization-and-auth.md)
 for its acceptance criteria, what it deliberately defers, and what its tests found.

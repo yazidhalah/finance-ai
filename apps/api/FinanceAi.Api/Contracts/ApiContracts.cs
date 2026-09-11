@@ -458,3 +458,36 @@ public sealed record InvoiceDetailResponse(
     IReadOnlyList<WriteOffResponse> WriteOffs);
 
 public sealed record CustomerPositionDto(string Currency, MoneyDto OpenBalance, int OpenInvoiceCount, MoneyDto UnappliedCash, MoneyDto UnappliedCredit);
+
+// ---------------------------------------------------------------------------------------
+// Slice 4 — Aging (doc 05 slice 4). Read-only figures; every amount is a MoneyDto string.
+// ---------------------------------------------------------------------------------------
+
+public sealed record AgingBucketDto(string Bucket, MoneyDto Amount, int InvoiceCount, MoneyDto DisputedAmount);
+
+public sealed record AgingCustomerRowDto(Guid CustomerId, string? Code, string? NameAr, string? NameEn, IReadOnlyList<AgingBucketDto> Buckets, MoneyDto Total, MoneyDto DisputedTotal, int InvoiceCount);
+
+public sealed record AgingCurrencyDto(
+    string Currency, IReadOnlyList<AgingBucketDto> Buckets, MoneyDto Total, MoneyDto DisputedTotal, int InvoiceCount,
+    MoneyDto UnappliedCash, MoneyDto UnappliedCredit, IReadOnlyList<AgingCustomerRowDto>? Customers);
+
+/// <summary>FIN-55 / FIN-06: a converted figure is always marked indicative.</summary>
+public sealed record IndicativeMoneyDto(string Amount, string Currency, bool Indicative);
+
+public sealed record AgingReportResponse(
+    string AsOf, string Basis, string Timezone, IReadOnlyList<int> BucketBoundaries, IReadOnlyList<string> BucketKeys,
+    IReadOnlyList<AgingCurrencyDto> Currencies, IndicativeMoneyDto BaseCurrencyTotal, bool DisputedAvailable, string ExplanationKey);
+
+public sealed record AgedInvoiceDto(Guid InvoiceId, string InvoiceNumber, string Currency, string IssueDate, string DueDate, MoneyDto TotalAmount, MoneyDto OpenBalance, int DaysPastDue, string Bucket);
+
+/// <summary>FIN-61: advisory, with its sample size. <c>averageDaysToPay</c> is days, one decimal, or null.</summary>
+public sealed record AgingCustomerDetailResponse(Guid CustomerId, string AsOf, string Basis, IReadOnlyList<AgedInvoiceDto> Invoices, string? AverageDaysToPay, int AverageDaysToPaySampleSize);
+
+/// <summary>FIN-60. <c>dso</c> is null with <c>insufficientHistory: true</c> below 90 days of history.</summary>
+public sealed record DsoDto(string Currency, string? Dso, bool InsufficientHistory, MoneyDto ArAtPeriodEnd, MoneyDto CreditSalesInPeriod, int DaysInPeriod, string PeriodStart, string PeriodEnd);
+
+public sealed record DsoResponse(string AsOf, IReadOnlyList<DsoDto> Currencies, string DisclaimerKey);
+
+public sealed record ReconciliationMismatchDto(Guid InvoiceId, string InvoiceNumber, string Rule, MoneyDto Cached, MoneyDto Derived, string Status);
+
+public sealed record ReconciliationResponse(string CheckedAt, int InvoicesChecked, IReadOnlyList<ReconciliationMismatchDto> Mismatches);

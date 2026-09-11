@@ -63,10 +63,12 @@ interface RequestOptions {
   idempotencyKey?: string
   /** Internal: prevents a refresh loop when the refresh call itself returns 401. */
   retryOnUnauthorized?: boolean
+  /** Return the raw body (a file download) instead of parsing JSON. */
+  raw?: boolean
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, ifMatch, idempotencyKey, retryOnUnauthorized = true } = options
+  const { method = 'GET', body, ifMatch, idempotencyKey, retryOnUnauthorized = true, raw = false } = options
 
   const headers: Record<string, string> = { Accept: 'application/json' }
 
@@ -112,6 +114,10 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
   if (response.status === 204) {
     return undefined as T
+  }
+
+  if (raw) {
+    return (await response.blob()) as T
   }
 
   return (await response.json()) as T
@@ -602,4 +608,106 @@ export const ledgerApi = {
   approveWriteOff: (id: string, selfApproved: boolean) => request<WriteOff>(`/write-offs/${id}/approve`, { method: 'POST', body: { selfApproved } }),
   rejectWriteOff: (id: string, reason?: string) => request<WriteOff>(`/write-offs/${id}/reject`, { method: 'POST', body: { reason } }),
   voidInvoice: (id: string, reason: string) => request<Invoice>(`/invoices/${id}/void`, { method: 'POST', body: { reason } }),
+}
+
+// ---------------------------------------------------------------------------------------
+// Slice 4 — Aging (doc 05 slice 4). Every figure arrives as a string; nothing here adds two of them.
+// ---------------------------------------------------------------------------------------
+
+export interface AgingBucket {
+  bucket: string
+  amount: Money
+  invoiceCount: number
+  disputedAmount: Money
+}
+
+export interface AgingCustomerRow {
+  customerId: string
+  code: string | null
+  nameAr: string | null
+  nameEn: string | null
+  buckets: AgingBucket[]
+  total: Money
+  disputedTotal: Money
+  invoiceCount: number
+}
+
+export interface AgingCurrency {
+  currency: string
+  buckets: AgingBucket[]
+  total: Money
+  disputedTotal: Money
+  invoiceCount: number
+  unappliedCash: Money
+  unappliedCredit: Money
+  customers: AgingCustomerRow[] | null
+}
+
+export interface AgingReport {
+  asOf: string
+  basis: 'due_date' | 'issue_date'
+  timezone: string
+  bucketBoundaries: number[]
+  bucketKeys: string[]
+  currencies: AgingCurrency[]
+  baseCurrencyTotal: { amount: string; currency: string; indicative: boolean }
+  disputedAvailable: boolean
+  explanationKey: string
+}
+
+export interface AgedInvoice {
+  invoiceId: string
+  invoiceNumber: string
+  currency: string
+  issueDate: string
+  dueDate: string
+  totalAmount: Money
+  openBalance: Money
+  daysPastDue: number
+  bucket: string
+}
+
+export interface AgingCustomerDetail {
+  customerId: string
+  asOf: string
+  basis: 'due_date' | 'issue_date'
+  invoices: AgedInvoice[]
+  averageDaysToPay: string | null
+  averageDaysToPaySampleSize: number
+}
+
+export interface DsoFigure {
+  currency: string
+  dso: string | null
+  insufficientHistory: boolean
+  arAtPeriodEnd: Money
+  creditSalesInPeriod: Money
+  daysInPeriod: number
+  periodStart: string
+  periodEnd: string
+}
+
+export interface AgingQuery {
+  asOf?: string
+  basis?: 'due_date' | 'issue_date'
+  currency?: string
+  customerId?: string
+  groupBy?: 'bucket' | 'customer'
+}
+
+function agingQuery(q: AgingQuery): string {
+  const params = new URLSearchParams()
+  for (const [k, v] of Object.entries(q)) if (v) params.set(k, v)
+  const text = params.toString()
+  return text ? `?${text}` : ''
+}
+
+export const reportsApi = {
+  aging: (q: AgingQuery = {}) => request<AgingReport>(`/reports/aging${agingQuery(q)}`),
+  agingCustomer: (customerId: string, q: AgingQuery & { bucket?: string } = {}) =>
+    request<AgingCustomerDetail>(`/reports/aging/customers/${customerId}${agingQuery(q)}`),
+  dso: (q: AgingQuery = {}) => request<{ asOf: string; currencies: DsoFigure[]; disclaimerKey: string }>(`/reports/dso${agingQuery(q)}`),
+  /** The file comes back as a Blob for the caller to hand to the browser; the token never goes in a URL. */
+  export: (format: 'csv' | 'xlsx', locale: string, q: AgingQuery = {}) =>
+    request<Blob>(`/reports/aging/export${agingQuery({ ...q })}${agingQuery(q) ? '&' : '?'}format=${format}&locale=${locale}`, { raw: true }),
 }

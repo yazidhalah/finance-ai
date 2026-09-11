@@ -98,7 +98,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
         // Pinned so that a permission becoming universal is a deliberate, visible change rather than
         // a quiet loss of test coverage.
         Assert.Equal(
-            ["customers.read", "invoices.read", "payments.read", "tenant.read"],
+            ["aging.read", "customers.read", "invoices.read", "payments.read", "tenant.read"],
             universal.Distinct(StringComparer.Ordinal).OrderBy(p => p, StringComparer.Ordinal).ToList());
     }
 
@@ -216,7 +216,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     {
         var endpoints = this.Endpoints();
 
-        Assert.Equal(60, endpoints.Count);
+        Assert.Equal(65, endpoints.Count);
         Assert.All(endpoints, e => Assert.True(e.Permission is not null || e.Access is not null));
 
         // The anonymous set is exactly registration, login and refresh — nothing has drifted into it.
