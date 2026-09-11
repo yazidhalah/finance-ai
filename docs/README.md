@@ -27,6 +27,7 @@ Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), sl
 | 16 | [slices/slice-16-ci-gates.md](slices/slice-16-ci-gates.md) · [review](slices/slice-16-review.md) | OpenAPI snapshot (`docs/api/openapi.json`, API-14), gitleaks in CI and pre-commit (SEC-67), the notices/licence checker (PRD-26), the nightly performance workflow (T-140/141) |
 | 17 | [slices/slice-17-key-rotation.md](slices/slice-17-key-rotation.md) · [review](slices/slice-17-review.md) | Rotating the MFA KEK (versioned envelopes, rotate on use, `rotate-mfa-kek`) and the JWT signing key (a previous key honoured only for tokens that predate the process) — runbook §4 |
 | 18 | [slices/slice-18-typed-contract.md](slices/slice-18-typed-contract.md) · [review](slices/slice-18-review.md) | Every operation's success and failure responses in `docs/api/openapi.json` (the `Problem` component, 401/403/404/400/422/429 per operation); money is a string everywhere in the contract |
+| 19 | [slices/slice-19-audit-values.md](slices/slice-19-audit-values.md) · [review](slices/slice-19-review.md) | Before/after values, note and the AI suggestion on the audit viewer (doc 06 §6.11); the coverage baseline and the proposed floor ([decisions/0007](decisions/0007-coverage-floor.md)) |
 
 **Open questions still outstanding.** Q-01, Q-02, Q-04 and Q-06 in document 00 remain unanswered.
 Slices 1–10 proceeded on the documented defaults (A-01…A-05, A-11, A-12). **Slice 3b built E1 on a

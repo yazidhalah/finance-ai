@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FinanceAi.Api.Authorization;
 using FinanceAi.Api.Contracts;
 using FinanceAi.Api.Http;
@@ -298,13 +299,15 @@ public static class OrganizationEndpoints
         var page = await query
             .OrderByDescending(e => e.Id)
             .Take(pageSize + 1)
-            .Select(e => new AuditEventDto(
-                e.Id, e.OccurredAt, e.ActorUserId, e.ActorKind, e.EventType, e.EntityType,
-                e.EntityId, e.FromState, e.ToState, e.ReasonCode, e.RequestId, e.Hash))
+            .Select(e => new { e.Id, e.OccurredAt, e.ActorUserId, e.ActorKind, e.EventType, e.EntityType, e.EntityId, e.FromState, e.ToState, e.ReasonCode, e.RequestId, e.Hash, e.Changes, e.Note, e.AiSuggestionId })
             .ToListAsync(ct);
 
         var hasMore = page.Count > pageSize;
-        var items = hasMore ? page[..pageSize] : page;
+        var items = (hasMore ? page[..pageSize] : page)
+            .Select(e => new AuditEventDto(
+                e.Id, e.OccurredAt, e.ActorUserId, e.ActorKind, e.EventType, e.EntityType, e.EntityId, e.FromState, e.ToState, e.ReasonCode, e.RequestId, e.Hash,
+                e.Changes is null ? null : JsonDocument.Parse(e.Changes).RootElement.Clone(), e.Note, e.AiSuggestionId))   // slice 19: before/after values on the viewer
+            .ToList();
 
         return TypedResults.Ok(new AuditListResponse(
             items,

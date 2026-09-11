@@ -23,7 +23,7 @@ const alert = (extra: Partial<Alert> = {}): Alert => ({
   id: 'a1', kind: 'invariant_violation', severity: 'critical', summary: '1 invariant(s) violated: INV-09 ×2.', details: { runId: 'r1' }, raisedAt: '2026-09-11T02:00:01Z',
   emailDelivery: 'sent', webhookDelivery: 'skipped', acknowledgedAt: null, acknowledgedBy: null, ...extra,
 })
-const event = (id: number, eventType: string): AuditEvent => ({ id, occurredAt: '2026-09-11T01:00:00Z', actorUserId: 'u1', actorKind: 'user', eventType, entityType: 'invoice', entityId: '01a0aaaa-0000-7000-8000-000000000000', fromState: 'Imported', toState: 'Open', reasonCode: null, requestId: null, hash: 'h' })
+const event = (id: number, eventType: string, extra: Partial<AuditEvent> = {}): AuditEvent => ({ id, occurredAt: '2026-09-11T01:00:00Z', actorUserId: 'u1', actorKind: 'user', eventType, entityType: 'invoice', entityId: '01a0aaaa-0000-7000-8000-000000000000', fromState: 'Imported', toState: 'Open', reasonCode: null, requestId: null, hash: 'h', ...extra })
 
 function stubFetch(route: (url: string, method: string) => [number, unknown]) {
   const calls: { url: string; method: string }[] = []
@@ -54,7 +54,7 @@ describe('Audit screen (slice 15 AC-10)', () => {
       if (url.includes('/organization/invariants')) return [200, { run: run('violations') }]
       if (url.includes('/acknowledge')) { acknowledged = true; return [200, alert({ acknowledgedAt: '2026-09-11T03:00:00Z', acknowledgedBy: 'u1' })] }
       if (url.includes('/organization/alerts')) return [200, acknowledged ? { items: [], openCount: 0 } : { items: [alert()], openCount: 1 }]
-      if (url.includes('/audit')) return [200, { items: [event(2, 'invoice.imported'), event(1, 'tenant.created')], nextCursor: method === 'GET' && url.includes('cursor') ? null : '1' }]
+      if (url.includes('/audit')) return [200, { items: [event(2, 'invoice.imported', { changes: { creditLimitAmount: { old: '1000.000', new: '12500.500' }, status: { old: null, new: 'Active' } }, note: 'raised by the owner' }), event(1, 'tenant.created')], nextCursor: method === 'GET' && url.includes('cursor') ? null : '1' }]
       return [200, {}]
     })
     render(wrap(<AuditPage />))
@@ -79,6 +79,17 @@ describe('Audit screen (slice 15 AC-10)', () => {
     expect(screen.getAllByTestId('audit-row')).toHaveLength(2)
     expect(screen.getAllByTestId('audit-row')[0]).toHaveTextContent('invoice.imported')
     expect(screen.getAllByTestId('audit-row')[0]).toHaveTextContent('Imported → Open')
+    // Slice 19: a row with recorded values expands to before/after; one without does not.
+    expect(screen.queryByTestId('audit-detail')).toBeNull()
+    fireEvent.click(screen.getAllByTestId('audit-row')[0]!)
+    const changes = screen.getAllByTestId('audit-change')
+    expect(changes).toHaveLength(2)
+    expect(changes[0]).toHaveAttribute('data-field', 'creditLimitAmount')
+    expect(changes[0]).toHaveTextContent('1000.000')
+    expect(changes[0]).toHaveTextContent('12500.500')
+    expect(screen.getByTestId('audit-detail')).toHaveTextContent('raised by the owner')
+    fireEvent.click(screen.getAllByTestId('audit-row')[1]!)
+    expect(screen.queryByTestId('audit-detail')).not.toBeNull()   // the first row stays open; the second has nothing to show
     fireEvent.change(screen.getByTestId('audit-entity-type'), { target: { value: 'invoice' } })
     await waitFor(() => expect(calls.some((c) => c.url.includes('/audit?entityType=invoice'))).toBe(true))
     fireEvent.click(screen.getByTestId('audit-more'))

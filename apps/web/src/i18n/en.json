@@ -1095,5 +1095,11 @@
   "audit.log.when": "When",
   "audit.log.entity": "Entity",
   "audit.log.transition": "Transition",
-  "audit.log.more": "Older"
+  "audit.log.more": "Older",
+  "audit.log.note": "Note",
+  "audit.log.aiSuggestion": "AI suggestion",
+  "audit.log.field": "Field",
+  "audit.log.before": "Before",
+  "audit.log.after": "After",
+  "audit.log.value": "Value"
 }
