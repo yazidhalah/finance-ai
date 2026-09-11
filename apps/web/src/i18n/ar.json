@@ -1095,5 +1095,11 @@
   "audit.log.when": "متى",
   "audit.log.entity": "الكيان",
   "audit.log.transition": "الانتقال",
-  "audit.log.more": "الأقدم"
+  "audit.log.more": "الأقدم",
+  "audit.log.note": "ملاحظة",
+  "audit.log.aiSuggestion": "اقتراح الذكاء الاصطناعي",
+  "audit.log.field": "الحقل",
+  "audit.log.before": "قبل",
+  "audit.log.after": "بعد",
+  "audit.log.value": "القيمة"
 }

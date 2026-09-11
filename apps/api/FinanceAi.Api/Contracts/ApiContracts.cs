@@ -106,7 +106,11 @@ public sealed record AuditEventDto(
     string? ToState,
     string? ReasonCode,
     string? RequestId,
-    string Hash);
+    string Hash,
+    /// <summary>Slice 19 (doc 06 §6.11): <c>{field: {old, new}}</c> or a flat snapshot, money as strings (DM-28). Null when the event recorded no values.</summary>
+    JsonElement? Changes = null,
+    string? Note = null,
+    Guid? AiSuggestionId = null);
 
 public sealed record AuditListResponse(IReadOnlyList<AuditEventDto> Items, string? NextCursor);
 

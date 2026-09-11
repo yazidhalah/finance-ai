@@ -81,7 +81,8 @@ performance workflow (T-140/141). Slice 17 made both keys rotatable: MFA envelop
 (`MFA_KEK_BASE64_PREVIOUS` + `rotate-mfa-kek`), and `JWT_SIGNING_KEY_PEM_BASE64_PREVIOUS` verifies only tokens
 issued before the process started (runbook §4). Slice 18 typed the contract: every operation's response schema
 and problem responses are in docs/api/openapi.json (`.Produces<T>()` beside each mapping; the transformer adds
-the `Problem` component and 401/403/404/400/422/429).
+the `Problem` component and 401/403/404/400/422/429). Slice 19 put before/after values on the audit viewer and
+enforced the coverage floor (decision 0007: Domain 95 / Infrastructure 90 / Api 85, `infrastructure/coverage-report.py` in the `api` job).
 What remains before the First Product is "done" is the
 v1 acceptance pass on a pilot corpus and real hardware (doc 09 §5 AI gates are indicative on the
 author-written corpus; Arabic narrative quality needs a native reviewer; T-140 runs nightly on a shared

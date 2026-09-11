@@ -103,6 +103,12 @@ public sealed class AuthAuditTests(ApiTestFixture fixture)
         Assert.NotNull(changes);
         Assert.Contains("legalName", changes, StringComparison.Ordinal);
         Assert.Contains("Al Amal LLC", changes, StringComparison.Ordinal);
+
+        // Slice 19 (doc 06 §6.11): the viewer gets the before/after values through the API, not only the database.
+        var page = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/v1/audit?eventType=tenant.updated", ApiScenario.Json);
+        var row = page.GetProperty("items")[0];
+        Assert.Equal("Al Amal LLC", row.GetProperty("changes").GetProperty("legalName").GetProperty("new").GetString());
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, row.GetProperty("changes").GetProperty("legalName").GetProperty("old").ValueKind);
     }
 
     /// <summary>AC-39 / SEC-54: the audit log is readable within one's own organization only.</summary>

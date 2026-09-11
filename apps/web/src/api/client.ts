@@ -1365,6 +1365,8 @@ export const authApi = {
 export type AuditEvent = {
   id: number; occurredAt: string; actorUserId: string | null; actorKind: string; eventType: string; entityType: string; entityId: string
   fromState: string | null; toState: string | null; reasonCode: string | null; requestId: string | null; hash: string
+  /** Slice 19: `{field: {old, new}}` or a flat snapshot; money as strings. Null when nothing was recorded. */
+  changes?: Record<string, unknown> | null; note?: string | null; aiSuggestionId?: string | null
 }
 export type InvariantCheck = { id: string; description: string; violations: number; samples: string[] }
 export type InvariantRun = { id: string; ranAt: string; trigger: 'sweep' | 'manual'; actorUserId: string | null; status: 'ok' | 'violations'; durationMs: number; checks: InvariantCheck[] }

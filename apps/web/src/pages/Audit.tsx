@@ -100,6 +100,26 @@ export function AlertsCard({ onProblem }: { onProblem: (p: Problem | null) => vo
   )
 }
 
+/** Before/after values (DM-28): `{field: {old, new}}` rows, or a flat snapshot when the event recorded one state. Money arrives as strings and is shown verbatim. */
+function ChangesTable({ changes }: { changes: Record<string, unknown> }) {
+  const { t } = useLocale()
+  const show = (v: unknown) => v === null || v === undefined ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v)
+  const isDiff = Object.values(changes).every((v) => v !== null && typeof v === 'object' && !Array.isArray(v) && ('old' in (v as object) || 'new' in (v as object)))
+  return (
+    <table className="text-xs" data-testid="audit-changes">
+      <thead><tr className="text-slate-500"><th className="pe-3 text-start">{t('audit.log.field')}</th>{isDiff ? <><th className="pe-3 text-start">{t('audit.log.before')}</th><th className="text-start">{t('audit.log.after')}</th></> : <th className="text-start">{t('audit.log.value')}</th>}</tr></thead>
+      <tbody>
+        {Object.entries(changes).map(([field, v]) => (
+          <tr key={field} data-testid="audit-change" data-field={field}>
+            <td className="pe-3 font-mono" dir="ltr">{field}</td>
+            {isDiff ? <><td className="pe-3 font-mono" dir="ltr"><Isolate>{show((v as { old?: unknown }).old)}</Isolate></td><td className="font-mono" dir="ltr"><Isolate>{show((v as { new?: unknown }).new)}</Isolate></td></> : <td className="font-mono" dir="ltr"><Isolate>{show(v)}</Isolate></td>}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
 /** Doc 06 §6.11: the audit log viewer — entity type, event type, actor filters; a cursor for older rows. */
 export function AuditPage() {
   const { t } = useLocale()
@@ -110,6 +130,7 @@ export function AuditPage() {
   const [items, setItems] = useState<AuditEvent[]>([])
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState<number | null>(null)
 
   const load = useCallback(async (cursor: string | null) => {
     setLoading(true)
@@ -146,15 +167,27 @@ export function AuditPage() {
             <table className="w-full text-sm" data-testid="audit-table">
               <thead><tr className="text-start text-xs text-slate-500"><th className="py-1 text-start">{t('audit.log.when')}</th><th className="text-start">{t('audit.log.eventType')}</th><th className="text-start">{t('audit.log.entity')}</th><th className="text-start">{t('audit.log.transition')}</th><th className="text-start">{t('audit.log.actor')}</th></tr></thead>
               <tbody>
-                {items.map((e) => (
-                  <tr key={e.id} className="border-t border-slate-100" data-testid="audit-row">
-                    <td className="py-1 font-mono text-xs" dir="ltr">{e.occurredAt.replace('T', ' ').slice(0, 19)}</td>
-                    <td className="font-mono text-xs" dir="ltr">{e.eventType}</td>
-                    <td className="font-mono text-xs" dir="ltr">{e.entityType} <span className="text-slate-400">{e.entityId.slice(0, 8)}</span></td>
-                    <td className="font-mono text-xs" dir="ltr">{e.fromState || e.toState ? `${e.fromState ?? '—'} → ${e.toState ?? '—'}` : ''}{e.reasonCode ? ` (${e.reasonCode})` : ''}</td>
-                    <td className="font-mono text-xs" dir="ltr">{e.actorKind}{e.actorUserId ? ` ${e.actorUserId.slice(0, 8)}` : ''}</td>
-                  </tr>
-                ))}
+                {items.map((e) => {
+                  const hasDetail = (e.changes && Object.keys(e.changes).length > 0) || e.note || e.aiSuggestionId
+                  return [
+                    <tr key={e.id} className={`border-t border-slate-100 ${hasDetail ? 'cursor-pointer hover:bg-slate-50' : ''}`} data-testid="audit-row" onClick={() => hasDetail && setExpanded(expanded === e.id ? null : e.id)} aria-expanded={hasDetail ? expanded === e.id : undefined}>
+                      <td className="py-1 font-mono text-xs" dir="ltr">{e.occurredAt.replace('T', ' ').slice(0, 19)}</td>
+                      <td className="font-mono text-xs" dir="ltr">{e.eventType}{hasDetail ? <span className="ms-1 text-slate-400">{expanded === e.id ? '▾' : '▸'}</span> : null}</td>
+                      <td className="font-mono text-xs" dir="ltr">{e.entityType} <span className="text-slate-400">{e.entityId.slice(0, 8)}</span></td>
+                      <td className="font-mono text-xs" dir="ltr">{e.fromState || e.toState ? `${e.fromState ?? '—'} → ${e.toState ?? '—'}` : ''}{e.reasonCode ? ` (${e.reasonCode})` : ''}</td>
+                      <td className="font-mono text-xs" dir="ltr">{e.actorKind}{e.actorUserId ? ` ${e.actorUserId.slice(0, 8)}` : ''}</td>
+                    </tr>,
+                    expanded === e.id ? (
+                      <tr key={`${e.id}-detail`} className="bg-slate-50" data-testid="audit-detail">
+                        <td colSpan={5} className="px-2 py-2">
+                          {e.changes && Object.keys(e.changes).length > 0 ? <ChangesTable changes={e.changes} /> : null}
+                          {e.note ? <p className="mt-1 text-xs"><span className="text-slate-500">{t('audit.log.note')}:</span> <Isolate>{e.note}</Isolate></p> : null}
+                          {e.aiSuggestionId ? <p className="mt-1 text-xs" dir="ltr"><span className="text-slate-500">{t('audit.log.aiSuggestion')}:</span> <span className="font-mono">{e.aiSuggestionId}</span></p> : null}
+                        </td>
+                      </tr>
+                    ) : null,
+                  ]
+                })}
               </tbody>
             </table>
           </div>

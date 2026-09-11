@@ -12735,6 +12735,20 @@
           },
           "hash": {
             "type": "string"
+          },
+          "changes": {},
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "aiSuggestionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         },
         "additionalProperties": false
