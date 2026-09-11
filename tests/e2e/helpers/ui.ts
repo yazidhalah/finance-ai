@@ -1,4 +1,4 @@
-import { expect, type Page, type TestInfo } from '@playwright/test'
+import { expect, type Locator, type Page, type TestInfo } from '@playwright/test'
 import { PASSWORD } from './api'
 
 export type UiLocale = 'en-JO' | 'ar-JO'
@@ -40,4 +40,14 @@ export async function assertLocaleShape(page: Page, locale: UiLocale): Promise<v
 /** Money renders through MoneyText: locale separators in the text, the exact stored string in `data-amount`. */
 export async function expectMoney(page: Page, testId: string, amount: string): Promise<void> {
   await expect(page.getByTestId(testId).locator(`bdi[data-amount="${amount}"]`).first()).toBeVisible()
+}
+
+/**
+ * Visual snapshots (T-120) compare pixels, and pixels depend on the machine's fonts: the committed baselines were
+ * rendered on the developer machine and the GitHub runner renders the same table 5% narrower. Until baselines are
+ * produced on the canonical environment (the `refresh-snapshots` workflow input uploads them as an artifact), the
+ * comparison is opt-in: PLAYWRIGHT_SNAPSHOTS=1. Everything else the Arabic run asserts is exact and always on.
+ */
+export async function snapshot(locator: Locator, name: string): Promise<void> {
+  if (process.env.PLAYWRIGHT_SNAPSHOTS === '1') await expect(locator).toHaveScreenshot(name)
 }
