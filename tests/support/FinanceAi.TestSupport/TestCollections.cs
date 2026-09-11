@@ -17,6 +17,9 @@ public sealed class ApiTestFixture : IAsyncLifetime
     public ApiFactory Api => this.api
         ?? throw new InvalidOperationException("The fixture has not been initialized.");
 
+    /// <summary>The PKCS#8 PEM of the key the host treats as its previous signing key (slice 17).</summary>
+    public string RetiredSigningKeyPem { get; private set; } = string.Empty;
+
     public async Task InitializeAsync()
     {
         this.database = await DatabaseFixture.CreateAsync("api");
@@ -29,6 +32,14 @@ public sealed class ApiTestFixture : IAsyncLifetime
 
         // Slice 13: the TOTP secrets' key-encryption key. Random per run; nothing persists across runs.
         Environment.SetEnvironmentVariable("MFA_KEK_BASE64", Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)));
+
+        // Slice 17: a retired signing key the host still validates for tokens that predate it (S4). Random per run.
+        using (var retired = System.Security.Cryptography.RSA.Create(2048))
+        {
+            RetiredSigningKeyPem = retired.ExportPkcs8PrivateKeyPem();
+        }
+
+        Environment.SetEnvironmentVariable("JWT_SIGNING_KEY_PEM_BASE64_PREVIOUS", Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(RetiredSigningKeyPem)));
 
         this.api = new ApiFactory();
 

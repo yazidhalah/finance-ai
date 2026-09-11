@@ -7,6 +7,7 @@ using FinanceAi.Infrastructure.Database;
 //   dotnet run --project apps/api/FinanceAi.Migrator -- bootstrap   create roles and extensions (admin)
 //   dotnet run --project apps/api/FinanceAi.Migrator -- migrate     apply pending migrations (migrator)
 //   dotnet run --project apps/api/FinanceAi.Migrator -- up          both, in order
+//   dotnet run --project apps/api/FinanceAi.Migrator -- rotate-mfa-kek   re-seal every TOTP secret under MFA_KEK_BASE64 (slice 17)
 DotEnv.Load();
 
 var command = args.Length > 0 ? args[0] : "up";
@@ -29,8 +30,13 @@ try
             Report(await runner.MigrateAsync(PostgresConnections.For(DatabaseRole.Migrator)));
             break;
 
+        case "rotate-mfa-kek":
+            var outcome = await FinanceAi.Infrastructure.Security.KekRotation.RunAsync(PostgresConnections.For(DatabaseRole.Migrator), new FinanceAi.Infrastructure.Security.AesGcmSecretBox());
+            Console.WriteLine($"MFA KEK rotation: {outcome.Resealed} re-sealed, {outcome.AlreadyCurrent} already under the current key. MFA_KEK_BASE64_PREVIOUS can be removed.");
+            break;
+
         default:
-            Console.Error.WriteLine($"Unknown command '{command}'. Expected: bootstrap | migrate | up.");
+            Console.Error.WriteLine($"Unknown command '{command}'. Expected: bootstrap | migrate | up | rotate-mfa-kek.");
             return 2;
     }
 

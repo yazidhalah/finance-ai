@@ -77,7 +77,9 @@ the Audit screen; it also fixed SEC-53 verification (audit `changes` is hashed i
 Slice 16 closed the slice-0 CI list: the OpenAPI snapshot in docs/api/openapi.json (a contract change fails the
 security suite; accept with UPDATE_OPENAPI=1), gitleaks over the history (and `git config core.hooksPath .githooks`
 locally), infrastructure/check-notices.py (every direct dependency recorded, licences permissive), and the nightly
-performance workflow (T-140/141).
+performance workflow (T-140/141). Slice 17 made both keys rotatable: MFA envelopes carry a key id
+(`MFA_KEK_BASE64_PREVIOUS` + `rotate-mfa-kek`), and `JWT_SIGNING_KEY_PEM_BASE64_PREVIOUS` verifies only tokens
+issued before the process started (runbook §4).
 What remains before the First Product is "done" is the
 v1 acceptance pass on a pilot corpus and real hardware (doc 09 §5 AI gates are indicative on the
 author-written corpus; Arabic narrative quality needs a native reviewer; T-140 performance in CI is

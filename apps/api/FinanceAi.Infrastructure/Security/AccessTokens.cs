@@ -41,6 +41,15 @@ public interface IAccessTokenIssuer
     (string Token, DateTimeOffset ExpiresAt) Issue(Guid userId, Guid tenantId, TenantRole role);
 
     TimeSpan Lifetime { get; }
+
+    /// <summary>The keys a signature may verify against: the current key and, during a rotation, the previous one (slice 17).</summary>
+    IEnumerable<SecurityKey> ValidationKeys { get; }
+
+    /// <summary>
+    /// Slice 17 S4: the current key always; the previous key only for a token issued before this process started —
+    /// the old process was the last thing to sign with it, so the window closes itself after one token lifetime.
+    /// </summary>
+    bool AcceptsSignature(string? keyId, DateTime issuedAtUtc);
 }
 
 public sealed class RsaAccessTokenIssuer : IAccessTokenIssuer, IDisposable
@@ -55,13 +64,38 @@ public sealed class RsaAccessTokenIssuer : IAccessTokenIssuer, IDisposable
     private readonly RSA rsa;
     private readonly SigningCredentials credentials;
     private readonly TimeProvider time;
+    private readonly RsaSecurityKey? previousPublicKey;
+    private readonly string? previousKeyId;
+    private readonly DateTimeOffset processStartedAt;
 
-    public RsaAccessTokenIssuer(string privateKeyPem, TimeProvider? time = null)
+    /// <summary>Tokens issued up to this long before the process started are still attributable to the old process (clock skew between hosts).</summary>
+    public static readonly TimeSpan PreviousKeySkew = TimeSpan.FromSeconds(30);
+
+    public RsaAccessTokenIssuer(string privateKeyPem, TimeProvider? time = null) : this(privateKeyPem, null, time)
+    {
+    }
+
+    /// <param name="previousPrivateKeyPem">The key being retired (<c>JWT_SIGNING_KEY_PEM_BASE64_PREVIOUS</c>), or null. Only its public half is kept.</param>
+    public RsaAccessTokenIssuer(string privateKeyPem, string? previousPrivateKeyPem, TimeProvider? time = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(privateKeyPem);
 
         this.rsa = RSA.Create();
         this.rsa.ImportFromPem(privateKeyPem);
+        this.time = time ?? TimeProvider.System;
+        this.processStartedAt = this.time.GetUtcNow();
+
+        if (!string.IsNullOrWhiteSpace(previousPrivateKeyPem))
+        {
+            using var previous = RSA.Create();
+            previous.ImportFromPem(previousPrivateKeyPem);
+            this.previousKeyId = KeyIdOf(previous);
+            this.previousPublicKey = new RsaSecurityKey(previous.ExportParameters(false)) { KeyId = this.previousKeyId };
+            if (this.previousKeyId == KeyIdOf(this.rsa))
+            {
+                throw new InvalidOperationException("JWT_SIGNING_KEY_PEM_BASE64_PREVIOUS is the same key as JWT_SIGNING_KEY_PEM_BASE64; a rotation needs a new current key.");
+            }
+        }
 
         if (this.rsa.KeySize < 2048)
         {
@@ -79,7 +113,17 @@ public sealed class RsaAccessTokenIssuer : IAccessTokenIssuer, IDisposable
         {
             CryptoProviderFactory = new CryptoProviderFactory { CacheSignatureProviders = false },
         };
-        this.time = time ?? TimeProvider.System;
+    }
+
+    public string KeyId => KeyIdOf(this.rsa);
+
+    public IEnumerable<SecurityKey> ValidationKeys => this.previousPublicKey is null ? [this.PublicKey] : [this.PublicKey, this.previousPublicKey];
+
+    public bool AcceptsSignature(string? keyId, DateTime issuedAtUtc)
+    {
+        if (keyId == this.KeyId) return true;
+        if (this.previousKeyId is null || keyId != this.previousKeyId) return false;
+        return issuedAtUtc <= (this.processStartedAt + PreviousKeySkew).UtcDateTime;
     }
 
     public TimeSpan Lifetime => TokenLifetime;
@@ -152,13 +196,15 @@ public sealed class RsaAccessTokenIssuer : IAccessTokenIssuer, IDisposable
         {
             ValidIssuer = Issuer,
             ValidAudience = Audience,
-            IssuerSigningKey = this.PublicKey,
+            IssuerSigningKeys = this.ValidationKeys,
             ValidateIssuerSigningKey = true,
             ValidateLifetime = true,
+            ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
             ClockSkew = TimeSpan.FromSeconds(30),
             LifetimeValidator = (_, expires, _, _) => expires is { } e && e > this.time.GetUtcNow().UtcDateTime,
         });
         if (!result.IsValid) return null;
+        if (result.SecurityToken is JsonWebToken jwt && !this.AcceptsSignature(jwt.Kid, jwt.IssuedAt)) return null;
         var claims = result.Claims;
         if (!claims.TryGetValue(FinanceAiClaims.Purpose, out var purpose) || purpose?.ToString() != FinanceAiClaims.ReauthPurpose) return null;
         return claims.TryGetValue(JwtRegisteredClaimNames.Sub, out var sub) && Guid.TryParse(sub?.ToString(), out var id) ? id : null;

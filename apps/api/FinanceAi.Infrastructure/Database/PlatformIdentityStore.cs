@@ -438,7 +438,23 @@ public sealed class PlatformIdentityStore(
         var trimmed = code.Trim();
         if (trimmed.Length == FinanceAi.Domain.Security.Totp.Digits)
         {
-            return FinanceAi.Domain.Security.Totp.Verify(secrets.Open(user.MfaSecretEnc), trimmed, now.ToUnixTimeSeconds());
+            byte[] secret;
+            try
+            {
+                secret = secrets.Open(user.MfaSecretEnc);
+            }
+            catch (System.Security.Cryptography.CryptographicException)
+            {
+                return false;   // an envelope under a key this host no longer holds: no bypass, no clear-text fallback (slice 17)
+            }
+
+            var ok = FinanceAi.Domain.Security.Totp.Verify(secret, trimmed, now.ToUnixTimeSeconds());
+            if (ok && secrets.NeedsReseal(user.MfaSecretEnc))
+            {
+                user.MfaSecretEnc = secrets.Seal(secret);   // rotate on use (slice 17 S2); saved with the successful login
+            }
+
+            return ok;
         }
 
         if (!FinanceAi.Domain.Security.RecoveryCodes.LooksLikeRecoveryCode(trimmed)) return false;

@@ -183,7 +183,7 @@ public static class ApiServiceRegistration
         services.AddSingleton<FinanceAi.Infrastructure.Security.ISecretBox, FinanceAi.Infrastructure.Security.AesGcmSecretBox>();
         services.AddSingleton(TimeProvider.System);
 
-        var issuer = new RsaAccessTokenIssuer(SigningKey.LoadFromEnvironment());
+        var issuer = new RsaAccessTokenIssuer(SigningKey.LoadFromEnvironment(), SigningKey.LoadPreviousFromEnvironment());
         services.AddSingleton<IAccessTokenIssuer>(issuer);
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -197,13 +197,26 @@ public static class ApiServiceRegistration
                     ValidateAudience = true,
                     ValidAudience = RsaAccessTokenIssuer.Audience,
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = issuer.PublicKey,
+                    IssuerSigningKeys = issuer.ValidationKeys,   // the current key and, during a rotation, the previous (slice 17)
                     ValidateLifetime = true,
 
                     // An unsigned or differently-signed token is rejected outright: without this,
                     // "alg: none" is a complete authentication bypass (AC-16).
                     ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
                     ClockSkew = TimeSpan.FromSeconds(30),
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    // Slice 17 S4: a signature by the previous key is accepted only for a token that predates this process.
+                    OnTokenValidated = context =>
+                    {
+                        if (context.SecurityToken is Microsoft.IdentityModel.JsonWebTokens.JsonWebToken jwt && !issuer.AcceptsSignature(jwt.Kid, jwt.IssuedAt))
+                        {
+                            context.Fail("The token was signed with a retired key after the rotation.");
+                        }
+
+                        return Task.CompletedTask;
+                    },
                 };
             });
 
@@ -318,6 +331,23 @@ public static class SecurityHeaderExtensions
 public static class SigningKey
 {
     public const string EnvironmentVariable = "JWT_SIGNING_KEY_PEM_BASE64";
+
+    public const string PreviousEnvironmentVariable = "JWT_SIGNING_KEY_PEM_BASE64_PREVIOUS";
+
+    /// <summary>Slice 17: the key being retired, if the operator set one; null otherwise.</summary>
+    public static string? LoadPreviousFromEnvironment()
+    {
+        var encoded = Environment.GetEnvironmentVariable(PreviousEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(encoded)) return null;
+        try
+        {
+            return System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(encoded.Trim()));
+        }
+        catch (FormatException ex)
+        {
+            throw new InvalidOperationException($"{PreviousEnvironmentVariable} must be a base64-encoded PKCS#8 PEM private key.", ex);
+        }
+    }
 
     public static string LoadFromEnvironment()
     {

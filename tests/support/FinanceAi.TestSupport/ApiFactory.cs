@@ -51,6 +51,9 @@ public class ApiFactory : WebApplicationFactory<Program>
     /// <summary>The alert webhook (slice 15), captured: every envelope the alert path delivered, and a switch to make it fail.</summary>
     public CapturingAlertWebhook Webhook { get; } = new();
 
+    /// <summary>The MFA secret box (slice 17): a test swaps <see cref="SwitchableSecretBox.Inner"/> to simulate a KEK rotation on the running host.</summary>
+    public SwitchableSecretBox Secrets { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
@@ -61,6 +64,7 @@ public class ApiFactory : WebApplicationFactory<Program>
             services.AddSingleton<FinanceAi.Infrastructure.Messaging.IMailTransport>(this.Mail);
             services.AddSingleton<FinanceAi.Infrastructure.Ai.IAiClient>(this.Ai);
             services.AddSingleton<FinanceAi.Infrastructure.Ops.IAlertWebhook>(this.Webhook);
+            services.AddSingleton<FinanceAi.Infrastructure.Security.ISecretBox>(this.Secrets);
         });
     }
 
@@ -149,6 +153,22 @@ public sealed class SwitchableMailTransport : FinanceAi.Infrastructure.Messaging
         this.Sent++;
         return this.inner.SendAsync(mail, ct);
     }
+}
+
+/// <summary>Delegates to whichever <see cref="FinanceAi.Infrastructure.Security.AesGcmSecretBox"/> a test installs; starts from the environment like production.</summary>
+public sealed class SwitchableSecretBox : FinanceAi.Infrastructure.Security.ISecretBox
+{
+    public FinanceAi.Infrastructure.Security.AesGcmSecretBox Inner { get; set; } = new();
+
+    public bool Available => this.Inner.Available;
+
+    public byte[] Seal(ReadOnlySpan<byte> plaintext) => this.Inner.Seal(plaintext);
+
+    public byte[] Open(ReadOnlySpan<byte> sealedBytes) => this.Inner.Open(sealedBytes);
+
+    public bool NeedsReseal(ReadOnlySpan<byte> sealedBytes) => this.Inner.NeedsReseal(sealedBytes);
+
+    public bool CanOpen(ReadOnlySpan<byte> sealedBytes) => this.Inner.CanOpen(sealedBytes);
 }
 
 /// <summary>Stands in for <c>ALERT_WEBHOOK_URL</c>: records every delivery; <see cref="Configured"/> and <see cref="FailNext"/> shape the path under test.</summary>
