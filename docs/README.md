@@ -4,7 +4,7 @@ Status: **Approved for implementation.** These documents are the source of truth
 has had to diverge from them, the divergence is recorded in the slice's own document under
 [`slices/`](slices/) **and** amended here in the same commit (DM-34).
 
-Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), slice 3 (DM-23a), slice 3b (DM-24a), slice 4 (DM-31a), slice 5 (DM-25a) and slice 6 (DM-24a). Doc 03 §2.1 / FIN-20 were amended by slice 3b (F-1: withholding is a fourth balance instrument).
+Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), slice 3 (DM-23a), slice 3b (DM-24a), slice 4 (DM-31a), slice 5 (DM-25a), slice 6 (DM-24a) and slice 7 (DM-26a). Doc 03 §2.1 / FIN-20 were amended by slice 3b (F-1: withholding is a fourth balance instrument).
 
 | Slice | Document | Status |
 |-------|----------|--------|
@@ -15,9 +15,10 @@ Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), sl
 | 4 | [slices/slice-04-aging.md](slices/slice-04-aging.md) · [review](slices/slice-04-review.md) | Implemented and tested; disputed column is a placeholder until slice 7 |
 | 5 | [slices/slice-05-collection-queue.md](slices/slice-05-collection-queue.md) · [review](slices/slice-05-review.md) | Implemented and tested; the daily sweep is an endpoint until a scheduler exists (D-2) |
 | 6 | [slices/slice-06-promise-to-pay.md](slices/slice-06-promise-to-pay.md) · [review](slices/slice-06-review.md) | Implemented and tested; `ptp_kept` added to the case machine (F-1) |
+| 7 | [slices/slice-07-disputes.md](slices/slice-07-disputes.md) · [review](slices/slice-07-review.md) | Implemented and tested; SLA lengths are constants (D-1); the dunning guard awaits slice 8's send path |
 
 **Open questions still outstanding.** Q-01, Q-02, Q-04 and Q-06 in document 00 remain unanswered.
-Slices 1–6 proceeded on the documented defaults (A-01…A-05, A-11, A-12). **Slice 3b built E1 on a
+Slices 1–7 proceeded on the documented defaults (A-01…A-05, A-11, A-12). **Slice 3b built E1 on a
 placeholder 5% withholding rate (Q-01)**; the product computes nothing from the rate, so a real
 example changes only the fixture. Q-02 (the pilot's invoice source) still shapes the first import
 mapping a pilot will need.

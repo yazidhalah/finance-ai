@@ -95,7 +95,7 @@ public static class ReportEndpoints
             detail.Invoices.Select(d => new AgedInvoiceDto(
                 d.Invoice.InvoiceId, d.Invoice.InvoiceNumber, d.Invoice.Currency, Iso(d.Invoice.IssueDate), Iso(d.Invoice.DueDate),
                 MoneyDto.From(d.Invoice.TotalAmount, d.Invoice.Currency), MoneyDto.From(d.Invoice.OpenBalance, d.Invoice.Currency),
-                d.Invoice.DaysPastDue, d.Bucket)).ToList(),
+                d.Invoice.DaysPastDue, d.Bucket, MoneyDto.From(d.DisputedAmount, d.Invoice.Currency))).ToList(),
             detail.AverageDaysToPay?.ToString("0.0", CultureInfo.InvariantCulture), detail.AverageDaysToPaySampleSize));
     }
 

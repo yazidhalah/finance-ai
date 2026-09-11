@@ -665,6 +665,7 @@ export interface AgedInvoice {
   openBalance: Money
   daysPastDue: number
   bucket: string
+  disputedAmount: Money
 }
 
 export interface AgingCustomerDetail {
@@ -760,6 +761,8 @@ export interface QueueItem {
   lastContactAt: string | null
   automationDisabled: boolean
   suggestedAction: { kind: string; templateKey: string | null; language: string }
+  openDisputes: number
+  disputeSlaBreached: boolean
 }
 
 export interface CaseInvoice {
@@ -893,4 +896,117 @@ export const promisesApi = {
   reject: (id: string, reason: string) => request<PromiseToPay>(`/promises/${id}/reject`, { method: 'POST', body: { reason } }),
   cancel: (id: string, reason: string) => request<PromiseToPay>(`/promises/${id}/cancel`, { method: 'POST', body: { reason } }),
   history: (customerId: string) => request<{ customerId: string; reliability: Reliability; promises: PromiseToPay[] }>(`/customers/${customerId}/promise-history`),
+}
+
+// ---------------------------------------------------------------------------------------
+// Slice 7 — Disputes (doc 05 slice 7). A dispute never changes a balance; the credit note does.
+// ---------------------------------------------------------------------------------------
+
+export type DisputeStatus = 'Open' | 'UnderReview' | 'PendingCustomer' | 'Accepted' | 'PartiallyAccepted' | 'Rejected' | 'Withdrawn' | 'Cancelled'
+
+export const disputeReasons = [
+  'wrong_amount', 'wrong_quantity', 'price_mismatch', 'goods_not_received', 'goods_damaged', 'service_not_delivered',
+  'duplicate_invoice', 'already_paid', 'missing_po_reference', 'wrong_tax_treatment', 'wrong_entity_billed', 'contract_terms', 'other',
+] as const
+
+export interface DisputeEvidence {
+  id: string
+  fileName: string
+  contentType: string
+  sizeBytes: number
+  sha256: string
+  uploadedBy: string | null
+  uploadedAt: string
+}
+
+export interface Dispute {
+  id: string
+  invoiceId: string
+  invoiceNumber: string
+  customerId: string
+  caseId: string | null
+  caseNumber: number | null
+  status: DisputeStatus
+  reasonCode: string
+  disputedAmount: Money
+  invoiceOpenBalance: Money
+  customerClaim: string | null
+  raisedAt: string
+  raisedBy: string | null
+  source: string
+  assignedTo: string | null
+  firstResponseDueAt: string
+  firstResponseAt: string | null
+  resolutionDueAt: string
+  pendingSince: string | null
+  slaBreached: boolean
+  slaState: 'on_track' | 'due_today' | 'breached' | 'paused' | 'closed'
+  resolvedAt: string | null
+  resolvedBy: string | null
+  resolutionAmount: Money | null
+  resolutionNote: string | null
+  creditNoteId: string | null
+  closeReason: string | null
+  rowVersion: number
+  evidence: DisputeEvidence[]
+  verificationTaskId: string | null
+}
+
+export interface DunningEligibility {
+  caseId: string
+  allowSplitDunningDuringDispute: boolean
+  invoices: { invoiceId: string; allowed: boolean; reason: string | null }[]
+}
+
+export interface VerificationTask {
+  id: string
+  invoiceId: string
+  invoiceNumber: string
+  customerId: string
+  disputeId: string | null
+  source: string
+  status: 'Open' | 'Resolved'
+  claim: string | null
+  invoiceOpenBalance: Money
+  invoiceStatus: string
+  outcome: string | null
+  paymentId: string | null
+  notes: string | null
+  createdAt: string
+  resolvedAt: string | null
+  resolvedBy: string | null
+}
+
+export const disputesApi = {
+  list: (q: { status?: string; slaBreached?: boolean; customerId?: string; invoiceId?: string; caseId?: string } = {}) => {
+    const params = new URLSearchParams()
+    for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== '' && v !== false) params.set(k, String(v))
+    const text = params.toString()
+    return request<{ items: Dispute[]; totalCount: number }>(`/disputes${text ? `?${text}` : ''}`)
+  },
+  get: (id: string) => request<Dispute>(`/disputes/${id}`),
+  raise: (invoiceId: string, body: { reasonCode: string; disputedAmount: { amount: string; currency: string }; customerClaim?: string }) =>
+    request<Dispute>(`/invoices/${invoiceId}/disputes`, { method: 'POST', body }),
+  transition: (id: string, body: { event: 'assign' | 'request_info' | 'info_received' | 'withdraw' | 'cancel'; reason?: string; assignedTo?: string }) =>
+    request<Dispute>(`/disputes/${id}/transitions`, { method: 'POST', body }),
+  resolve: (id: string, body: { outcome: 'accepted' | 'partially_accepted' | 'rejected'; resolutionAmount?: { amount: string; currency: string }; reason?: string }) =>
+    request<Dispute>(`/disputes/${id}/resolve`, { method: 'POST', body }),
+  evidenceUrl: (id: string, evidenceId: string) => `/disputes/${id}/evidence/${evidenceId}`,
+  download: (id: string, evidenceId: string) => request<Blob>(`/disputes/${id}/evidence/${evidenceId}`, { raw: true }),
+  dunningEligibility: (caseId: string) => request<DunningEligibility>(`/cases/${caseId}/dunning-eligibility`),
+  tasks: (status: 'Open' | 'Resolved' | '' = 'Open') => request<{ items: VerificationTask[]; totalCount: number }>(`/tasks/payment-verification${status ? `?status=${status}` : ''}`),
+  resolveTask: (id: string, body: { outcome: 'payment_found' | 'no_payment_found' | 'partial'; paymentId?: string; notes?: string }) =>
+    request<VerificationTask>(`/tasks/payment-verification/${id}/resolve`, { method: 'POST', body }),
+}
+
+/** Evidence goes up as multipart, outside the JSON helper; the token still rides in the header, never the URL. */
+export async function uploadEvidence(disputeId: string, file: File): Promise<DisputeEvidence> {
+  const form = new FormData()
+  form.append('file', file)
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  const token = accessToken
+  if (token) headers.Authorization = `Bearer ${token}`
+  const response = await fetch(`${baseUrl}/disputes/${disputeId}/evidence`, { method: 'POST', headers, body: form, credentials: 'same-origin' })
+  if (!response.ok) throw new ApiError(await readProblem(response))
+  return (await response.json()) as DisputeEvidence
 }

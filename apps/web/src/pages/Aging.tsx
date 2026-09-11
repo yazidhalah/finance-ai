@@ -208,6 +208,7 @@ export function AgingPage() {
                   <th className="px-3 py-2 text-start font-medium">{t('aging.column.bucket')}</th>
                   <th className="px-3 py-2 text-end font-medium">{t('invoices.column.total')}</th>
                   <th className="px-3 py-2 text-end font-medium">{t('invoices.column.openBalance')}</th>
+                  <th className="px-3 py-2 text-end font-medium">{t('aging.column.disputed')}</th>
                 </tr></thead>
                 <tbody>
                   {drill.detail.invoices.map((i) => (
@@ -218,6 +219,7 @@ export function AgingPage() {
                       <td className="px-3 py-2">{bucketLabel(i.bucket, t)}</td>
                       <td className="px-3 py-2 text-end"><MoneyText value={i.totalAmount} /></td>
                       <td className="px-3 py-2 text-end"><MoneyText value={i.openBalance} className="font-medium" /></td>
+                      <td className="px-3 py-2 text-end">{i.disputedAmount.amount !== '0.000' ? <span data-testid="drill-disputed"><MoneyText value={i.disputedAmount} /></span> : '—'}</td>
                     </tr>
                   ))}
                 </tbody>

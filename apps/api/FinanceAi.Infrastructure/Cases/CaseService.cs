@@ -17,6 +17,13 @@ public sealed class CaseException(string code, string? field = null, IReadOnlyDi
     public IReadOnlyDictionary<string, string>? Meta { get; } = meta;
 }
 
+/// <summary>What the daily sweep needs from disputes (slice 7). Resolved at call time like <see cref="IPromiseHooks"/>.</summary>
+public interface IDisputeHooks
+{
+    /// <summary>SM-48: pending disputes older than the timeout return to review. Returns how many.</summary>
+    Task<int> TimeOutPendingAsync(CancellationToken ct);
+}
+
 /// <summary>SM-50: the ledger tells the case layer that an invoice's balance or lifecycle changed.</summary>
 public interface ICaseHooks
 {
@@ -45,7 +52,9 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
     /// </summary>
     private IPromiseHooks Promises => (IPromiseHooks)services.GetService(typeof(IPromiseHooks))!;
 
-    public sealed record Context(DateOnly Today, string Timezone, TenantSettings Settings, PriorityWeights Weights);
+    private IDisputeHooks Disputes => (IDisputeHooks)services.GetService(typeof(IDisputeHooks))!;
+
+    public sealed record Context(DateOnly Today, string Timezone, TenantSettings Settings, PriorityWeights Weights, DateTimeOffset Now);
 
     public sealed record SweepResult(int Created, int Resolved, int Resumed, int FollowedUp, int Rescored);
 
@@ -53,7 +62,7 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
     {
         var tz = await db.Tenants.Select(t => t.Timezone).FirstAsync(ct);
         var settings = await db.TenantSettings.AsNoTracking().FirstAsync(ct);
-        return new Context(AgingRules.TodayIn(tz, time.GetUtcNow()), tz, settings, PriorityWeights.For(settings.PriorityWeightsVersion));
+        return new Context(AgingRules.TodayIn(tz, time.GetUtcNow()), tz, settings, PriorityWeights.For(settings.PriorityWeightsVersion), time.GetUtcNow());
     }
 
     // ---------------------------------------------------------------------------------------
@@ -95,6 +104,7 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
         // SM-33: promises whose deadline has arrived are judged before the cases are looked at, so a case
         // released by a broken promise is rescored in the same run.
         await Promises.EvaluateDueAsync(ct);
+        await Disputes.TimeOutPendingAsync(ct);
 
         // Existing active cases: scope, time-based transitions, score.
         var active = await db.Cases.Where(c => c.Status != CaseStatus.Resolved && c.Status != CaseStatus.Abandoned).ToListAsync(ct);
@@ -327,7 +337,8 @@ public sealed class CaseService(TenantDbContext db, IAuditWriter audit, TimeProv
                 c.HoldReason = null;
                 break;
             case CaseEvent.FollowUpDue or CaseEvent.ContactLogged or CaseEvent.ReplyReceived
-                or CaseEvent.PtpBroken or CaseEvent.PtpCancelled or CaseEvent.PtpKept:
+                or CaseEvent.PtpBroken or CaseEvent.PtpCancelled or CaseEvent.PtpKept
+                or CaseEvent.DisputeOpened:   // SM-52: a dispute is work to do now, whatever the promise said
                 c.NextActionAt = null;
                 c.NextActionReason = null;
                 break;

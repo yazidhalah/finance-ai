@@ -31,7 +31,7 @@ const report: AgingReport = {
 }
 const detail: AgingCustomerDetail = {
   customerId: 'c1', asOf: '2026-09-11', basis: 'due_date',
-  invoices: [{ invoiceId: 'i1', invoiceNumber: 'INV-7', currency: 'JOD', issueDate: '2026-07-20', dueDate: '2026-08-20', totalAmount: M('10000.000'), openBalance: M('1000.000'), daysPastDue: 22, bucket: 'Days1To30' }],
+  invoices: [{ invoiceId: 'i1', invoiceNumber: 'INV-7', currency: 'JOD', issueDate: '2026-07-20', dueDate: '2026-08-20', totalAmount: M('10000.000'), openBalance: M('1000.000'), daysPastDue: 22, bucket: 'Days1To30', disputedAmount: M('0.000') }],
   averageDaysToPay: '10.0', averageDaysToPaySampleSize: 2,
 }
 

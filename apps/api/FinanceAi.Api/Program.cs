@@ -53,7 +53,8 @@ api.MapImportEndpoints();
 api.MapLedgerEndpoints()
     .MapReportEndpoints()
     .MapCaseEndpoints()
-    .MapPromiseEndpoints();
+    .MapPromiseEndpoints()
+    .MapDisputeEndpoints();
 
 // SEC-10: refuse to boot if any endpoint forgot to declare how it is authorized. This runs before
 // the first request is served, so the failure mode of a forgotten declaration is a crash at deploy
@@ -125,6 +126,8 @@ public static class ApiServiceRegistration
         services.AddScoped<FinanceAi.Infrastructure.Cases.ICaseHooks>(sp => sp.GetRequiredService<FinanceAi.Infrastructure.Cases.CaseService>());
         services.AddScoped<FinanceAi.Infrastructure.Cases.PromiseService>();
         services.AddScoped<FinanceAi.Infrastructure.Cases.IPromiseHooks>(sp => sp.GetRequiredService<FinanceAi.Infrastructure.Cases.PromiseService>());
+        services.AddScoped<FinanceAi.Infrastructure.Cases.DisputeService>();
+        services.AddScoped<FinanceAi.Infrastructure.Cases.IDisputeHooks>(sp => sp.GetRequiredService<FinanceAi.Infrastructure.Cases.DisputeService>());
 
         services.AddSingleton<IPasswordHasher, Argon2idPasswordHasher>();
         services.AddSingleton(TimeProvider.System);

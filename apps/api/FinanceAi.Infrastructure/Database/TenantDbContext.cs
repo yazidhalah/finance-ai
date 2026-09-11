@@ -69,6 +69,12 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
 
     public DbSet<TenantHoliday> Holidays => this.Set<TenantHoliday>();
 
+    public DbSet<Dispute> Disputes => this.Set<Dispute>();
+
+    public DbSet<DisputeEvidence> DisputeEvidence => this.Set<DisputeEvidence>();
+
+    public DbSet<PaymentVerificationTask> VerificationTasks => this.Set<PaymentVerificationTask>();
+
     public override int SaveChanges()
     {
         this.StampTenant();
@@ -96,6 +102,7 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
         ConfigureLedger(model);
         ConfigureCases(model);
         ConfigurePromises(model);
+        ConfigureDisputes(model);
 
         this.ApplyTenantQueryFilters(model);
 
@@ -682,6 +689,81 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.TenantId).HasColumnName("tenant_id");
             e.Property(x => x.Date).HasColumnName("date");
             e.Property(x => x.Name).HasColumnName("name");
+        });
+    }
+
+    private static void ConfigureDisputes(ModelBuilder model)
+    {
+        model.Entity<Dispute>(e =>
+        {
+            e.ToTable("disputes");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.InvoiceId).HasColumnName("invoice_id");
+            e.Property(x => x.CustomerId).HasColumnName("customer_id");
+            e.Property(x => x.CaseId).HasColumnName("case_id");
+            e.Property(x => x.Status).HasColumnName("status").HasConversion<string>();
+            e.Property(x => x.ReasonCode).HasColumnName("reason_code");
+            e.Property(x => x.DisputedAmount).HasColumnName("disputed_amount").HasColumnType("numeric(19,3)");
+            e.Property(x => x.Currency).HasColumnName("currency").HasColumnType("char(3)");
+            e.Property(x => x.CustomerClaim).HasColumnName("customer_claim");
+            e.Property(x => x.RaisedAt).HasColumnName("raised_at");
+            e.Property(x => x.RaisedBy).HasColumnName("raised_by");
+            e.Property(x => x.Source).HasColumnName("source");
+            e.Property(x => x.AiSuggestionId).HasColumnName("ai_suggestion_id");
+            e.Property(x => x.AssignedTo).HasColumnName("assigned_to");
+            e.Property(x => x.FirstResponseDueAt).HasColumnName("first_response_due_at");
+            e.Property(x => x.FirstResponseAt).HasColumnName("first_response_at");
+            e.Property(x => x.ResolutionDueAt).HasColumnName("resolution_due_at");
+            e.Property(x => x.PendingSince).HasColumnName("pending_since");
+            e.Property(x => x.ResolvedAt).HasColumnName("resolved_at");
+            e.Property(x => x.ResolvedBy).HasColumnName("resolved_by");
+            e.Property(x => x.ResolutionAmount).HasColumnName("resolution_amount").HasColumnType("numeric(19,3)");
+            e.Property(x => x.ResolutionNote).HasColumnName("resolution_note");
+            e.Property(x => x.CreditNoteId).HasColumnName("credit_note_id");
+            e.Property(x => x.CloseReason).HasColumnName("close_reason");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
+        });
+
+        model.Entity<DisputeEvidence>(e =>
+        {
+            e.ToTable("dispute_evidence");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.DisputeId).HasColumnName("dispute_id");
+            e.Property(x => x.FileName).HasColumnName("file_name");
+            e.Property(x => x.ContentType).HasColumnName("content_type");
+            e.Property(x => x.SizeBytes).HasColumnName("size_bytes");
+            e.Property(x => x.Sha256).HasColumnName("sha256");
+            e.Property(x => x.Content).HasColumnName("content");
+            e.Property(x => x.UploadedBy).HasColumnName("uploaded_by");
+            e.Property(x => x.UploadedAt).HasColumnName("uploaded_at");
+        });
+
+        model.Entity<PaymentVerificationTask>(e =>
+        {
+            e.ToTable("payment_verification_tasks");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.InvoiceId).HasColumnName("invoice_id");
+            e.Property(x => x.CustomerId).HasColumnName("customer_id");
+            e.Property(x => x.DisputeId).HasColumnName("dispute_id");
+            e.Property(x => x.Source).HasColumnName("source");
+            e.Property(x => x.AiSuggestionId).HasColumnName("ai_suggestion_id");
+            e.Property(x => x.Status).HasColumnName("status");
+            e.Property(x => x.Claim).HasColumnName("claim");
+            e.Property(x => x.Outcome).HasColumnName("outcome");
+            e.Property(x => x.PaymentId).HasColumnName("payment_id");
+            e.Property(x => x.Notes).HasColumnName("notes");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.CreatedBy).HasColumnName("created_by");
+            e.Property(x => x.ResolvedAt).HasColumnName("resolved_at");
+            e.Property(x => x.ResolvedBy).HasColumnName("resolved_by");
         });
     }
 }
