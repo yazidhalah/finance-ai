@@ -6,6 +6,12 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      refresh_snapshots:
+        description: "Re-render the Arabic visual baselines on this runner and upload them as an artifact to commit"
+        type: boolean
+        default: false
 
 env:
   DOTNET_NOLOGO: "1"
@@ -123,6 +129,13 @@ jobs:
       - run: npx --prefix tests/e2e playwright install --with-deps chromium
       - run: sudo apt-get install -y -q postgresql-client fonts-noto-core fonts-noto-color-emoji
       - run: npm --prefix tests/e2e test
+        if: ${{ !inputs.refresh_snapshots }}
+      # Visual baselines are machine-specific (fonts); this input renders them here so they can be committed from the canonical environment.
+      - run: PLAYWRIGHT_SNAPSHOTS=1 npm --prefix tests/e2e test -- --project=ar --update-snapshots
+        if: ${{ inputs.refresh_snapshots }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.refresh_snapshots }}
+        with: { name: arabic-snapshots, path: tests/e2e/specs/journeys.spec.ts-snapshots, retention-days: 30 }
       - uses: actions/upload-artifact@v4
         if: failure()
         with: { name: playwright-report, path: tests/e2e/playwright-report, retention-days: 7 }

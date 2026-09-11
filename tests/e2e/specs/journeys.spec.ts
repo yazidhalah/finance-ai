@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { Api, PASSWORD, invitationToken, psql, today } from '../helpers/api'
-import { assertLocaleShape, expectMoney, signIn, signOut, uiLocale, useLocale } from '../helpers/ui'
+import { assertLocaleShape, expectMoney, signIn, signOut, snapshot, uiLocale, useLocale } from '../helpers/ui'
 
 /**
  * Doc 09 §6: the core journeys, each an acceptance test for its slice, run once per locale (T-120).
@@ -106,7 +106,7 @@ test('T-122 import with three exceptions → resolve each → commit → aging s
   await expectMoney(page, 'total-Current', '116.000')
   await expectMoney(page, 'indicative-total', '1776.000')
   await assertLocaleShape(page, uiLocale(info))
-  if (uiLocale(info) === 'ar-JO') await expect(page.getByTestId('aging-table-JOD')).toHaveScreenshot('aging-table-ar.png')
+  if (uiLocale(info) === 'ar-JO') await snapshot(page.getByTestId('aging-table-JOD'), 'aging-table-ar.png')
 })
 
 test('T-123 record a payment → FIFO proposal → confirm → invoice settles → case closes', async ({ page }, info) => {
@@ -201,7 +201,7 @@ test('T-126 work the queue: open case → log call → record promise → suppre
   await expectMoney(page, 'case-promises', '900.000')
   await page.goto('/queue')
   await expect(page.getByTestId('queue-empty')).toBeVisible()   // suppressed until the promised date plus grace
-  if (uiLocale(info) === 'ar-JO') await expect(page.getByTestId('queue-empty')).toHaveScreenshot('queue-empty-ar.png')
+  if (uiLocale(info) === 'ar-JO') await snapshot(page.getByTestId('queue-empty'), 'queue-empty-ar.png')
 
   // The promised date passes with nothing received: the evaluation runs at the deadline, which the test moves into the past.
   const customerId = (await api.must('GET', '/customers')).items[0].id
@@ -277,7 +277,7 @@ test('T-128 compose from an Arabic template → preview → approval → approve
   await page.getByTestId('compose-template').selectOption(template.id)
   await expect(page.getByTestId('compose-preview')).toContainText('750.000')
   await expect(page.getByTestId('compose-preview')).toHaveAttribute('dir', 'rtl')
-  if (uiLocale(info) === 'ar-JO') await expect(page.getByTestId('compose-preview')).toHaveScreenshot('message-preview-ar.png')
+  if (uiLocale(info) === 'ar-JO') await snapshot(page.getByTestId('compose-preview'), 'message-preview-ar.png')
   await page.getByTestId('compose-submit').click()
   await expect(page.getByTestId('case-messages')).toContainText('750.000')
 

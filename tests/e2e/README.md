@@ -34,4 +34,7 @@ Without root for `install-deps`, the browser's shared libraries can be unpacked 
 (`apt-get download libnspr4 libnss3 libasound2t64 …` then `dpkg -x` into a directory) and pointed at with
 `LD_LIBRARY_PATH`; the snapshots were produced on a machine with the Noto fonts.
 
-Snapshots live in `specs/journeys.spec.ts-snapshots/`; regenerate deliberately with `--update-snapshots`.
+Snapshots live in `specs/journeys.spec.ts-snapshots/` and are compared only with `PLAYWRIGHT_SNAPSHOTS=1`
+(pixels depend on the machine's fonts; the committed baselines came from the developer machine). To produce
+baselines on the canonical CI environment, run the `ci` workflow manually with `refresh_snapshots` and commit
+the uploaded `arabic-snapshots` artifact; then set `PLAYWRIGHT_SNAPSHOTS=1` in the e2e job.
