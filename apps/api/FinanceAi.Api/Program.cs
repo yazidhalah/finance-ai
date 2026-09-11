@@ -141,6 +141,7 @@ public static class ApiServiceRegistration
         services.AddScoped<FinanceAi.Infrastructure.Cases.IBriefingHooks>(sp => sp.GetRequiredService<FinanceAi.Infrastructure.Briefings.BriefingService>());
 
         services.AddSingleton<IPasswordHasher, Argon2idPasswordHasher>();
+        services.AddSingleton<FinanceAi.Infrastructure.Security.ISecretBox, FinanceAi.Infrastructure.Security.AesGcmSecretBox>();
         services.AddSingleton(TimeProvider.System);
 
         var issuer = new RsaAccessTokenIssuer(SigningKey.LoadFromEnvironment());

@@ -97,6 +97,7 @@ public sealed class MembersService(TenantDbContext db, IAuditWriter audit, TimeP
         if (m.Role == role) return m;
         var from = m.Role;
         m.Role = role;
+        if (FinanceAi.Domain.Security.MfaPolicy.Required(role) && m.MfaGraceUntil is null) m.MfaGraceUntil = time.GetUtcNow().Add(FinanceAi.Domain.Security.MfaPolicy.Grace);   // SEC-02, slice 13
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync(Event("membership.role_changed", "tenant_membership", m.Id, actorUserId, null, null, from.ToString(), role.ToString()), ct);
         return m;
@@ -122,6 +123,34 @@ public sealed class MembersService(TenantDbContext db, IAuditWriter audit, TimeP
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync(Event("membership.deactivated", "tenant_membership", m.Id, actorUserId, null, null, MembershipStatus.Active.ToString(), MembershipStatus.Disabled.ToString()), ct);
         return m;
+    }
+
+    /// <summary>
+    /// Slice 13: the Owner hands over to an Active member who already has a second factor (SEC-02 will bind them the
+    /// moment they are Owner). One transaction, two updates in the order the one_owner_per_tenant index needs.
+    /// </summary>
+    public async Task<(TenantMembership NewOwner, TenantMembership PreviousOwner)> TransferOwnershipAsync(Guid targetMembershipId, Guid actorUserId, CancellationToken ct)
+    {
+        await db.Database.ExecuteSqlAsync($"SELECT 1 FROM tenant_memberships WHERE tenant_id = {db.CurrentTenantId} FOR UPDATE", ct);
+        var current = await db.TenantMemberships.FirstOrDefaultAsync(m => m.UserId == actorUserId && m.Status == MembershipStatus.Active, ct) ?? throw new CaseException("member_not_found");
+        if (current.Role != TenantRole.Owner) throw new CaseException("not_owner");
+        var target = await db.TenantMemberships.FirstOrDefaultAsync(m => m.Id == targetMembershipId, ct) ?? throw new CaseException("member_not_found");
+        if (target.Id == current.Id) throw new CaseException("cannot_transfer_to_self");
+        if (target.Status != MembershipStatus.Active) throw new CaseException("member_disabled");
+        var targetUser = await db.Users.FirstAsync(u => u.Id == target.UserId, ct);
+        if (!targetUser.MfaEnrolled) throw new CaseException("target_mfa_required");
+
+        var now = time.GetUtcNow();
+        var targetFrom = target.Role.ToString();
+        current.Role = TenantRole.Admin;              // first: the index allows one Owner
+        current.MfaGraceUntil ??= now.Add(FinanceAi.Domain.Security.MfaPolicy.Grace);
+        await db.SaveChangesAsync(ct);
+        target.Role = TenantRole.Owner;
+        target.MfaGraceUntil = now;                   // already enrolled; the deadline is moot
+        await db.SaveChangesAsync(ct);
+        await audit.WriteAsync(Event("tenant.ownership_transferred", "tenant_membership", target.Id, actorUserId, null, null, targetFrom, "Owner"), ct);
+        await audit.WriteAsync(Event("membership.role_changed", "tenant_membership", current.Id, actorUserId, "ownership_transferred", null, "Owner", "Admin"), ct);
+        return (target, current);
     }
 
     /// <summary>System strings in the invitee's locale (not a customer template, slice 12 §1): the organization's name, the role, the link, the expiry.</summary>

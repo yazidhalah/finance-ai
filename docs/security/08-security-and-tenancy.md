@@ -23,6 +23,12 @@ customer**. Everything below is ordered by that priority.
 | SEC-08 | Sessions are revocable per-device from the user's profile; a role change or deactivation invalidates existing access tokens within 60 seconds (short TTL + a revocation check on sensitive operations). |
 | SEC-09 | Re-authentication required for: transferring ownership, changing email settings, viewing/rotating secrets, approving a write-off, and break-glass support access. |
 
+> **Amended in slice 13 (SEC-02a / SEC-09a).** As built: TOTP (RFC 6238) with eight hashed single-use recovery codes;
+> required for Owner and Admin with a seven-day grace from the membership's creation, then enforced on every request by
+> the middleware from the membership, not the token. Re-authentication is a five-minute signed proof (`X-Reauth`)
+> required by transfer of ownership and write-off approval; email-settings, secrets and break-glass remain future
+> surfaces. The breached-password list of SEC-01 is not bundled (flagged in the slice 13 review).
+
 ---
 
 ## 2. Authorization

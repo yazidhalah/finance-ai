@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { Api, PASSWORD, invitationToken, psql, today } from '../helpers/api'
 import { assertLocaleShape, expectMoney, signIn, signOut, snapshot, uiLocale, useLocale } from '../helpers/ui'
+import { totp } from '../helpers/totp'
 
 /**
  * Doc 09 §6: the core journeys, each an acceptance test for its slice, run once per locale (T-120).
@@ -63,6 +64,7 @@ test('T-121 register → sign in → invite an Accountant → accept from the em
   // The owner sees the invitation accepted and can change the role; a Viewer never sees the import link (UI-01).
   await page.reload()
   await expect(page.getByTestId('invitation-row')).toHaveCount(0)
+
   const api = new Api(email, `E2E Org ${stamp}`)
   await api.login()
   const viewer = api.seedMember('Viewer')
@@ -70,6 +72,27 @@ test('T-121 register → sign in → invite an Accountant → accept from the em
   await signIn(page, viewer.email, viewer.password)
   await expect(page.getByTestId('nav-import')).toHaveCount(0)
   await expect(page.getByTestId('nav-aging')).toBeVisible()
+
+  // Slice 13 (SEC-02): the Owner enrols a second factor from the Security card and signs back in with a code.
+  await signOut(page)
+  await signIn(page, email)
+  await page.goto('/organization')
+  await page.getByTestId('security-enrol').click()
+  await page.getByTestId('mfa-start').click()
+  const secret = (await page.getByTestId('mfa-secret').textContent())!.trim()
+  await page.getByTestId('mfa-code').fill(totp(secret))
+  await page.getByTestId('mfa-verify').click()
+  await expect(page.getByTestId('recovery-code')).toHaveCount(8)
+  await page.getByTestId('mfa-done').click()
+  await expect(page.getByTestId('mfa-status')).toHaveAttribute('data-enrolled', 'true')
+  await signOut(page)
+  await page.getByTestId('email').fill(email)
+  await page.getByTestId('password').fill(PASSWORD)
+  await page.getByTestId('submit').click()
+  await expect(page.getByTestId('totp')).toBeVisible()          // the code step, only after the password matched
+  await page.getByTestId('totp').fill(totp(secret))
+  await page.getByTestId('submit').click()
+  await expect(page.getByTestId('navigation')).toBeVisible()
 })
 
 test('T-122 import with three exceptions → resolve each → commit → aging shows the buckets', async ({ page }, info) => {

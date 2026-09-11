@@ -18,6 +18,9 @@ public sealed class TenantMembership : ITenantScoped
     public TenantRole Role { get; set; }
     public MembershipStatus Status { get; set; } = MembershipStatus.Active;
     public Guid? InvitedBy { get; set; }
+
+    /// <summary>SEC-02 with a grace period (slice 13 D-1): Owner and Admin memberships must enrol a second factor by this moment.</summary>
+    public DateTimeOffset? MfaGraceUntil { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public User? User { get; set; }

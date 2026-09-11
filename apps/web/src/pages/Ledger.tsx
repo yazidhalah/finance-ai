@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { ApiError, creditNoteReasons, customersApi, ledgerApi } from '../api/client'
 import type { Cheque, CreditNote, Customer, InvoiceDetail, WriteOff } from '../api/client'
 import { useSession } from '../auth/SessionProvider'
+import { ReauthDialog } from './Security'
 import { Button, Card, ErrorNotice, Field, Isolate, Select, TextInput } from '../components/ui'
 import { MoneyText } from '../components/Money'
 import { useLocale } from '../i18n/LocaleProvider'
@@ -165,6 +166,7 @@ export function WriteOffsPage() {
   const { t } = useLocale()
   const { session, can } = useSession()
   const [items, setItems] = useState<WriteOff[] | null>(null)
+  const [approving, setApproving] = useState<{ id: string; self: boolean } | null>(null)   // SEC-09: approval waits for a re-authentication proof
   const [problem, setProblem] = useState<Problem | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -180,6 +182,7 @@ export function WriteOffsPage() {
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">{t('writeOffs.title')}</h1>
       {problem ? <ErrorNotice messageKey={problem.messageKey} traceId={problem.traceId} /> : null}
+      {approving ? <ReauthDialog title={t('writeOffs.reauthTitle')} onClose={() => setApproving(null)} onProof={async (proof) => { const a = approving; setApproving(null); await act(() => ledgerApi.approveWriteOff(a.id, a.self, proof)) }} /> : null}
       {items === null ? <p>{t('state.loading')}</p> : items.length === 0 ? <Card><p className="text-sm text-slate-600">{t('writeOffs.empty')}</p></Card> : (
         <Card className="overflow-x-auto p-0">
           <table className="w-full text-sm" data-testid="writeoffs-table">
@@ -203,9 +206,9 @@ export function WriteOffsPage() {
                       {can('writeoff.approve') && w.status === 'Proposed' ? (
                         <div className="flex gap-1">
                           {mine ? (
-                            <Button variant="ghost" busy={busy} data-testid="self-approve" onClick={() => { if (window.confirm(t('writeOffs.selfApproveConfirm'))) void act(() => ledgerApi.approveWriteOff(w.id, true)) }}>{t('writeOffs.selfApprove')}</Button>
+                            <Button variant="ghost" busy={busy} data-testid="self-approve" onClick={() => { if (window.confirm(t('writeOffs.selfApproveConfirm'))) setApproving({ id: w.id, self: true }) }}>{t('writeOffs.selfApprove')}</Button>
                           ) : (
-                            <Button busy={busy} data-testid="approve" onClick={() => void act(() => ledgerApi.approveWriteOff(w.id, false))}>{t('writeOffs.approve')}</Button>
+                            <Button busy={busy} data-testid="approve" onClick={() => setApproving({ id: w.id, self: false })}>{t('writeOffs.approve')}</Button>
                           )}
                           <Button variant="ghost" busy={busy} onClick={() => void act(() => ledgerApi.rejectWriteOff(w.id))}>{t('writeOffs.reject')}</Button>
                         </div>

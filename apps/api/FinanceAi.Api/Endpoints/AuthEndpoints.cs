@@ -30,9 +30,15 @@ public static class AuthEndpoints
         auth.MapPost("/refresh", RefreshAsync).AllowAnonymousEndpoint().WithName("Refresh");
         // Slice 12: the invitee has no session yet. Anonymous by design, rate limited with the rest of the group.
         auth.MapPost("/accept-invitation", AcceptInvitationAsync).AllowAnonymousEndpoint().WithName("AcceptInvitation");
-        auth.MapPost("/logout", LogoutAsync).RequiresAuthenticatedUser().WithName("Logout");
-        auth.MapGet("/tenants", ListTenantsAsync).RequiresAuthenticatedUser().WithName("ListTenants");
-        auth.MapPost("/switch-tenant", SwitchTenantAsync).RequiresAuthenticatedUser().WithName("SwitchTenant");
+        // Slice 13: password reset is anonymous by nature; MFA enrolment and re-authentication need a session but not a second factor yet.
+        auth.MapPost("/forgot-password", ForgotPasswordAsync).AllowAnonymousEndpoint().WithName("ForgotPassword");
+        auth.MapPost("/reset-password", ResetPasswordAsync).AllowAnonymousEndpoint().WithName("ResetPassword");
+        auth.MapPost("/mfa/enroll", MfaEnrollAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("MfaEnroll");
+        auth.MapPost("/mfa/verify", MfaVerifyAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("MfaVerify");
+        auth.MapPost("/reauthenticate", ReauthenticateAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("Reauthenticate");
+        auth.MapPost("/logout", LogoutAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("Logout");
+        auth.MapGet("/tenants", ListTenantsAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("ListTenants");
+        auth.MapPost("/switch-tenant", SwitchTenantAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("SwitchTenant");
 
         return api;
     }
@@ -98,10 +104,17 @@ public static class AuthEndpoints
         }
 
         var result = await identity.AuthenticateAsync(
-            request.Email!.Trim(), request.Password!, context.ClientIp(), context.RequestId(), ct);
+            request.Email!.Trim(), request.Password!, request.Totp, context.ClientIp(), context.RequestId(), ct);
 
         switch (result.Outcome)
         {
+            case PlatformIdentityStore.AuthenticationOutcome.MfaRequired:
+                // Only reachable after the password matched (slice 13): the client shows the TOTP step and resubmits.
+                return ApiProblems.Create(
+                    context, StatusCodes.Status401Unauthorized, "mfa_required",
+                    "Enter the code from your authenticator app.",
+                    "errors.auth.mfa_required");
+
             case PlatformIdentityStore.AuthenticationOutcome.Locked:
                 return ApiProblems.Create(
                     context, StatusCodes.Status423Locked, "account_locked",
@@ -209,7 +222,7 @@ public static class AuthEndpoints
     private static SessionResponse ToSessionResponse(
         PlatformIdentityStore.AuthenticatedSession session, IAccessTokenIssuer tokens)
     {
-        var (accessToken, _) = tokens.Issue(session.UserId, session.TenantId, session.Role);
+        var (accessToken, _) = tokens.Issue(session.UserId, session.TenantId, session.Role, session.MfaUsed ? "mfa" : "pwd");
 
         return new SessionResponse(
             accessToken,
@@ -261,5 +274,68 @@ public static class AuthEndpoints
                 [new ApiProblems.FieldError("password", "required", "errors.password.required")]),
             _ => ApiProblems.Create(context, StatusCodes.Status400BadRequest, "invitation_invalid", "This invitation cannot be used.", "errors.invitation.invalid"),
         };
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Slice 13 — MFA, re-authentication, password reset
+    // ---------------------------------------------------------------------------------------
+
+    private static async Task<IResult> MfaEnrollAsync(HttpContext context, CurrentUser user, PlatformIdentityStore identity, CancellationToken ct)
+    {
+        var enrolment = await identity.EnrollMfaAsync(user.UserId, ct);
+        return enrolment is null
+            ? ApiProblems.Create(context, StatusCodes.Status503ServiceUnavailable, "mfa_unavailable", "Second-factor enrolment is not configured on this server.", "errors.auth.mfa_unavailable")
+            : TypedResults.Ok(new MfaEnrolmentResponse(enrolment.SecretBase32, enrolment.ProvisioningUri));
+    }
+
+    private static async Task<IResult> MfaVerifyAsync(MfaVerifyRequest request, HttpContext context, CurrentUser user, PlatformIdentityStore identity, CancellationToken ct)
+    {
+        if (request.Code is not { Length: 6 } || !request.Code.All(char.IsAsciiDigit)) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("code", "invalid", "errors.validation.code.invalid")]);
+        var activation = await identity.VerifyMfaAsync(user.UserId, user.TenantId, request.Code, context.ClientIp(), context.RequestId(), ct);
+        return activation.Activated
+            ? TypedResults.Ok(new MfaActivatedResponse(true, activation.RecoveryCodes))
+            : ApiProblems.Create(context, StatusCodes.Status400BadRequest, "mfa_code_invalid", "The code did not match. Enrol again if the secret was lost.", "errors.auth.mfa_code_invalid");
+    }
+
+    private static async Task<IResult> ReauthenticateAsync(ReauthenticateRequest request, HttpContext context, CurrentUser user, PlatformIdentityStore identity, IAccessTokenIssuer tokens, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(request.Password)) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("password", "required", "errors.password.required")]);
+        if (!await identity.ReauthenticateAsync(user.UserId, request.Password, request.Totp, ct))
+        {
+            return ApiProblems.Create(context, StatusCodes.Status401Unauthorized, "invalid_credentials", "The password or code is incorrect.", "errors.auth.invalid_credentials");
+        }
+
+        var (proof, _) = tokens.IssueReauth(user.UserId);
+        return TypedResults.Ok(new ReauthenticateResponse(proof, (int)RsaAccessTokenIssuer.ReauthLifetime.TotalSeconds));
+    }
+
+    private static async Task<IResult> ForgotPasswordAsync(ForgotPasswordRequest request, HttpContext context, PlatformIdentityStore identity, FinanceAi.Infrastructure.Messaging.IMailTransport mail, ILoggerFactory loggerFactory, CancellationToken ct)
+    {
+        var validation = new Validation().Require("email", request.Email).Email("email", request.Email);
+        if (validation.HasErrors) return ApiProblems.ValidationProblem(context, validation.Errors);
+        var reset = await identity.ForgotPasswordAsync(request.Email!.Trim(), ct);
+        if (reset is not null && FinanceAi.Infrastructure.Messaging.OutboundSwitch.GloballyEnabled)
+        {
+            var link = $"{FinanceAi.Infrastructure.Members.MembersService.WebOrigin}/reset-password?token={reset.Token}";
+            var arabic = reset.Locale.StartsWith("ar", StringComparison.Ordinal);
+            await mail.SendAsync(new FinanceAi.Infrastructure.Messaging.OutgoingMail(reset.Email,
+                arabic ? "إعادة تعيين كلمة المرور — finance-ai" : "Reset your password — finance-ai",
+                arabic ? $"لإعادة تعيين كلمة مرورك افتح الرابط التالي خلال ساعة:\n{link}\n\nإن لم تطلب ذلك فتجاهل هذه الرسالة." : $"To reset your password, open this link within the hour:\n{link}\n\nIf you did not ask for this, ignore this message.",
+                arabic ? "ar" : "en", $"reset-{reset.UserId:N}-{Guid.CreateVersion7():N}"), ct);
+        }
+
+        // Recorded, never rendered (SEC-07).
+        loggerFactory.CreateLogger(typeof(AuthEndpoints)).LogInformation("Password reset requested; user found: {Found}.", reset is not null);
+        return TypedResults.Accepted((string?)null, new AcceptedResponse(true));
+    }
+
+    private static async Task<IResult> ResetPasswordAsync(ResetPasswordRequest request, HttpContext context, PlatformIdentityStore identity, CancellationToken ct)
+    {
+        var validation = new Validation().Require("token", request.Token).Require("password", request.Password)
+            .MinLength("password", request.Password, Argon2idPasswordHasher.MinimumPasswordLength, "too_short").MaxLength("password", request.Password, 512);
+        if (validation.HasErrors) return ApiProblems.ValidationProblem(context, validation.Errors);
+        return await identity.ResetPasswordAsync(request.Token!.Trim(), request.Password!, context.ClientIp(), context.RequestId(), ct)
+            ? TypedResults.Ok(new AcceptedResponse(true))
+            : ApiProblems.Create(context, StatusCodes.Status400BadRequest, "reset_invalid", "This reset link cannot be used.", "errors.auth.reset_invalid");
     }
 }

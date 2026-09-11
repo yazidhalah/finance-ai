@@ -4,6 +4,9 @@ Doc 09 §6: T-121 … T-132, run once per locale (`en`, `ar`; T-120). The Arabic
 `dir="rtl"`, that every money value sits in its own `<bdi>` isolate with the exact stored amount, and
 keeps visual snapshots of the aging table, the empty queue and a rendered Arabic message preview.
 
+T-121 also enrols the Owner's second factor and signs back in with a code computed by `helpers/totp.ts`
+(RFC 6238, the test's own "authenticator app").
+
 Data is set up through the API (the same endpoints the browser calls: register, customers, contacts,
 the CSV import path, payments, the sweep); the human gates are walked in the browser. A second member
 is seeded straight into the database, the way the .NET suites do it — v1 has no invitation flow.

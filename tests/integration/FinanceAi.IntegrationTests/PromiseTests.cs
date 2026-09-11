@@ -349,6 +349,7 @@ public sealed class PromiseTests(ApiTestFixture fixture)
         var x = await OpenAsync("WriteOff");
         await x.S.Client.PostAsync($"/api/v1/cases/{x.CaseId}/promises", Promise(x.Invoice, 100m, D(3)));
         var proposal = await x.S.Client.PostAsync($"/api/v1/invoices/{x.Invoice}/write-off", new { reasonCode = "uncollectible" });
+        await x.S.Client.ReauthAsync();   // SEC-09 (slice 13)
         var (status, body) = await x.S.Client.TryPostAsync($"/api/v1/write-offs/{proposal.GetProperty("id").GetGuid()}/approve", new { selfApproved = true });
         Assert.Equal(422, status);
         Assert.Equal("ptp_active", body.GetProperty("errors")[0].GetProperty("code").GetString());

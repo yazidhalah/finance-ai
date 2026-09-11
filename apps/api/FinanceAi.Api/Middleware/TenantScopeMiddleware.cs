@@ -26,7 +26,9 @@ public sealed class TenantScopeMiddleware(RequestDelegate next)
         TenantContext tenantContext,
         TenantDbContext db,
         CurrentUser currentUser,
-        PlatformIdentityStore identity)
+        PlatformIdentityStore identity,
+        IAccessTokenIssuer tokens,
+        TimeProvider time)
     {
         ArgumentNullException.ThrowIfNull(context);
 
@@ -60,21 +62,45 @@ public sealed class TenantScopeMiddleware(RequestDelegate next)
 
         // A token outlives a membership change by up to its 15-minute lifetime, so the membership
         // is re-read here rather than trusted from the token (SEC-08, AC-17).
-        var role = await identity.ResolveActiveRoleAsync(userId.Value, tenantId.Value, context.RequestAborted);
+        var session = await identity.ResolveSessionAsync(userId.Value, tenantId.Value, context.RequestAborted);
 
-        if (role is null)
+        if (session is null)
         {
             await ApiProblems.UnauthenticatedProblem(context).ExecuteAsync(context);
             return;
         }
 
+        var role = session.Role;
+
+        // SEC-02 (slice 13): past the grace period an Owner/Admin without a second factor can only reach the
+        // routes that let them enrol. Decided here, on the membership, on every request — never from the token.
+        if (FinanceAi.Domain.Security.MfaPolicy.Enforced(role, session.MfaEnrolled, session.MfaGraceUntil, time.GetUtcNow())
+            && endpoint.Metadata.GetMetadata<AllowedWithoutMfa>() is null)
+        {
+            await ApiProblems.Create(context, StatusCodes.Status403Forbidden, "mfa_enrollment_required",
+                "A second factor must be enrolled before this account can continue.", "errors.auth.mfa_enrollment_required").ExecuteAsync(context);
+            return;
+        }
+
+        // SEC-09 (slice 13): a sensitive endpoint needs proof that this user re-authenticated within the last five minutes.
+        if (endpoint.Metadata.GetMetadata<RequiresReauthentication>() is not null)
+        {
+            var proof = await tokens.ValidateReauthAsync(context.Request.Headers["X-Reauth"].ToString());
+            if (proof != userId.Value)
+            {
+                await ApiProblems.Create(context, StatusCodes.Status403Forbidden, "reauthentication_required",
+                    "Confirm your password (and second factor) again to do this.", "errors.auth.reauthentication_required").ExecuteAsync(context);
+                return;
+            }
+        }
+
         tenantContext.Set(tenantId.Value, userId.Value);
-        currentUser.Set(userId.Value, tenantId.Value, role.Value);
+        currentUser.Set(userId.Value, tenantId.Value, role);
 
         await using var scope = await DatabaseScope.EnterTenantAsync(
             db, tenantId.Value, userId.Value, context.RequestAborted);
 
-        if (requiredPermission is not null && !RolePermissions.Grants(role.Value, requiredPermission.Permission))
+        if (requiredPermission is not null && !RolePermissions.Grants(role, requiredPermission.Permission))
         {
             await ApiProblems.ForbiddenProblem(context, requiredPermission.Permission).ExecuteAsync(context);
             return;

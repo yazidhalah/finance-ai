@@ -25,6 +25,13 @@ public sealed class User
     /// <summary>Reserved for TOTP enrolment (SEC-02); unused until slice 1b.</summary>
     public byte[]? MfaSecretEnc { get; set; }
 
+    /// <summary>Slice 13: enrolled but not yet verified; replaced by each new enrolment.</summary>
+    public byte[]? MfaPendingSecretEnc { get; set; }
+
+    public DateTimeOffset? MfaEnabledAt { get; set; }
+
+    public bool MfaEnrolled => this.MfaEnabledAt is not null && this.MfaSecretEnc is not null;
+
     public UserStatus Status { get; set; } = UserStatus.Active;
     public int FailedLoginCount { get; set; }
     public DateTimeOffset? LockedUntil { get; set; }

@@ -11,6 +11,8 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Routing.Patterns;
 using Microsoft.Extensions.DependencyInjection;
 
+using static FinanceAi.TestSupport.LedgerScenario;
+
 namespace FinanceAi.SecurityTests;
 
 /// <summary>
@@ -160,6 +162,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
         var idsInB = await CreateEntitiesInAsync(organizationB);
 
         using var clientA = fixture.Api.AuthenticatedClient(organizationA.OwnerSession);
+        await clientA.ReauthAsync();   // slice 13: the re-auth gate (SEC-09) sits before the handler; the sweep proves scoping for a fully authenticated caller
 
         foreach (var endpoint in withIdParameter)
         {
@@ -217,10 +220,11 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     {
         var endpoints = this.Endpoints();
 
-        Assert.Equal(137, endpoints.Count);
+        Assert.Equal(143, endpoints.Count);
         Assert.All(endpoints, e => Assert.True(e.Permission is not null || e.Access is not null));
 
-        // The anonymous set is exactly registration, login, refresh and (slice 12) accepting an invitation — nothing has drifted into it.
+        // The anonymous set is exactly registration, login, refresh, accepting an invitation (slice 12) and the two
+        // password-reset routes (slice 13) — nothing has drifted into it.
         var anonymous = endpoints
             .Where(e => e.Access?.Kind == DeclaredAccessKind.Anonymous)
             .Select(e => e.Template)
@@ -228,7 +232,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
             .ToList();
 
         Assert.Equal(
-            ["api/v1/auth/accept-invitation", "api/v1/auth/login", "api/v1/auth/refresh", "api/v1/auth/register"],
+            ["api/v1/auth/accept-invitation", "api/v1/auth/forgot-password", "api/v1/auth/login", "api/v1/auth/refresh", "api/v1/auth/register", "api/v1/auth/reset-password"],
             anonymous);
     }
 

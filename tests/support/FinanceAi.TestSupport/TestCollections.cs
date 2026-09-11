@@ -26,6 +26,9 @@ public sealed class ApiTestFixture : IAsyncLifetime
         // dedicated rate-limit test, which lowers it deliberately.
         Environment.SetEnvironmentVariable("AUTH_RATE_LIMIT_PER_MINUTE", "100000");
 
+        // Slice 13: the TOTP secrets' key-encryption key. Random per run; nothing persists across runs.
+        Environment.SetEnvironmentVariable("MFA_KEK_BASE64", Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)));
+
         this.api = new ApiFactory();
 
         // Force the host to build now, so a startup failure surfaces as a fixture error rather than

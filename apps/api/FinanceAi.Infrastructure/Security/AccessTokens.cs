@@ -19,11 +19,25 @@ public static class FinanceAiClaims
     /// than within 60 seconds (SEC-08), and the token stays small.
     /// </summary>
     public const string PermissionSetVersion = "psv";
+
+    /// <summary>Authentication method reference (slice 13): <c>pwd</c> or <c>mfa</c>.</summary>
+    public const string Amr = "amr";
+
+    /// <summary>Marks the five-minute re-authentication proof (SEC-09); never present on an access token.</summary>
+    public const string Purpose = "purpose";
+
+    public const string ReauthPurpose = "reauth";
 }
 
 /// <summary>Issues the short-lived access token of SEC-03.</summary>
 public interface IAccessTokenIssuer
 {
+    (string Token, DateTimeOffset ExpiresAt) Issue(Guid userId, Guid tenantId, TenantRole role, string amr);
+
+    (string Token, DateTimeOffset ExpiresAt) IssueReauth(Guid userId);
+
+    Task<Guid?> ValidateReauthAsync(string? token);
+
     (string Token, DateTimeOffset ExpiresAt) Issue(Guid userId, Guid tenantId, TenantRole role);
 
     TimeSpan Lifetime { get; }
@@ -73,7 +87,11 @@ public sealed class RsaAccessTokenIssuer : IAccessTokenIssuer, IDisposable
     /// <summary>The public half, for the API's token validation parameters.</summary>
     public RsaSecurityKey PublicKey => new(this.rsa.ExportParameters(false)) { KeyId = KeyIdOf(this.rsa) };
 
-    public (string Token, DateTimeOffset ExpiresAt) Issue(Guid userId, Guid tenantId, TenantRole role)
+    public static readonly TimeSpan ReauthLifetime = TimeSpan.FromMinutes(5);
+
+    public (string Token, DateTimeOffset ExpiresAt) Issue(Guid userId, Guid tenantId, TenantRole role) => this.Issue(userId, tenantId, role, "pwd");
+
+    public (string Token, DateTimeOffset ExpiresAt) Issue(Guid userId, Guid tenantId, TenantRole role, string amr)
     {
         var issuedAt = this.time.GetUtcNow();
         var expiresAt = issuedAt.Add(TokenLifetime);
@@ -93,10 +111,57 @@ public sealed class RsaAccessTokenIssuer : IAccessTokenIssuer, IDisposable
                 [FinanceAiClaims.TenantId] = tenantId.ToString(),
                 [FinanceAiClaims.Role] = role.ToString(),
                 [FinanceAiClaims.PermissionSetVersion] = CurrentPermissionSetVersion,
+                [FinanceAiClaims.Amr] = amr,
             },
         };
 
         return (new JsonWebTokenHandler().CreateToken(descriptor), expiresAt);
+    }
+
+    /// <summary>
+    /// The re-authentication proof (SEC-09, slice 13 D-4): same key, five minutes, no tenant and no role — the
+    /// middleware never accepts it as a session, and a sensitive endpoint accepts it only for its own user.
+    /// </summary>
+    public (string Token, DateTimeOffset ExpiresAt) IssueReauth(Guid userId)
+    {
+        var issuedAt = this.time.GetUtcNow();
+        var expiresAt = issuedAt.Add(ReauthLifetime);
+        var descriptor = new SecurityTokenDescriptor
+        {
+            Issuer = Issuer,
+            Audience = Audience,
+            IssuedAt = issuedAt.UtcDateTime,
+            NotBefore = issuedAt.UtcDateTime,
+            Expires = expiresAt.UtcDateTime,
+            SigningCredentials = this.credentials,
+            Claims = new Dictionary<string, object>(StringComparer.Ordinal)
+            {
+                [JwtRegisteredClaimNames.Sub] = userId.ToString(),
+                [JwtRegisteredClaimNames.Jti] = Guid.CreateVersion7().ToString(),
+                [FinanceAiClaims.Purpose] = FinanceAiClaims.ReauthPurpose,
+            },
+        };
+        return (new JsonWebTokenHandler().CreateToken(descriptor), expiresAt);
+    }
+
+    /// <summary>Validates a proof and returns its subject, or null. Signature, lifetime and purpose are all checked.</summary>
+    public async Task<Guid?> ValidateReauthAsync(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token)) return null;
+        var result = await new JsonWebTokenHandler().ValidateTokenAsync(token, new TokenValidationParameters
+        {
+            ValidIssuer = Issuer,
+            ValidAudience = Audience,
+            IssuerSigningKey = this.PublicKey,
+            ValidateIssuerSigningKey = true,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromSeconds(30),
+            LifetimeValidator = (_, expires, _, _) => expires is { } e && e > this.time.GetUtcNow().UtcDateTime,
+        });
+        if (!result.IsValid) return null;
+        var claims = result.Claims;
+        if (!claims.TryGetValue(FinanceAiClaims.Purpose, out var purpose) || purpose?.ToString() != FinanceAiClaims.ReauthPurpose) return null;
+        return claims.TryGetValue(JwtRegisteredClaimNames.Sub, out var sub) && Guid.TryParse(sub?.ToString(), out var id) ? id : null;
     }
 
     public void Dispose() => this.rsa.Dispose();

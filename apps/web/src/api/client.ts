@@ -41,6 +41,11 @@ export interface Session {
   tenant: { id: string; name: string; baseCurrency: string; timezone: string; defaultLocale: string }
   role: string
   permissions: string[]
+  /** Slice 13 (SEC-02): on /me only. */
+  mfaEnrolled?: boolean
+  mfaRequired?: boolean
+  mfaGraceUntil?: string | null
+  mfaEnforced?: boolean
 }
 
 let accessToken: string | null = null
@@ -65,6 +70,8 @@ interface RequestOptions {
   retryOnUnauthorized?: boolean
   /** Return the raw body (a file download) instead of parsing JSON. */
   raw?: boolean
+  /** SEC-09 (slice 13): the five-minute re-authentication proof for sensitive endpoints. */
+  reauth?: string
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -83,6 +90,9 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
   if (idempotencyKey) {
     headers['Idempotency-Key'] = idempotencyKey
+  }
+  if (options.reauth) {
+    headers['X-Reauth'] = options.reauth
   }
 
   let response: Response
@@ -164,8 +174,9 @@ export const api = {
     locale: string
   }) => request<{ status: string }>('/auth/register', { method: 'POST', body }),
 
-  login: (email: string, password: string) =>
-    request<Session>('/auth/login', { method: 'POST', body: { email, password } }),
+  // A 401 here is the answer (wrong credentials, or slice 13's mfa_required), never an expired session to refresh.
+  login: (email: string, password: string, totp?: string) =>
+    request<Session>('/auth/login', { method: 'POST', body: { email, password, totp }, retryOnUnauthorized: false }),
 
   refresh: () => request<Session>('/auth/refresh', { method: 'POST', retryOnUnauthorized: false }),
 
@@ -605,7 +616,7 @@ export const ledgerApi = {
 
   writeOffs: () => request<{ items: WriteOff[] }>('/write-offs'),
   proposeWriteOff: (invoiceId: string, reasonCode: string, note?: string) => request<WriteOff>(`/invoices/${invoiceId}/write-off`, { method: 'POST', body: { reasonCode, note } }),
-  approveWriteOff: (id: string, selfApproved: boolean) => request<WriteOff>(`/write-offs/${id}/approve`, { method: 'POST', body: { selfApproved } }),
+  approveWriteOff: (id: string, selfApproved: boolean, reauth: string) => request<WriteOff>(`/write-offs/${id}/approve`, { method: 'POST', body: { selfApproved }, reauth }),
   rejectWriteOff: (id: string, reason?: string) => request<WriteOff>(`/write-offs/${id}/reject`, { method: 'POST', body: { reason } }),
   voidInvoice: (id: string, reason: string) => request<Invoice>(`/invoices/${id}/void`, { method: 'POST', body: { reason } }),
 }
@@ -1330,4 +1341,19 @@ export const membersApi = {
   deactivate: (id: string) => request<Member>(`/organization/members/${id}/deactivate`, { method: 'POST', body: {} }),
   /** Anonymous: the invitee has no session yet. */
   accept: (body: { token: string; fullName?: string; password?: string }) => request<{ email: string; organizationName: string; createdAccount: boolean }>('/auth/accept-invitation', { method: 'POST', body }),
+}
+
+
+// ---------------------------------------------------------------------------------------------
+// Slice 13 — MFA, password reset, re-authentication, transfer of ownership
+// ---------------------------------------------------------------------------------------------
+
+export const authApi = {
+  mfaEnroll: () => request<{ secret: string; provisioningUri: string }>('/auth/mfa/enroll', { method: 'POST', body: {} }),
+  mfaVerify: (code: string) => request<{ enabled: boolean; recoveryCodes: string[] }>('/auth/mfa/verify', { method: 'POST', body: { code } }),
+  /** SEC-09: password (and code when enrolled) → a proof that sensitive calls carry in X-Reauth for five minutes. */
+  reauthenticate: (password: string, totp?: string) => request<{ reauthToken: string; expiresIn: number }>('/auth/reauthenticate', { method: 'POST', body: { password, totp } }),
+  forgotPassword: (email: string) => request<{ accepted: boolean }>('/auth/forgot-password', { method: 'POST', body: { email } }),
+  resetPassword: (token: string, password: string) => request<{ accepted: boolean }>('/auth/reset-password', { method: 'POST', body: { token, password } }),
+  transferOwnership: (targetMembershipId: string, reauth: string) => request<{ newOwner: Member; previousOwner: Member }>('/organization/transfer-ownership', { method: 'POST', body: { targetMembershipId }, reauth }),
 }

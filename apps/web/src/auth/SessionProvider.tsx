@@ -8,7 +8,9 @@ type Identity = Omit<Session, 'accessToken' | 'expiresIn'>
 interface SessionContextValue {
   session: Identity | null
   status: 'restoring' | 'anonymous' | 'authenticated'
-  signIn: (email: string, password: string) => Promise<void>
+  signIn: (email: string, password: string, totp?: string) => Promise<void>
+  /** Re-reads /me — after enrolling a second factor, or when the role changed. */
+  refreshIdentity: () => Promise<void>
   signOut: () => Promise<void>
   can: (permission: string) => boolean
 }
@@ -36,7 +38,9 @@ export function SessionProvider({ children, initial }: { children: ReactNode; in
         const restored = await api.refresh()
         if (cancelled) return
         setAccessToken(restored.accessToken)
-        setSession(restored)
+        const me = await api.me().catch(() => null)
+        if (cancelled) return
+        setSession(me ?? restored)
         setStatus('authenticated')
       } catch {
         if (cancelled) return
@@ -49,11 +53,17 @@ export function SessionProvider({ children, initial }: { children: ReactNode; in
     }
   }, [initial])
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const next = await api.login(email, password)
+  const signIn = useCallback(async (email: string, password: string, totp?: string) => {
+    const next = await api.login(email, password, totp)
     setAccessToken(next.accessToken)
-    setSession(next)
+    // /me carries what the login response does not: the second-factor state that decides which screen comes first.
+    const me = await api.me().catch(() => null)
+    setSession(me ?? next)
     setStatus('authenticated')
+  }, [])
+
+  const refreshIdentity = useCallback(async () => {
+    setSession(await api.me())
   }, [])
 
   const signOut = useCallback(async () => {
@@ -75,10 +85,11 @@ export function SessionProvider({ children, initial }: { children: ReactNode; in
       session,
       status,
       signIn,
+      refreshIdentity,
       signOut,
       can: (permission) => session?.permissions.includes(permission) ?? false,
     }),
-    [session, status, signIn, signOut],
+    [session, status, signIn, refreshIdentity, signOut],
   )
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>

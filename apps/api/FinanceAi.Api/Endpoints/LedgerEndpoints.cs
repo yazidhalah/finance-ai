@@ -54,7 +54,7 @@ public static class LedgerEndpoints
         var writeOffs = api.MapGroup("/write-offs");
         writeOffs.MapGet("/", ListWriteOffsAsync).RequiresPermission(Permissions.PaymentsRead).WithName("ListWriteOffs");
         writeOffs.MapGet("/{id:guid}", GetWriteOffAsync).RequiresPermission(Permissions.PaymentsRead).WithName("GetWriteOff");
-        writeOffs.MapPost("/{id:guid}/approve", ApproveWriteOffAsync).RequiresPermission(Permissions.WriteoffApprove).WithName("ApproveWriteOff");
+        writeOffs.MapPost("/{id:guid}/approve", ApproveWriteOffAsync).RequiresPermission(Permissions.WriteoffApprove).RequiresReauth().WithName("ApproveWriteOff");   // SEC-09, slice 13 closes slice 3b D-6
         writeOffs.MapPost("/{id:guid}/reject", RejectWriteOffAsync).RequiresPermission(Permissions.WriteoffApprove).WithName("RejectWriteOff");
         writeOffs.MapPost("/{id:guid}/reverse", ReverseWriteOffAsync).RequiresPermission(Permissions.WriteoffApprove).WithName("ReverseWriteOff");
 

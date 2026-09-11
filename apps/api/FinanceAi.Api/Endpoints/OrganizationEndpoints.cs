@@ -23,8 +23,8 @@ public static class OrganizationEndpoints
     {
         ArgumentNullException.ThrowIfNull(api);
 
-        api.MapGet("/me", GetMeAsync).RequiresAuthenticatedUser().WithName("GetMe");
-        api.MapPatch("/me", UpdateMeAsync).RequiresAuthenticatedUser().WithName("UpdateMe");
+        api.MapGet("/me", GetMeAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("GetMe");
+        api.MapPatch("/me", UpdateMeAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("UpdateMe");
 
         return api;
     }
@@ -49,6 +49,8 @@ public static class OrganizationEndpoints
         organization.MapPost("/invitations/{id:guid}/revoke", RevokeInvitationAsync).RequiresPermission(Permissions.UsersInvite).WithName("RevokeInvitation");
         organization.MapPatch("/members/{id:guid}", ChangeRoleAsync).RequiresPermission(Permissions.UsersRoleWrite).WithName("ChangeMemberRole");
         organization.MapPost("/members/{id:guid}/deactivate", DeactivateMemberAsync).RequiresPermission(Permissions.UsersDeactivate).WithName("DeactivateMember");
+        // Slice 13 (SEC-09): ownership moves only with a fresh re-authentication.
+        organization.MapPost("/transfer-ownership", TransferOwnershipAsync).RequiresPermission(Permissions.TenantTransferOwnership).RequiresReauth().WithName("TransferOwnership");
 
         return api;
     }
@@ -64,16 +66,22 @@ public static class OrganizationEndpoints
     }
 
     private static async Task<IResult> GetMeAsync(
-        CurrentUser currentUser, TenantDbContext db, CancellationToken ct)
+        CurrentUser currentUser, TenantDbContext db, TimeProvider time, CancellationToken ct)
     {
         var user = await db.Users.FirstAsync(u => u.Id == currentUser.UserId, ct);
         var tenant = await db.Tenants.FirstAsync(t => t.Id == currentUser.TenantId, ct);
+        var membership = await db.TenantMemberships.FirstAsync(m => m.UserId == currentUser.UserId && m.Status == MembershipStatus.Active, ct);
+        var now = time.GetUtcNow();
 
         return TypedResults.Ok(new MeResponse(
             new UserDto(user.Id, user.FullName, user.PreferredLocale, user.Email),
             new TenantDto(tenant.Id, tenant.Name, tenant.BaseCurrency, tenant.Timezone, tenant.DefaultLocale),
             currentUser.Role.ToString(),
-            currentUser.Permissions));
+            currentUser.Permissions,
+            user.MfaEnrolled,
+            FinanceAi.Domain.Security.MfaPolicy.Required(currentUser.Role),
+            membership.MfaGraceUntil?.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+            FinanceAi.Domain.Security.MfaPolicy.Enforced(currentUser.Role, user.MfaEnrolled, membership.MfaGraceUntil, now)));
     }
 
     private static async Task<IResult> UpdateMeAsync(
@@ -380,4 +388,16 @@ public static class OrganizationEndpoints
         "member_not_found" or "invitation_not_found" => ApiProblems.NotFoundProblem(context),
         _ => ApiProblems.BusinessRuleProblem(context, ex.Code, ex.Field, ex.Meta),
     };
+
+    private static async Task<IResult> TransferOwnershipAsync(TransferOwnershipRequest request, HttpContext context, CurrentUser user, TenantDbContext db, FinanceAi.Infrastructure.Members.MembersService members, CancellationToken ct)
+    {
+        if (request.TargetMembershipId is not { } target) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("targetMembershipId", "required", "errors.validation.targetMembershipId.required")]);
+        if (!await db.TenantMemberships.AnyAsync(m => m.Id == target, ct)) return ApiProblems.NotFoundProblem(context);
+        try
+        {
+            var (newOwner, previous) = await members.TransferOwnershipAsync(target, user.UserId, ct);
+            return TypedResults.Ok(new TransferOwnershipResponse(await MemberAsync(newOwner, db, ct), await MemberAsync(previous, db, ct)));
+        }
+        catch (FinanceAi.Infrastructure.Cases.CaseException ex) { return MemberRule(context, ex); }
+    }
 }
