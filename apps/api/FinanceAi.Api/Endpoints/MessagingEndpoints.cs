@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Globalization;
 using FinanceAi.Api.Authorization;
 using FinanceAi.Api.Contracts;
@@ -24,28 +25,28 @@ public static class MessagingEndpoints
         ArgumentNullException.ThrowIfNull(api);
 
         var templates = api.MapGroup("/templates");
-        templates.MapGet("/", ListTemplatesAsync).Produces<TemplateListResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("ListTemplates");
-        templates.MapGet("/placeholders", PlaceholdersAsync).Produces<PlaceholderListResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("Placeholders");
-        templates.MapGet("/{id:guid}", GetTemplateAsync).Produces<TemplateResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("GetTemplate");
-        templates.MapPost("/", CreateTemplateAsync).Produces<TemplateResponse>(201).RequiresPermission(Permissions.TemplatesWrite).WithName("CreateTemplate");
-        templates.MapPost("/{id:guid}", NewVersionAsync).Produces<TemplateResponse>(201).RequiresPermission(Permissions.TemplatesWrite).WithName("NewTemplateVersion");
-        templates.MapPost("/{id:guid}/approve", ApproveTemplateAsync).Produces<TemplateResponse>(200).RequiresPermission(Permissions.TemplatesWrite).WithName("ApproveTemplate");
-        templates.MapPost("/{id:guid}/preview", PreviewAsync).Produces<TemplatePreviewResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("PreviewTemplate");
+        templates.MapGet("/", ListTemplatesAsync).RequiresPermission(Permissions.CasesRead).WithName("ListTemplates");
+        templates.MapGet("/placeholders", PlaceholdersAsync).RequiresPermission(Permissions.CasesRead).WithName("Placeholders");
+        templates.MapGet("/{id:guid}", GetTemplateAsync).RequiresPermission(Permissions.CasesRead).WithName("GetTemplate");
+        templates.MapPost("/", CreateTemplateAsync).RequiresPermission(Permissions.TemplatesWrite).WithName("CreateTemplate");
+        templates.MapPost("/{id:guid}", NewVersionAsync).RequiresPermission(Permissions.TemplatesWrite).WithName("NewTemplateVersion");
+        templates.MapPost("/{id:guid}/approve", ApproveTemplateAsync).RequiresPermission(Permissions.TemplatesWrite).WithName("ApproveTemplate");
+        templates.MapPost("/{id:guid}/preview", PreviewAsync).RequiresPermission(Permissions.CasesRead).WithName("PreviewTemplate");
 
-        api.MapPost("/cases/{id:guid}/messages", ComposeAsync).Produces<MessageResponse>(201).RequiresPermission(Permissions.MessagesDraft).WithName("ComposeMessage");
+        api.MapPost("/cases/{id:guid}/messages", ComposeAsync).RequiresPermission(Permissions.MessagesDraft).WithName("ComposeMessage");
         var messages = api.MapGroup("/messages");
-        messages.MapGet("/", ListMessagesAsync).Produces<MessageListResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("ListMessages");
-        messages.MapPost("/dispatch", DispatchAsync).Produces<DispatchResponse>(200).RequiresPermission(Permissions.MessagesSend).WithName("DispatchMessages");
-        messages.MapGet("/{id:guid}", GetMessageAsync).Produces<MessageResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("GetMessage");
-        messages.MapPost("/{id:guid}/approve", ApproveMessageAsync).Produces<MessageResponse>(200).RequiresPermission(Permissions.AiSuggestionsApprove).WithName("ApproveMessage");
-        messages.MapPost("/{id:guid}/send", SendAsync).Produces<MessageResponse>(200).RequiresPermission(Permissions.MessagesSend).WithName("SendMessage");
-        messages.MapPost("/{id:guid}/cancel", CancelAsync).Produces<MessageResponse>(200).RequiresPermission(Permissions.MessagesDraft).WithName("CancelMessage");
-        messages.MapGet("/{id:guid}/whatsapp-link", WhatsAppLinkAsync).Produces<WhatsAppLinkResponse>(200).RequiresPermission(Permissions.MessagesDraft).WithName("WhatsAppLink");
-        messages.MapPost("/{id:guid}/confirm-manual-send", ConfirmManualSendAsync).Produces<MessageResponse>(200).RequiresPermission(Permissions.MessagesDraft).WithName("ConfirmManualSend");
+        messages.MapGet("/", ListMessagesAsync).RequiresPermission(Permissions.CasesRead).WithName("ListMessages");
+        messages.MapPost("/dispatch", DispatchAsync).RequiresPermission(Permissions.MessagesSend).WithName("DispatchMessages");
+        messages.MapGet("/{id:guid}", GetMessageAsync).RequiresPermission(Permissions.CasesRead).WithName("GetMessage");
+        messages.MapPost("/{id:guid}/approve", ApproveMessageAsync).RequiresPermission(Permissions.AiSuggestionsApprove).WithName("ApproveMessage");
+        messages.MapPost("/{id:guid}/send", SendAsync).RequiresPermission(Permissions.MessagesSend).WithName("SendMessage");
+        messages.MapPost("/{id:guid}/cancel", CancelAsync).RequiresPermission(Permissions.MessagesDraft).WithName("CancelMessage");
+        messages.MapGet("/{id:guid}/whatsapp-link", WhatsAppLinkAsync).RequiresPermission(Permissions.MessagesDraft).WithName("WhatsAppLink");
+        messages.MapPost("/{id:guid}/confirm-manual-send", ConfirmManualSendAsync).RequiresPermission(Permissions.MessagesDraft).WithName("ConfirmManualSend");
 
-        api.MapGet("/organization/outbound", OutboundSettingsAsync).Produces<OutboundSettingsResponse>(200).RequiresPermission(Permissions.TenantRead).WithName("OutboundSettings");
-        api.MapPut("/organization/outbound", UpdateOutboundSettingsAsync).Produces<OutboundSettingsResponse>(200).RequiresPermission(Permissions.TenantSettingsWrite).WithName("UpdateOutboundSettings");
-        api.MapGet("/customers/{id:guid}/statement", StatementAsync).Produces<StatementResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("CustomerStatement");
+        api.MapGet("/organization/outbound", OutboundSettingsAsync).RequiresPermission(Permissions.TenantRead).WithName("OutboundSettings");
+        api.MapPut("/organization/outbound", UpdateOutboundSettingsAsync).RequiresPermission(Permissions.TenantSettingsWrite).WithName("UpdateOutboundSettings");
+        api.MapGet("/customers/{id:guid}/statement", StatementAsync).RequiresPermission(Permissions.CasesRead).WithName("CustomerStatement");
 
         return api;
     }
@@ -54,9 +55,9 @@ public static class MessagingEndpoints
     // Templates
     // ---------------------------------------------------------------------------------------
 
-    private static IResult PlaceholdersAsync() => TypedResults.Ok(new PlaceholderListResponse(Placeholders.All.Select(p => new PlaceholderDto(p.Name, p.Type, p.Description)).ToList()));
+    private static Results<Ok<PlaceholderListResponse>, ProblemHttpResult> PlaceholdersAsync() => TypedResults.Ok(new PlaceholderListResponse(Placeholders.All.Select(p => new PlaceholderDto(p.Name, p.Type, p.Description)).ToList()));
 
-    private static async Task<IResult> ListTemplatesAsync(HttpContext context, TenantDbContext db, MessagingService messaging, CancellationToken ct)
+    private static async Task<Results<Ok<TemplateListResponse>, ProblemHttpResult>> ListTemplatesAsync(HttpContext context, TenantDbContext db, MessagingService messaging, CancellationToken ct)
     {
         await messaging.EnsureSystemTemplatesAsync(ct);
         var q = context.Request.Query;
@@ -69,13 +70,13 @@ public static class MessagingEndpoints
         return TypedResults.Ok(new TemplateListResponse(items.Select(Template).ToList(), items.Count));
     }
 
-    private static async Task<IResult> GetTemplateAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<TemplateResponse>, ProblemHttpResult>> GetTemplateAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var t = await db.Templates.FirstOrDefaultAsync(x => x.Id == id && x.DeletedAt == null, ct);
         return t is null ? ApiProblems.NotFoundProblem(context) : TypedResults.Ok(Template(t));
     }
 
-    private static async Task<IResult> CreateTemplateAsync(TemplateRequest request, HttpContext context, CurrentUser user, MessagingService messaging, CancellationToken ct)
+    private static async Task<Results<Created<TemplateResponse>, ProblemHttpResult>> CreateTemplateAsync(TemplateRequest request, HttpContext context, CurrentUser user, MessagingService messaging, CancellationToken ct)
     {
         var validation = new Validation().Require("key", request.Key).Require("channel", request.Channel).Require("language", request.Language).Require("body", request.Body);
         if (request.Key is not null && !System.Text.RegularExpressions.Regex.IsMatch(request.Key, "^[a-z][a-z0-9_]{1,60}$")) validation.Require("key", null, "invalid");
@@ -87,7 +88,7 @@ public static class MessagingEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> NewVersionAsync(Guid id, TemplateVersionRequest request, HttpContext context, CurrentUser user, TenantDbContext db, MessagingService messaging, CancellationToken ct)
+    private static async Task<Results<Created<TemplateResponse>, ProblemHttpResult>> NewVersionAsync(Guid id, TemplateVersionRequest request, HttpContext context, CurrentUser user, TenantDbContext db, MessagingService messaging, CancellationToken ct)
     {
         if (!await db.Templates.AnyAsync(t => t.Id == id && t.DeletedAt == null, ct)) return ApiProblems.NotFoundProblem(context);
         if (string.IsNullOrWhiteSpace(request.Body)) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("body", "required", "errors.validation.body.required")]);
@@ -98,14 +99,14 @@ public static class MessagingEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> ApproveTemplateAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, MessagingService messaging, CancellationToken ct)
+    private static async Task<Results<Ok<TemplateResponse>, ProblemHttpResult>> ApproveTemplateAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, MessagingService messaging, CancellationToken ct)
     {
         if (!await db.Templates.AnyAsync(t => t.Id == id && t.DeletedAt == null, ct)) return ApiProblems.NotFoundProblem(context);
         try { return TypedResults.Ok(Template(await messaging.ApproveTemplateAsync(id, user.UserId, ct))); }
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> PreviewAsync(Guid id, TemplatePreviewRequest request, HttpContext context, TenantDbContext db, MessagingService messaging, CancellationToken ct)
+    private static async Task<Results<Ok<TemplatePreviewResponse>, ProblemHttpResult>> PreviewAsync(Guid id, TemplatePreviewRequest request, HttpContext context, TenantDbContext db, MessagingService messaging, CancellationToken ct)
     {
         var t = await db.Templates.FirstOrDefaultAsync(x => x.Id == id && x.DeletedAt == null, ct);
         if (t is null) return ApiProblems.NotFoundProblem(context);
@@ -122,7 +123,7 @@ public static class MessagingEndpoints
     // Messages
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> ComposeAsync(Guid id, ComposeMessageRequest request, HttpContext context, CurrentUser user, TenantDbContext db, MessagingService messaging, CancellationToken ct)
+    private static async Task<Results<Created<MessageResponse>, ProblemHttpResult>> ComposeAsync(Guid id, ComposeMessageRequest request, HttpContext context, CurrentUser user, TenantDbContext db, MessagingService messaging, CancellationToken ct)
     {
         if (!await db.Cases.AnyAsync(c => c.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         var validation = new Validation().Require("channel", request.Channel);
@@ -137,7 +138,7 @@ public static class MessagingEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> ListMessagesAsync(HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<MessageListResponse>, ProblemHttpResult>> ListMessagesAsync(HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var q = context.Request.Query;
         var query = db.Messages.AsQueryable();
@@ -155,13 +156,13 @@ public static class MessagingEndpoints
         return TypedResults.Ok(new MessageListResponse(shaped, shaped.Count));
     }
 
-    private static async Task<IResult> GetMessageAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<MessageResponse>, ProblemHttpResult>> GetMessageAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var m = await db.Messages.FirstOrDefaultAsync(x => x.Id == id, ct);
         return m is null ? ApiProblems.NotFoundProblem(context) : TypedResults.Ok(await MessageAsync(m, db, ct));
     }
 
-    private static async Task<IResult> ApproveMessageAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, MessagingService messaging, CancellationToken ct)
+    private static async Task<Results<Ok<MessageResponse>, ProblemHttpResult>> ApproveMessageAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, MessagingService messaging, CancellationToken ct)
     {
         if (!await db.Messages.AnyAsync(m => m.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         try { return TypedResults.Ok(await MessageAsync(await messaging.ApproveAsync(id, user.UserId, ct), db, ct)); }
@@ -169,7 +170,7 @@ public static class MessagingEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> SendAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, MessagingService messaging, CancellationToken ct)
+    private static async Task<Results<Ok<MessageResponse>, ProblemHttpResult>> SendAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, MessagingService messaging, CancellationToken ct)
     {
         if (!await db.Messages.AnyAsync(m => m.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         var key = context.Request.Headers["Idempotency-Key"].ToString().Trim();
@@ -191,7 +192,7 @@ public static class MessagingEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> CancelAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, MessagingService messaging, CancellationToken ct)
+    private static async Task<Results<Ok<MessageResponse>, ProblemHttpResult>> CancelAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, MessagingService messaging, CancellationToken ct)
     {
         if (!await db.Messages.AnyAsync(m => m.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         try { return TypedResults.Ok(await MessageAsync(await messaging.CancelAsync(id, request.Reason ?? "cancelled", user.UserId, ct), db, ct)); }
@@ -199,7 +200,7 @@ public static class MessagingEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> WhatsAppLinkAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, MessagingService messaging, CancellationToken ct)
+    private static async Task<Results<Ok<WhatsAppLinkResponse>, ProblemHttpResult>> WhatsAppLinkAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, MessagingService messaging, CancellationToken ct)
     {
         if (!await db.Messages.AnyAsync(m => m.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         try
@@ -212,7 +213,7 @@ public static class MessagingEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> ConfirmManualSendAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, MessagingService messaging, CancellationToken ct)
+    private static async Task<Results<Ok<MessageResponse>, ProblemHttpResult>> ConfirmManualSendAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, MessagingService messaging, CancellationToken ct)
     {
         if (!await db.Messages.AnyAsync(m => m.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         try { return TypedResults.Ok(await MessageAsync(await messaging.ConfirmManualSendAsync(id, user.UserId, ct), db, ct)); }
@@ -220,7 +221,7 @@ public static class MessagingEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> DispatchAsync(MessagingService messaging, CancellationToken ct)
+    private static async Task<Results<Ok<DispatchResponse>, ProblemHttpResult>> DispatchAsync(MessagingService messaging, CancellationToken ct)
     {
         var r = await messaging.DispatchAsync(ct);
         return TypedResults.Ok(new DispatchResponse(r.Sent, r.Failed, r.Skipped, r.SkipReason));
@@ -230,7 +231,7 @@ public static class MessagingEndpoints
     // Outbound settings (SEC-103 / SEC-86) and the statement
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> OutboundSettingsAsync(TenantDbContext db, CaseService cases, CancellationToken ct)
+    private static async Task<Results<Ok<OutboundSettingsResponse>, ProblemHttpResult>> OutboundSettingsAsync(TenantDbContext db, CaseService cases, CancellationToken ct)
     {
         var s = await db.TenantSettings.AsNoTracking().FirstAsync(ct);
         var ctx = await cases.ContextAsync(ct);
@@ -241,7 +242,7 @@ public static class MessagingEndpoints
             s.QuietHoursStart.ToString("HH:mm", CultureInfo.InvariantCulture), s.QuietHoursEnd.ToString("HH:mm", CultureInfo.InvariantCulture), s.DunningCadenceDays));
     }
 
-    private static async Task<IResult> UpdateOutboundSettingsAsync(OutboundSettingsRequest request, HttpContext context, CurrentUser user, TenantDbContext db, CaseService cases, FinanceAi.Infrastructure.Audit.IAuditWriter audit, CancellationToken ct)
+    private static async Task<Results<Ok<OutboundSettingsResponse>, ProblemHttpResult>> UpdateOutboundSettingsAsync(OutboundSettingsRequest request, HttpContext context, CurrentUser user, TenantDbContext db, CaseService cases, FinanceAi.Infrastructure.Audit.IAuditWriter audit, CancellationToken ct)
     {
         if (request.DailySendCap is < 0) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("dailySendCap", "invalid", "errors.validation.dailySendCap.invalid")]);
         var s = await db.TenantSettings.FirstAsync(ct);
@@ -262,7 +263,7 @@ public static class MessagingEndpoints
     }
 
     /// <summary>Doc 06: a real customer statement — positions per currency, open invoices, payments, and what we sent.</summary>
-    private static async Task<IResult> StatementAsync(Guid id, HttpContext context, TenantDbContext db, AgingService aging, FinanceAi.Infrastructure.Ledger.LedgerService ledger, CancellationToken ct)
+    private static async Task<Results<Ok<StatementResponse>, ProblemHttpResult>> StatementAsync(Guid id, HttpContext context, TenantDbContext db, AgingService aging, FinanceAi.Infrastructure.Ledger.LedgerService ledger, CancellationToken ct)
     {
         if (!await db.Customers.AnyAsync(c => c.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         var positions = (await ledger.CustomerPositionAsync(id, ct)).Select(p => new CustomerPositionDto(p.Currency, MoneyDto.From(p.OpenBalance, p.Currency), p.OpenInvoiceCount, MoneyDto.From(p.UnappliedCash, p.Currency), MoneyDto.From(p.UnappliedCredit, p.Currency))).ToList();
@@ -294,11 +295,11 @@ public static class MessagingEndpoints
             m.Attempts, m.NextAttemptAt?.ToString("O", CultureInfo.InvariantCulture), m.FailureReason, m.CancelReason, m.CreatedAt.ToString("O", CultureInfo.InvariantCulture), m.RowVersion);
     }
 
-    private static IResult Invalid(HttpContext context, InvalidTransitionException ex) =>
+    private static ProblemHttpResult Invalid(HttpContext context, InvalidTransitionException ex) =>
         ApiProblems.Create(context, StatusCodes.Status409Conflict, "invalid_transition", $"No transition from {ex.From} on {ex.Event}.", "errors.invalid_transition",
             [new ApiProblems.FieldError("event", "invalid_transition", "errors.invalid_transition", new Dictionary<string, string> { ["from"] = ex.From, ["event"] = ex.Event })]);
 
-    private static IResult Rule(HttpContext context, CaseException ex) => ex.Code switch
+    private static ProblemHttpResult Rule(HttpContext context, CaseException ex) => ex.Code switch
     {
         "case_not_found" or "template_not_found" or "message_not_found" or "contact_not_found" => ApiProblems.NotFoundProblem(context),
         "template_exists" => ApiProblems.Create(context, StatusCodes.Status409Conflict, "template_exists", "A template with this key, channel and language exists; post a new version to it.", "errors.template_exists"),

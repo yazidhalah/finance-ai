@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Globalization;
 using FinanceAi.Api.Authorization;
 using FinanceAi.Api.Contracts;
@@ -20,19 +21,19 @@ public static class PromiseEndpoints
     {
         ArgumentNullException.ThrowIfNull(api);
 
-        api.MapPost("/cases/{id:guid}/promises", RecordAsync).Produces<PromiseResponse>(201).RequiresPermission(Permissions.PtpWrite).WithName("RecordPromise");
+        api.MapPost("/cases/{id:guid}/promises", RecordAsync).RequiresPermission(Permissions.PtpWrite).WithName("RecordPromise");
         var promises = api.MapGroup("/promises");
-        promises.MapGet("/", ListAsync).Produces<PromiseListResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("ListPromises");
-        promises.MapGet("/{id:guid}", GetAsync).Produces<PromiseResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("GetPromise");
-        promises.MapPost("/{id:guid}/confirm", ConfirmAsync).Produces<PromiseResponse>(200).RequiresPermission(Permissions.PtpWrite).WithName("ConfirmPromise");
-        promises.MapPost("/{id:guid}/reject", RejectAsync).Produces<PromiseResponse>(200).RequiresPermission(Permissions.PtpWrite).WithName("RejectPromise");
-        promises.MapPost("/{id:guid}/cancel", CancelAsync).Produces<PromiseResponse>(200).RequiresPermission(Permissions.PtpWrite).WithName("CancelPromise");
-        api.MapGet("/customers/{id:guid}/promise-history", HistoryAsync).Produces<PromiseHistoryResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("PromiseHistory");
+        promises.MapGet("/", ListAsync).RequiresPermission(Permissions.CasesRead).WithName("ListPromises");
+        promises.MapGet("/{id:guid}", GetAsync).RequiresPermission(Permissions.CasesRead).WithName("GetPromise");
+        promises.MapPost("/{id:guid}/confirm", ConfirmAsync).RequiresPermission(Permissions.PtpWrite).WithName("ConfirmPromise");
+        promises.MapPost("/{id:guid}/reject", RejectAsync).RequiresPermission(Permissions.PtpWrite).WithName("RejectPromise");
+        promises.MapPost("/{id:guid}/cancel", CancelAsync).RequiresPermission(Permissions.PtpWrite).WithName("CancelPromise");
+        api.MapGet("/customers/{id:guid}/promise-history", HistoryAsync).RequiresPermission(Permissions.CasesRead).WithName("PromiseHistory");
 
         return api;
     }
 
-    private static async Task<IResult> RecordAsync(Guid id, RecordPromiseRequest request, HttpContext context, CurrentUser user, TenantDbContext db, PromiseService promises, CaseService cases, CancellationToken ct)
+    private static async Task<Results<Created<PromiseResponse>, ProblemHttpResult>> RecordAsync(Guid id, RecordPromiseRequest request, HttpContext context, CurrentUser user, TenantDbContext db, PromiseService promises, CaseService cases, CancellationToken ct)
     {
         if (!await db.Cases.AnyAsync(c => c.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
 
@@ -56,7 +57,7 @@ public static class PromiseEndpoints
         }
     }
 
-    private static async Task<IResult> ListAsync(HttpContext context, TenantDbContext db, CaseService cases, CancellationToken ct)
+    private static async Task<Results<Ok<PromiseListResponse>, ProblemHttpResult>> ListAsync(HttpContext context, TenantDbContext db, CaseService cases, CancellationToken ct)
     {
         var q = context.Request.Query;
         var query = db.Promises.AsQueryable();
@@ -82,13 +83,13 @@ public static class PromiseEndpoints
         return TypedResults.Ok(new PromiseListResponse(shaped, shaped.Count, Iso(today)));
     }
 
-    private static async Task<IResult> GetAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<PromiseResponse>, ProblemHttpResult>> GetAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var p = await db.Promises.FirstOrDefaultAsync(x => x.Id == id, ct);
         return p is null ? ApiProblems.NotFoundProblem(context) : TypedResults.Ok(await ToResponseAsync(p, db, [], ct));
     }
 
-    private static async Task<IResult> ConfirmAsync(Guid id, ConfirmPromiseRequest request, HttpContext context, CurrentUser user, TenantDbContext db, PromiseService promises, CancellationToken ct)
+    private static async Task<Results<Ok<PromiseResponse>, ProblemHttpResult>> ConfirmAsync(Guid id, ConfirmPromiseRequest request, HttpContext context, CurrentUser user, TenantDbContext db, PromiseService promises, CancellationToken ct)
     {
         if (!await db.Promises.AnyAsync(p => p.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         decimal? amount = null;
@@ -117,7 +118,7 @@ public static class PromiseEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> RejectAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, PromiseService promises, CancellationToken ct)
+    private static async Task<Results<Ok<PromiseResponse>, ProblemHttpResult>> RejectAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, PromiseService promises, CancellationToken ct)
     {
         if (!await db.Promises.AnyAsync(p => p.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         if (string.IsNullOrWhiteSpace(request.Reason)) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("reason", "required", "errors.validation.reason.required")]);
@@ -129,7 +130,7 @@ public static class PromiseEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> CancelAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, PromiseService promises, CancellationToken ct)
+    private static async Task<Results<Ok<PromiseResponse>, ProblemHttpResult>> CancelAsync(Guid id, ReasonRequest request, HttpContext context, CurrentUser user, TenantDbContext db, PromiseService promises, CancellationToken ct)
     {
         if (!await db.Promises.AnyAsync(p => p.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         if (string.IsNullOrWhiteSpace(request.Reason)) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("reason", "required", "errors.validation.reason.required")]);
@@ -141,7 +142,7 @@ public static class PromiseEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> HistoryAsync(Guid id, HttpContext context, TenantDbContext db, PromiseService promises, CaseService cases, CancellationToken ct)
+    private static async Task<Results<Ok<PromiseHistoryResponse>, ProblemHttpResult>> HistoryAsync(Guid id, HttpContext context, TenantDbContext db, PromiseService promises, CaseService cases, CancellationToken ct)
     {
         if (!await db.Customers.AnyAsync(c => c.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         var today = (await cases.ContextAsync(ct)).Today;
@@ -167,11 +168,11 @@ public static class PromiseEndpoints
             p.CreatedAt.ToString("O", CultureInfo.InvariantCulture), p.RowVersion, invoices, superseded);
     }
 
-    private static IResult Invalid(HttpContext context, InvalidTransitionException ex) =>
+    private static ProblemHttpResult Invalid(HttpContext context, InvalidTransitionException ex) =>
         ApiProblems.Create(context, StatusCodes.Status409Conflict, "invalid_transition", $"No transition from {ex.From} on {ex.Event}.", "errors.invalid_transition",
             [new ApiProblems.FieldError("event", "invalid_transition", "errors.invalid_transition", new Dictionary<string, string> { ["from"] = ex.From, ["event"] = ex.Event })]);
 
-    private static IResult Rule(HttpContext context, CaseException ex) => ex.Code switch
+    private static ProblemHttpResult Rule(HttpContext context, CaseException ex) => ex.Code switch
     {
         "case_not_found" or "promise_not_found" => ApiProblems.NotFoundProblem(context),
         _ => ApiProblems.BusinessRuleProblem(context, ex.Code, ex.Field, ex.Meta),

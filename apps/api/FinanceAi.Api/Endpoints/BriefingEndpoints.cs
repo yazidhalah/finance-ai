@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Globalization;
 using System.Text.Json;
 using FinanceAi.Api.Authorization;
@@ -23,17 +24,17 @@ public static class BriefingEndpoints
         ArgumentNullException.ThrowIfNull(api);
 
         var briefings = api.MapGroup("/briefings");
-        briefings.MapGet("/today", TodayAsync).Produces<BriefingResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("BriefingToday");
-        briefings.MapGet("/{date}", ByDateAsync).Produces<BriefingResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("BriefingByDate");
-        briefings.MapPost("/regenerate", RegenerateAsync).Produces<BriefingResponse>(200).RequiresPermission(Permissions.AiSettingsWrite).WithName("BriefingRegenerate");
-        api.MapGet("/organization/briefing-settings", SettingsAsync).Produces<BriefingSettingsResponse>(200).RequiresPermission(Permissions.TenantRead).WithName("BriefingSettings");
-        api.MapPatch("/organization/briefing-settings", UpdateSettingsAsync).Produces<BriefingSettingsResponse>(200).RequiresPermission(Permissions.TenantSettingsWrite).WithName("UpdateBriefingSettings");
+        briefings.MapGet("/today", TodayAsync).RequiresPermission(Permissions.CasesRead).WithName("BriefingToday");
+        briefings.MapGet("/{date}", ByDateAsync).RequiresPermission(Permissions.CasesRead).WithName("BriefingByDate");
+        briefings.MapPost("/regenerate", RegenerateAsync).RequiresPermission(Permissions.AiSettingsWrite).WithName("BriefingRegenerate");
+        api.MapGet("/organization/briefing-settings", SettingsAsync).RequiresPermission(Permissions.TenantRead).WithName("BriefingSettings");
+        api.MapPatch("/organization/briefing-settings", UpdateSettingsAsync).RequiresPermission(Permissions.TenantSettingsWrite).WithName("UpdateBriefingSettings");
 
         return api;
     }
 
     /// <summary>Precomputed by the sweep (PRD-22); generated on first read only when nothing exists yet, so the screen never waits on a schedule.</summary>
-    private static async Task<IResult> TodayAsync(HttpContext context, TenantDbContext db, BriefingService briefings, CaseService cases, CancellationToken ct)
+    private static async Task<Results<Ok<BriefingResponse>, ProblemHttpResult>> TodayAsync(HttpContext context, TenantDbContext db, BriefingService briefings, CaseService cases, CancellationToken ct)
     {
         var language = Language(context);
         if (language is null) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("language", "invalid", "errors.validation.language.invalid")]);
@@ -42,7 +43,7 @@ public static class BriefingEndpoints
         return TypedResults.Ok(await ShapeAsync(row, db, cases, ct));
     }
 
-    private static async Task<IResult> ByDateAsync(string date, HttpContext context, TenantDbContext db, BriefingService briefings, CaseService cases, CancellationToken ct)
+    private static async Task<Results<Ok<BriefingResponse>, ProblemHttpResult>> ByDateAsync(string date, HttpContext context, TenantDbContext db, BriefingService briefings, CaseService cases, CancellationToken ct)
     {
         if (!DateOnly.TryParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day)) return ApiProblems.NotFoundProblem(context);
         var language = Language(context);
@@ -53,7 +54,7 @@ public static class BriefingEndpoints
         return row is null ? ApiProblems.NotFoundProblem(context) : TypedResults.Ok(await ShapeAsync(row, db, cases, ct));
     }
 
-    private static async Task<IResult> RegenerateAsync(HttpContext context, CurrentUser user, TenantDbContext db, BriefingService briefings, CaseService cases, CancellationToken ct)
+    private static async Task<Results<Ok<BriefingResponse>, ProblemHttpResult>> RegenerateAsync(HttpContext context, CurrentUser user, TenantDbContext db, BriefingService briefings, CaseService cases, CancellationToken ct)
     {
         var q = context.Request.Query["date"].ToString();
         var ctx = await cases.ContextAsync(ct);
@@ -68,13 +69,13 @@ public static class BriefingEndpoints
         return TypedResults.Ok(await ShapeAsync(generated.Briefings.First(b => b.Language == language), db, cases, ct));
     }
 
-    private static async Task<IResult> SettingsAsync(TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<BriefingSettingsResponse>, ProblemHttpResult>> SettingsAsync(TenantDbContext db, CancellationToken ct)
     {
         var s = await db.TenantSettings.AsNoTracking().FirstAsync(ct);
         return TypedResults.Ok(await ShapeSettingsAsync(s, db, ct));
     }
 
-    private static async Task<IResult> UpdateSettingsAsync(BriefingSettingsRequest request, HttpContext context, CurrentUser user, TenantDbContext db, FinanceAi.Infrastructure.Audit.IAuditWriter audit, CancellationToken ct)
+    private static async Task<Results<Ok<BriefingSettingsResponse>, ProblemHttpResult>> UpdateSettingsAsync(BriefingSettingsRequest request, HttpContext context, CurrentUser user, TenantDbContext db, FinanceAi.Infrastructure.Audit.IAuditWriter audit, CancellationToken ct)
     {
         var validation = new Validation();
         TimeOnly? sendAt = null;

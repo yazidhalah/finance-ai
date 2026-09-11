@@ -250,6 +250,7 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.BriefingLanguage).HasColumnName("briefing_language").HasColumnType("char(2)");
             e.Property(x => x.BriefingEmailEnabled).HasColumnName("briefing_email_enabled");
             e.Property(x => x.BriefingRecipientUserIds).HasColumnName("briefing_recipient_user_ids");
+            e.Property(x => x.AlertOwnerEmailEnabled).HasColumnName("alert_owner_email_enabled");
             e.Property(x => x.DunningCadenceDays).HasColumnName("dunning_cadence_days");
             e.Property(x => x.QuietHoursStart).HasColumnName("quiet_hours_start");
             e.Property(x => x.QuietHoursEnd).HasColumnName("quiet_hours_end");

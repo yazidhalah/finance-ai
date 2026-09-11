@@ -1393,6 +1393,8 @@ export const auditApi = {
 export const opsApi = {
   latestRun: () => request<{ run: InvariantRun | null }>('/organization/invariants'),
   run: () => request<InvariantRun>('/organization/invariants/run', { method: 'POST', body: {} }),
-  alerts: (all = false) => request<{ items: Alert[]; openCount: number }>(`/organization/alerts${all ? '?all=1' : ''}`),
+  alerts: (all = false) => request<{ items: Alert[]; openCount: number; ownerEmailEnabled: boolean }>(`/organization/alerts${all ? '?all=1' : ''}`),
+  /** Slice 22: email the organization's Owners on critical alerts. */
+  alertSettings: (ownerEmailEnabled: boolean) => request<{ ownerEmailEnabled: boolean }>('/organization/alert-settings', { method: 'PATCH', body: { ownerEmailEnabled } }),
   acknowledge: (id: string) => request<Alert>(`/organization/alerts/${id}/acknowledge`, { method: 'POST', body: {} }),
 }

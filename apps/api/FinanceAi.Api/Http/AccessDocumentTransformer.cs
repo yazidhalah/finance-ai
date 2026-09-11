@@ -97,6 +97,13 @@ public sealed class AccessDocumentTransformer : IOpenApiDocumentTransformer, IOp
             }
         }
 
+        // Slice 22: a 201 always carries the new row's URL (TypedResults.Created sets it); the document says so.
+        if (operation.Responses.TryGetValue("201", out var created) && created is OpenApiResponse createdResponse)
+        {
+            createdResponse.Headers ??= new Dictionary<string, IOpenApiHeader>();
+            createdResponse.Headers["Location"] = new OpenApiHeader { Description = "The URL of the created resource.", Required = true, Schema = new OpenApiSchema { Type = JsonSchemaType.String, Format = "uri-reference" } };
+        }
+
         // The failure responses every operation can produce, all as the one problem shape.
         var anonymous = permission is null && access?.Kind == DeclaredAccessKind.Anonymous;
         if (!anonymous)

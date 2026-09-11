@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Text.Json;
 using FinanceAi.Api.Authorization;
 using FinanceAi.Api.Contracts;
@@ -22,37 +23,59 @@ public static class OpsEndpoints
     {
         ArgumentNullException.ThrowIfNull(api);
 
-        api.MapGet("/organization/invariants", LatestRunAsync).Produces<LatestInvariantRunResponse>(200).RequiresPermission(Permissions.AuditRead).WithName("LatestInvariantRun");
-        api.MapPost("/organization/invariants/run", RunAsync).Produces<InvariantRunResponse>(200).RequiresPermission(Permissions.TenantSettingsWrite).WithName("RunInvariants");
-        api.MapGet("/organization/alerts", ListAlertsAsync).Produces<AlertListResponse>(200).RequiresPermission(Permissions.AuditRead).WithName("ListAlerts");
-        api.MapPost("/organization/alerts/{id:guid}/acknowledge", AcknowledgeAsync).Produces<AlertDto>(200).RequiresPermission(Permissions.TenantSettingsWrite).WithName("AcknowledgeAlert");
+        api.MapGet("/organization/invariants", LatestRunAsync).RequiresPermission(Permissions.AuditRead).WithName("LatestInvariantRun");
+        api.MapPost("/organization/invariants/run", RunAsync).RequiresPermission(Permissions.TenantSettingsWrite).WithName("RunInvariants");
+        api.MapGet("/organization/alerts", ListAlertsAsync).RequiresPermission(Permissions.AuditRead).WithName("ListAlerts");
+        api.MapPost("/organization/alerts/{id:guid}/acknowledge", AcknowledgeAsync).RequiresPermission(Permissions.TenantSettingsWrite).WithName("AcknowledgeAlert");
+        api.MapPatch("/organization/alert-settings", UpdateAlertSettingsAsync).RequiresPermission(Permissions.TenantSettingsWrite).WithName("UpdateAlertSettings");
 
         return api;
     }
 
-    private static async Task<IResult> LatestRunAsync(InvariantService invariants, CancellationToken ct)
+    private static async Task<Results<Ok<LatestInvariantRunResponse>, ProblemHttpResult>> LatestRunAsync(InvariantService invariants, CancellationToken ct)
     {
         var run = await invariants.LatestAsync(ct);
         return TypedResults.Ok(new LatestInvariantRunResponse(run is null ? null : Shape(run)));
     }
 
-    private static async Task<IResult> RunAsync(CurrentUser user, OpsMonitor ops, CancellationToken ct)
+    private static async Task<Results<Ok<InvariantRunResponse>, ProblemHttpResult>> RunAsync(CurrentUser user, OpsMonitor ops, CancellationToken ct)
     {
         var run = await ops.RunAsync(InvariantRunTrigger.Manual, user.UserId, ct);
         return TypedResults.Ok(Shape(run));
     }
 
-    private static async Task<IResult> ListAlertsAsync(HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<AlertListResponse>, ProblemHttpResult>> ListAlertsAsync(HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var includeAcknowledged = context.Request.Query["all"].ToString() is "1" or "true";
         var query = db.Alerts.AsNoTracking();
         if (!includeAcknowledged) query = query.Where(a => a.AcknowledgedAt == null);
         var items = await query.OrderByDescending(a => a.RaisedAt).Take(200).ToListAsync(ct);
         var open = await db.Alerts.CountAsync(a => a.AcknowledgedAt == null, ct);
-        return TypedResults.Ok(new AlertListResponse(items.Select(Shape).ToList(), open));
+        var ownerEmail = await db.TenantSettings.Select(s => s.AlertOwnerEmailEnabled).FirstOrDefaultAsync(ct);
+        return TypedResults.Ok(new AlertListResponse(items.Select(Shape).ToList(), open, ownerEmail));
     }
 
-    private static async Task<IResult> AcknowledgeAsync(Guid id, HttpContext context, CurrentUser user, AlertService alerts, IAuditWriter audit, TenantDbContext db, CancellationToken ct)
+    /// <summary>Slice 22: per-tenant alert routing — the Owners' copy of critical alerts. Audited.</summary>
+    private static async Task<Results<Ok<AlertSettingsResponse>, ProblemHttpResult>> UpdateAlertSettingsAsync(AlertSettingsRequest request, HttpContext context, CurrentUser user, TenantDbContext db, IAuditWriter audit, CancellationToken ct)
+    {
+        if (request.OwnerEmailEnabled is null) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("ownerEmailEnabled", "required", "errors.validation.ownerEmailEnabled.required")]);
+        var settings = await db.TenantSettings.FirstAsync(ct);
+        var before = settings.AlertOwnerEmailEnabled;
+        settings.AlertOwnerEmailEnabled = request.OwnerEmailEnabled.Value;
+        await db.SaveChangesAsync(ct);
+        await audit.WriteAsync(new AuditEvent
+        {
+            TenantId = db.CurrentTenantId,
+            ActorUserId = user.UserId,
+            EventType = "tenant.alert_settings_changed",
+            EntityType = "tenant",
+            EntityId = db.CurrentTenantId,
+            Changes = JsonSerializer.Serialize(new { alertOwnerEmailEnabled = new { old = before, @new = settings.AlertOwnerEmailEnabled } }, AlertService.JsonOptions),
+        }, ct);
+        return TypedResults.Ok(new AlertSettingsResponse(settings.AlertOwnerEmailEnabled));
+    }
+
+    private static async Task<Results<Ok<AlertDto>, ProblemHttpResult>> AcknowledgeAsync(Guid id, HttpContext context, CurrentUser user, AlertService alerts, IAuditWriter audit, TenantDbContext db, CancellationToken ct)
     {
         var alert = await alerts.AcknowledgeAsync(id, user.UserId, ct);
         if (alert is null) return ApiProblems.NotFoundProblem(context);

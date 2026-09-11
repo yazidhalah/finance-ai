@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Globalization;
 using System.Text.Json;
 using FinanceAi.Api.Authorization;
@@ -27,23 +28,23 @@ public static class AiEndpoints
         ArgumentNullException.ThrowIfNull(api);
 
         var inbound = api.MapGroup("/inbound-messages");
-        inbound.MapGet("/", ListInboundAsync).Produces<InboundMessageListResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("ListInboundMessages");
-        inbound.MapPost("/", CreateInboundAsync).Produces<InboundMessageResponse>(201).RequiresPermission(Permissions.CasesWrite).WithName("CreateInboundMessage");
-        inbound.MapGet("/{id:guid}", GetInboundAsync).Produces<InboundMessageResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("GetInboundMessage");
-        inbound.MapPost("/{id:guid}/classify", ClassifyAsync).Produces<AiSuggestionResponse>(200).RequiresPermission(Permissions.CasesWrite).WithName("ClassifyInboundMessage");
-        inbound.MapPost("/{id:guid}/match-customer", MatchAsync).Produces<InboundMessageResponse>(200).RequiresPermission(Permissions.CasesWrite).WithName("MatchInboundCustomer");
-        inbound.MapPost("/{id:guid}/classify-manually", ClassifyManuallyAsync).Produces<InboundMessageResponse>(200).RequiresPermission(Permissions.CasesWrite).WithName("ClassifyInboundManually");
+        inbound.MapGet("/", ListInboundAsync).RequiresPermission(Permissions.CasesRead).WithName("ListInboundMessages");
+        inbound.MapPost("/", CreateInboundAsync).RequiresPermission(Permissions.CasesWrite).WithName("CreateInboundMessage");
+        inbound.MapGet("/{id:guid}", GetInboundAsync).RequiresPermission(Permissions.CasesRead).WithName("GetInboundMessage");
+        inbound.MapPost("/{id:guid}/classify", ClassifyAsync).RequiresPermission(Permissions.CasesWrite).WithName("ClassifyInboundMessage");
+        inbound.MapPost("/{id:guid}/match-customer", MatchAsync).RequiresPermission(Permissions.CasesWrite).WithName("MatchInboundCustomer");
+        inbound.MapPost("/{id:guid}/classify-manually", ClassifyManuallyAsync).RequiresPermission(Permissions.CasesWrite).WithName("ClassifyInboundManually");
 
         var ai = api.MapGroup("/ai");
-        ai.MapGet("/suggestions", ListSuggestionsAsync).Produces<AiSuggestionListResponse>(200).RequiresPermission(Permissions.AiSuggestionsRead).WithName("ListAiSuggestions");
-        ai.MapGet("/suggestions/{id:guid}", GetSuggestionAsync).Produces<AiSuggestionResponse>(200).RequiresPermission(Permissions.AiSuggestionsRead).WithName("GetAiSuggestion");
-        ai.MapPost("/suggestions/{id:guid}/approve", ApproveAsync).Produces<AiSuggestionResponse>(200).RequiresPermission(Permissions.AiSuggestionsApprove).WithName("ApproveAiSuggestion");
-        ai.MapPost("/suggestions/{id:guid}/edit-and-approve", EditAndApproveAsync).Produces<AiSuggestionResponse>(200).RequiresPermission(Permissions.AiSuggestionsApprove).WithName("EditAndApproveAiSuggestion");
-        ai.MapPost("/suggestions/{id:guid}/reject", RejectAsync).Produces<AiSuggestionResponse>(200).RequiresPermission(Permissions.AiSuggestionsApprove).WithName("RejectAiSuggestion");
-        ai.MapGet("/health", HealthAsync).Produces<AiHealthResponse>(200).RequiresPermission(Permissions.TenantRead).WithName("AiHealth");
+        ai.MapGet("/suggestions", ListSuggestionsAsync).RequiresPermission(Permissions.AiSuggestionsRead).WithName("ListAiSuggestions");
+        ai.MapGet("/suggestions/{id:guid}", GetSuggestionAsync).RequiresPermission(Permissions.AiSuggestionsRead).WithName("GetAiSuggestion");
+        ai.MapPost("/suggestions/{id:guid}/approve", ApproveAsync).RequiresPermission(Permissions.AiSuggestionsApprove).WithName("ApproveAiSuggestion");
+        ai.MapPost("/suggestions/{id:guid}/edit-and-approve", EditAndApproveAsync).RequiresPermission(Permissions.AiSuggestionsApprove).WithName("EditAndApproveAiSuggestion");
+        ai.MapPost("/suggestions/{id:guid}/reject", RejectAsync).RequiresPermission(Permissions.AiSuggestionsApprove).WithName("RejectAiSuggestion");
+        ai.MapGet("/health", HealthAsync).RequiresPermission(Permissions.TenantRead).WithName("AiHealth");
 
-        api.MapGet("/organization/ai-settings", AiSettingsAsync).Produces<AiSettingsResponse>(200).RequiresPermission(Permissions.TenantRead).WithName("AiSettings");
-        api.MapPatch("/organization/ai-settings", UpdateAiSettingsAsync).Produces<AiSettingsResponse>(200).RequiresPermission(Permissions.AiSettingsWrite).WithName("UpdateAiSettings");
+        api.MapGet("/organization/ai-settings", AiSettingsAsync).RequiresPermission(Permissions.TenantRead).WithName("AiSettings");
+        api.MapPatch("/organization/ai-settings", UpdateAiSettingsAsync).RequiresPermission(Permissions.AiSettingsWrite).WithName("UpdateAiSettings");
 
         return api;
     }
@@ -52,7 +53,7 @@ public static class AiEndpoints
     // Inbound messages
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> ListInboundAsync(HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<InboundMessageListResponse>, ProblemHttpResult>> ListInboundAsync(HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var q = context.Request.Query;
         var query = db.InboundMessages.AsQueryable();
@@ -72,7 +73,7 @@ public static class AiEndpoints
         return TypedResults.Ok(new InboundMessageListResponse(shaped, total));
     }
 
-    private static async Task<IResult> CreateInboundAsync(CreateInboundMessageRequest request, HttpContext context, CurrentUser user, TenantDbContext db, InboundService inbound, CancellationToken ct)
+    private static async Task<Results<Created<InboundMessageResponse>, ProblemHttpResult>> CreateInboundAsync(CreateInboundMessageRequest request, HttpContext context, CurrentUser user, TenantDbContext db, InboundService inbound, CancellationToken ct)
     {
         var validation = new Validation().Require("channel", request.Channel).Require("body", request.Body).MaxLength("body", request.Body, 100_000)
             .MaxLength("subject", request.Subject, 500).MaxLength("fromAddress", request.FromAddress, 320).Email("fromAddress", request.FromAddress);
@@ -97,13 +98,13 @@ public static class AiEndpoints
         }
     }
 
-    private static async Task<IResult> GetInboundAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<InboundMessageResponse>, ProblemHttpResult>> GetInboundAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var m = await db.InboundMessages.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
         return m is null ? ApiProblems.NotFoundProblem(context) : TypedResults.Ok(await MessageAsync(m, db, includeSuggestion: true, ct));
     }
 
-    private static async Task<IResult> ClassifyAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, InboundService inbound, CancellationToken ct)
+    private static async Task<Results<Ok<AiSuggestionResponse>, ProblemHttpResult>> ClassifyAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, InboundService inbound, CancellationToken ct)
     {
         if (!await db.InboundMessages.AnyAsync(m => m.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         try
@@ -114,7 +115,7 @@ public static class AiEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> MatchAsync(Guid id, MatchCustomerRequest request, HttpContext context, CurrentUser user, TenantDbContext db, InboundService inbound, CancellationToken ct)
+    private static async Task<Results<Ok<InboundMessageResponse>, ProblemHttpResult>> MatchAsync(Guid id, MatchCustomerRequest request, HttpContext context, CurrentUser user, TenantDbContext db, InboundService inbound, CancellationToken ct)
     {
         if (!await db.InboundMessages.AnyAsync(m => m.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         if (request.CustomerId is not { } customerId) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("customerId", "required", "errors.validation.customerId.required")]);
@@ -126,7 +127,7 @@ public static class AiEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> ClassifyManuallyAsync(Guid id, ManualClassificationRequest request, HttpContext context, CurrentUser user, TenantDbContext db, InboundService inbound, CancellationToken ct)
+    private static async Task<Results<Ok<InboundMessageResponse>, ProblemHttpResult>> ClassifyManuallyAsync(Guid id, ManualClassificationRequest request, HttpContext context, CurrentUser user, TenantDbContext db, InboundService inbound, CancellationToken ct)
     {
         if (!await db.InboundMessages.AnyAsync(m => m.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         var validation = new Validation().Require("classification", request.Classification).MaxLength("note", request.Note, 2000);
@@ -144,7 +145,7 @@ public static class AiEndpoints
     // Suggestions and the human gates
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> ListSuggestionsAsync(HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<AiSuggestionListResponse>, ProblemHttpResult>> ListSuggestionsAsync(HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var q = context.Request.Query;
         var query = db.AiSuggestions.AsQueryable();
@@ -159,13 +160,13 @@ public static class AiEndpoints
         return TypedResults.Ok(new AiSuggestionListResponse(shaped, total));
     }
 
-    private static async Task<IResult> GetSuggestionAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<AiSuggestionResponse>, ProblemHttpResult>> GetSuggestionAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var s = await db.AiSuggestions.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
         return s is null ? ApiProblems.NotFoundProblem(context) : TypedResults.Ok(await SuggestionAsync(s, db, includeMessage: true, ct));
     }
 
-    private static async Task<IResult> ApproveAsync(Guid id, ApproveSuggestionRequest request, HttpContext context, CurrentUser user, TenantDbContext db, InboundService inbound, CancellationToken ct)
+    private static async Task<Results<Ok<AiSuggestionResponse>, ProblemHttpResult>> ApproveAsync(Guid id, ApproveSuggestionRequest request, HttpContext context, CurrentUser user, TenantDbContext db, InboundService inbound, CancellationToken ct)
     {
         if (!await db.AiSuggestions.AnyAsync(s => s.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         if (request.Note is { Length: > 2000 }) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("note", "too_long", "errors.validation.note.too_long")]);
@@ -177,7 +178,7 @@ public static class AiEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> EditAndApproveAsync(Guid id, EditAndApproveSuggestionRequest request, HttpContext context, CurrentUser user, TenantDbContext db, InboundService inbound, CancellationToken ct)
+    private static async Task<Results<Ok<AiSuggestionResponse>, ProblemHttpResult>> EditAndApproveAsync(Guid id, EditAndApproveSuggestionRequest request, HttpContext context, CurrentUser user, TenantDbContext db, InboundService inbound, CancellationToken ct)
     {
         if (!await db.AiSuggestions.AnyAsync(s => s.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         var validation = new Validation().MaxLength("note", request.Note, 2000).Currency("amount.currency", request.Amount?.Currency);
@@ -210,7 +211,7 @@ public static class AiEndpoints
         }
     }
 
-    private static async Task<IResult> RejectAsync(Guid id, RejectSuggestionRequest request, HttpContext context, CurrentUser user, TenantDbContext db, InboundService inbound, CancellationToken ct)
+    private static async Task<Results<Ok<AiSuggestionResponse>, ProblemHttpResult>> RejectAsync(Guid id, RejectSuggestionRequest request, HttpContext context, CurrentUser user, TenantDbContext db, InboundService inbound, CancellationToken ct)
     {
         if (!await db.AiSuggestions.AnyAsync(s => s.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         var validation = new Validation().Require("reason", request.Reason).MaxLength("reason", request.Reason, 2000);
@@ -227,7 +228,7 @@ public static class AiEndpoints
     // Health and settings
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> HealthAsync(TenantDbContext db, IAiClient ai, CancellationToken ct)
+    private static async Task<Results<Ok<AiHealthResponse>, ProblemHttpResult>> HealthAsync(TenantDbContext db, IAiClient ai, CancellationToken ct)
     {
         var settings = await db.TenantSettings.AsNoTracking().FirstAsync(ct);
         var configured = HttpAiClient.Token is not null;
@@ -235,13 +236,13 @@ public static class AiEndpoints
         return TypedResults.Ok(new AiHealthResponse(configured, h.Reachable, h.Ready, h.ModelName, h.Digest, h.PromptVersion, h.Error, settings.AiEnabled));
     }
 
-    private static async Task<IResult> AiSettingsAsync(TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<AiSettingsResponse>, ProblemHttpResult>> AiSettingsAsync(TenantDbContext db, CancellationToken ct)
     {
         var s = await db.TenantSettings.AsNoTracking().FirstAsync(ct);
         return TypedResults.Ok(Settings(s));
     }
 
-    private static async Task<IResult> UpdateAiSettingsAsync(AiSettingsRequest request, HttpContext context, CurrentUser user, TenantDbContext db, FinanceAi.Infrastructure.Audit.IAuditWriter audit, CancellationToken ct)
+    private static async Task<Results<Ok<AiSettingsResponse>, ProblemHttpResult>> UpdateAiSettingsAsync(AiSettingsRequest request, HttpContext context, CurrentUser user, TenantDbContext db, FinanceAi.Infrastructure.Audit.IAuditWriter audit, CancellationToken ct)
     {
         decimal? threshold = null;
         if (request.AiMinConfidence is { Length: > 0 } t)
@@ -321,7 +322,7 @@ public static class AiEndpoints
             Iso(s.CreatedAt), s.HumanDecision, s.DecidedBy, s.DecidedAt is { } d ? Iso(d) : null, s.DecisionReason, message);
     }
 
-    private static IResult Rule(HttpContext context, CaseException ex) => ex.Code switch
+    private static ProblemHttpResult Rule(HttpContext context, CaseException ex) => ex.Code switch
     {
         "message_not_found" or "suggestion_not_found" or "customer_not_found" or "case_not_found" or "invoice_not_found" => ApiProblems.NotFoundProblem(context),
         "ai_unavailable" or "ai_busy" or "ai_not_configured" or "ai_bad_response" => ApiProblems.Create(context, StatusCodes.Status503ServiceUnavailable, ex.Code, "The AI service is not available; the message stays in the human queue.", $"errors.rule.{ex.Code}"),

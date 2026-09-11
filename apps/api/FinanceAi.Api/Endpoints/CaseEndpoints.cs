@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Globalization;
 using System.Text.Json;
 using FinanceAi.Api.Authorization;
@@ -21,19 +22,19 @@ public static class CaseEndpoints
     {
         ArgumentNullException.ThrowIfNull(api);
 
-        api.MapGet("/queue", QueueAsync).Produces<QueueResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("Queue");
-        api.MapGet("/queue/summary", SummaryAsync).Produces<QueueSummaryResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("QueueSummary");
+        api.MapGet("/queue", QueueAsync).RequiresPermission(Permissions.CasesRead).WithName("Queue");
+        api.MapGet("/queue/summary", SummaryAsync).RequiresPermission(Permissions.CasesRead).WithName("QueueSummary");
 
         var cases = api.MapGroup("/cases");
-        cases.MapGet("/", ListAsync).Produces<CaseListResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("ListCases");
-        cases.MapPost("/", CreateAsync).Produces<QueueItemDto>(201).RequiresPermission(Permissions.CasesWrite).WithName("CreateCase");
-        cases.MapPost("/sweep", SweepAsync).Produces<SweepResponse>(200).RequiresPermission(Permissions.CasesWrite).WithName("SweepCases");
-        cases.MapGet("/{id:guid}", GetAsync).Produces<CaseDetailResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("GetCase");
-        cases.MapGet("/{id:guid}/timeline", TimelineAsync).Produces<TimelineListResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("CaseTimeline");
-        cases.MapPost("/{id:guid}/transitions", TransitionAsync).Produces<QueueItemDto>(200).RequiresPermission(Permissions.CasesWrite).WithName("CaseTransition");
-        cases.MapPost("/{id:guid}/assign", AssignAsync).Produces<QueueItemDto>(200).RequiresPermission(Permissions.CasesAssign).WithName("AssignCase");
-        cases.MapPost("/{id:guid}/activities", ActivityAsync).Produces<TimelineEntryDto>(201).RequiresPermission(Permissions.CasesWrite).WithName("LogCaseActivity");
-        cases.MapPost("/{id:guid}/snooze", SnoozeAsync).Produces<QueueItemDto>(200).RequiresPermission(Permissions.CasesWrite).WithName("SnoozeCase");
+        cases.MapGet("/", ListAsync).RequiresPermission(Permissions.CasesRead).WithName("ListCases");
+        cases.MapPost("/", CreateAsync).RequiresPermission(Permissions.CasesWrite).WithName("CreateCase");
+        cases.MapPost("/sweep", SweepAsync).RequiresPermission(Permissions.CasesWrite).WithName("SweepCases");
+        cases.MapGet("/{id:guid}", GetAsync).RequiresPermission(Permissions.CasesRead).WithName("GetCase");
+        cases.MapGet("/{id:guid}/timeline", TimelineAsync).RequiresPermission(Permissions.CasesRead).WithName("CaseTimeline");
+        cases.MapPost("/{id:guid}/transitions", TransitionAsync).RequiresPermission(Permissions.CasesWrite).WithName("CaseTransition");
+        cases.MapPost("/{id:guid}/assign", AssignAsync).RequiresPermission(Permissions.CasesAssign).WithName("AssignCase");
+        cases.MapPost("/{id:guid}/activities", ActivityAsync).RequiresPermission(Permissions.CasesWrite).WithName("LogCaseActivity");
+        cases.MapPost("/{id:guid}/snooze", SnoozeAsync).RequiresPermission(Permissions.CasesWrite).WithName("SnoozeCase");
 
         return api;
     }
@@ -63,7 +64,7 @@ public static class CaseEndpoints
         };
     }
 
-    private static async Task<IResult> QueueAsync(HttpContext context, CurrentUser user, TenantDbContext db, CaseService cases, TimeProvider time, CancellationToken ct)
+    private static async Task<Results<Ok<QueueResponse>, ProblemHttpResult>> QueueAsync(HttpContext context, CurrentUser user, TenantDbContext db, CaseService cases, TimeProvider time, CancellationToken ct)
     {
         var scope = await ScopeAsync(context, user, db, ct);
         var q = context.Request.Query;
@@ -96,7 +97,7 @@ public static class CaseEndpoints
         return TypedResults.Ok(new QueueResponse(await ShapeAsync(page, db, cases, ct), total, now.ToString("O", CultureInfo.InvariantCulture), scope.Scoped));
     }
 
-    private static async Task<IResult> SummaryAsync(HttpContext context, CurrentUser user, TenantDbContext db, CaseService cases, TimeProvider time, CancellationToken ct)
+    private static async Task<Results<Ok<QueueSummaryResponse>, ProblemHttpResult>> SummaryAsync(HttpContext context, CurrentUser user, TenantDbContext db, CaseService cases, TimeProvider time, CancellationToken ct)
     {
         var scope = await ScopeAsync(context, user, db, ct);
         var now = time.GetUtcNow();
@@ -113,7 +114,7 @@ public static class CaseEndpoints
         return TypedResults.Ok(new QueueSummaryResponse(byStatus, byBucket, eligible.Count, active.Count - eligible.Count, scope.Scoped));
     }
 
-    private static async Task<IResult> ListAsync(HttpContext context, CurrentUser user, TenantDbContext db, CaseService cases, CancellationToken ct)
+    private static async Task<Results<Ok<CaseListResponse>, ProblemHttpResult>> ListAsync(HttpContext context, CurrentUser user, TenantDbContext db, CaseService cases, CancellationToken ct)
     {
         var scope = await ScopeAsync(context, user, db, ct);
         var q = context.Request.Query;
@@ -131,7 +132,7 @@ public static class CaseEndpoints
         return TypedResults.Ok(new CaseListResponse(await ShapeAsync(all, db, cases, ct), all.Count, scope.Scoped));
     }
 
-    private static async Task<IResult> GetAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, CaseService cases, CancellationToken ct)
+    private static async Task<Results<Ok<CaseDetailResponse>, ProblemHttpResult>> GetAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, CaseService cases, CancellationToken ct)
     {
         var scope = await ScopeAsync(context, user, db, ct);
         var c = await db.Cases.FirstOrDefaultAsync(x => x.Id == id, ct);
@@ -158,7 +159,7 @@ public static class CaseEndpoints
             invoiceDtos, await TimelineEntriesAsync(c, db, ct), [], [], []));
     }
 
-    private static async Task<IResult> TimelineAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<TimelineListResponse>, ProblemHttpResult>> TimelineAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, CancellationToken ct)
     {
         var scope = await ScopeAsync(context, user, db, ct);
         var c = await db.Cases.FirstOrDefaultAsync(x => x.Id == id, ct);
@@ -238,7 +239,7 @@ public static class CaseEndpoints
     // Writes
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> CreateAsync(CreateCaseRequest request, HttpContext context, CurrentUser user, CaseService cases, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Created<QueueItemDto>, ProblemHttpResult>> CreateAsync(CreateCaseRequest request, HttpContext context, CurrentUser user, CaseService cases, TenantDbContext db, CancellationToken ct)
     {
         if (request.CustomerId is null)
         {
@@ -253,13 +254,13 @@ public static class CaseEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> SweepAsync(CurrentUser user, CaseService cases, CancellationToken ct)
+    private static async Task<Results<Ok<SweepResponse>, ProblemHttpResult>> SweepAsync(CurrentUser user, CaseService cases, CancellationToken ct)
     {
         var r = await cases.SweepAsync(user.UserId, ct);
         return TypedResults.Ok(new SweepResponse(r.Created, r.Resolved, r.Resumed, r.FollowedUp, r.Rescored));
     }
 
-    private static async Task<IResult> TransitionAsync(Guid id, CaseTransitionRequest request, HttpContext context, CurrentUser user, CaseService cases, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<QueueItemDto>, ProblemHttpResult>> TransitionAsync(Guid id, CaseTransitionRequest request, HttpContext context, CurrentUser user, CaseService cases, TenantDbContext db, CancellationToken ct)
     {
         if (!await db.Cases.AnyAsync(c => c.Id == id, ct))
         {
@@ -301,7 +302,7 @@ public static class CaseEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> AssignAsync(Guid id, AssignCaseRequest request, HttpContext context, CurrentUser user, CaseService cases, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<QueueItemDto>, ProblemHttpResult>> AssignAsync(Guid id, AssignCaseRequest request, HttpContext context, CurrentUser user, CaseService cases, TenantDbContext db, CancellationToken ct)
     {
         try
         {
@@ -311,7 +312,7 @@ public static class CaseEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> ActivityAsync(Guid id, CaseActivityRequest request, HttpContext context, CurrentUser user, CaseService cases, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Created<TimelineEntryDto>, ProblemHttpResult>> ActivityAsync(Guid id, CaseActivityRequest request, HttpContext context, CurrentUser user, CaseService cases, TenantDbContext db, CancellationToken ct)
     {
         if (!await db.Cases.AnyAsync(c => c.Id == id, ct)) return ApiProblems.NotFoundProblem(context);   // existence before the body (API-03)
         var validation = new Validation().Require("kind", request.Kind).Require("summary", request.Summary);
@@ -328,7 +329,7 @@ public static class CaseEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static async Task<IResult> SnoozeAsync(Guid id, SnoozeRequest request, HttpContext context, CurrentUser user, CaseService cases, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<QueueItemDto>, ProblemHttpResult>> SnoozeAsync(Guid id, SnoozeRequest request, HttpContext context, CurrentUser user, CaseService cases, TenantDbContext db, CancellationToken ct)
     {
         if (!await db.Cases.AnyAsync(c => c.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
         if (!DateOnly.TryParseExact(request.UntilDate ?? string.Empty, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var until))
@@ -344,7 +345,7 @@ public static class CaseEndpoints
         catch (CaseException ex) { return Rule(context, ex); }
     }
 
-    private static IResult Rule(HttpContext context, CaseException ex) => ex.Code switch
+    private static ProblemHttpResult Rule(HttpContext context, CaseException ex) => ex.Code switch
     {
         "case_not_found" or "customer_not_found" or "member_not_found" => ApiProblems.NotFoundProblem(context),
         "duplicate" => ApiProblems.Create(context, StatusCodes.Status409Conflict, "duplicate", "An open case already exists for this customer.", "errors.duplicate_case"),

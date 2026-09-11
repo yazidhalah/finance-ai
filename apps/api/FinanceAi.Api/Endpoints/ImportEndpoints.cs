@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.Globalization;
 using System.Text.Json;
 using FinanceAi.Api.Authorization;
@@ -29,23 +30,23 @@ public static class ImportEndpoints
         // Bearer authentication, not cookies, so the antiforgery token that ASP.NET expects on a
         // multipart form has nothing to protect against (SEC-63). Disabled explicitly rather than
         // left as a runtime surprise.
-        imports.MapPost("/", UploadAsync).Produces<ImportBatchResponse>(201).RequiresPermission(Permissions.InvoicesImport).WithName("UploadImport").DisableAntiforgery();
-        imports.MapGet("/", ListBatchesAsync).Produces<ImportBatchListResponse>(200).RequiresPermission(Permissions.InvoicesImport).WithName("ListImports");
-        imports.MapGet("/{id:guid}", GetBatchAsync).Produces<ImportBatchResponse>(200).RequiresPermission(Permissions.InvoicesImport).WithName("GetImport");
-        imports.MapGet("/{id:guid}/rows", ListRowsAsync).Produces<ImportRowListResponse>(200).RequiresPermission(Permissions.InvoicesImport).WithName("ListImportRows");
-        imports.MapPost("/{id:guid}/mapping", ApplyMappingAsync).Produces<ImportBatchResponse>(200).RequiresPermission(Permissions.InvoicesImport).WithName("ApplyImportMapping");
-        imports.MapPost("/{id:guid}/rows/{rowId:guid}/resolve", ResolveRowAsync).Produces<ImportRowResponse>(200).RequiresPermission(Permissions.InvoicesImport).WithName("ResolveImportRow");
-        imports.MapPost("/{id:guid}/commit", CommitAsync).Produces<CommitResponse>(200).RequiresPermission(Permissions.InvoicesImport).WithName("CommitImport");
-        imports.MapPost("/{id:guid}/cancel", CancelAsync).Produces(204).RequiresPermission(Permissions.InvoicesImport).WithName("CancelImport");
+        imports.MapPost("/", UploadAsync).RequiresPermission(Permissions.InvoicesImport).WithName("UploadImport").DisableAntiforgery();
+        imports.MapGet("/", ListBatchesAsync).RequiresPermission(Permissions.InvoicesImport).WithName("ListImports");
+        imports.MapGet("/{id:guid}", GetBatchAsync).RequiresPermission(Permissions.InvoicesImport).WithName("GetImport");
+        imports.MapGet("/{id:guid}/rows", ListRowsAsync).RequiresPermission(Permissions.InvoicesImport).WithName("ListImportRows");
+        imports.MapPost("/{id:guid}/mapping", ApplyMappingAsync).RequiresPermission(Permissions.InvoicesImport).WithName("ApplyImportMapping");
+        imports.MapPost("/{id:guid}/rows/{rowId:guid}/resolve", ResolveRowAsync).RequiresPermission(Permissions.InvoicesImport).WithName("ResolveImportRow");
+        imports.MapPost("/{id:guid}/commit", CommitAsync).RequiresPermission(Permissions.InvoicesImport).WithName("CommitImport");
+        imports.MapPost("/{id:guid}/cancel", CancelAsync).RequiresPermission(Permissions.InvoicesImport).WithName("CancelImport");
 
         var mappings = api.MapGroup("/import-mappings");
-        mappings.MapGet("/", ListMappingsAsync).Produces<ImportMappingListResponse>(200).RequiresPermission(Permissions.InvoicesImport).WithName("ListImportMappings");
-        mappings.MapPost("/", CreateMappingAsync).Produces<ImportMappingResponse>(201).RequiresPermission(Permissions.InvoicesImport).WithName("CreateImportMapping");
-        mappings.MapDelete("/{id:guid}", DeleteMappingAsync).Produces(204).RequiresPermission(Permissions.InvoicesImport).WithName("DeleteImportMapping");
+        mappings.MapGet("/", ListMappingsAsync).RequiresPermission(Permissions.InvoicesImport).WithName("ListImportMappings");
+        mappings.MapPost("/", CreateMappingAsync).RequiresPermission(Permissions.InvoicesImport).WithName("CreateImportMapping");
+        mappings.MapDelete("/{id:guid}", DeleteMappingAsync).RequiresPermission(Permissions.InvoicesImport).WithName("DeleteImportMapping");
 
         var invoices = api.MapGroup("/invoices");
-        invoices.MapGet("/", ListInvoicesAsync).Produces<InvoiceListResponse>(200).RequiresPermission(Permissions.InvoicesRead).WithName("ListInvoices");
-        invoices.MapGet("/{id:guid}", GetInvoiceAsync).Produces<InvoiceDetailResponse>(200).RequiresPermission(Permissions.InvoicesRead).WithName("GetInvoice");
+        invoices.MapGet("/", ListInvoicesAsync).RequiresPermission(Permissions.InvoicesRead).WithName("ListInvoices");
+        invoices.MapGet("/{id:guid}", GetInvoiceAsync).RequiresPermission(Permissions.InvoicesRead).WithName("GetInvoice");
 
         return api;
     }
@@ -54,7 +55,7 @@ public static class ImportEndpoints
     // Batches
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> UploadAsync(
+    private static async Task<Results<Created<ImportBatchResponse>, ProblemHttpResult>> UploadAsync(
         IFormFile? file, HttpContext context, CurrentUser currentUser, TenantDbContext db, ImportService imports, CancellationToken ct, bool force = false)
     {
         if (file is null || file.Length == 0)
@@ -91,7 +92,7 @@ public static class ImportEndpoints
         return TypedResults.Created($"/api/v1/imports/{result.Batch.Id}", ToResponse(result.Batch, [], tenant.BaseCurrency));
     }
 
-    private static async Task<IResult> ListBatchesAsync(TenantDbContext db, CurrentUser currentUser, CancellationToken ct, int limit = 25, Guid? cursor = null)
+    private static async Task<Results<Ok<ImportBatchListResponse>, ProblemHttpResult>> ListBatchesAsync(TenantDbContext db, CurrentUser currentUser, CancellationToken ct, int limit = 25, Guid? cursor = null)
     {
         var pageSize = Math.Clamp(limit, 1, 100);
         var query = db.ImportBatches.AsQueryable();
@@ -111,7 +112,7 @@ public static class ImportEndpoints
         return TypedResults.Ok(new ImportBatchListResponse(items, hasMore ? items[^1].Id.ToString() : null, totalCount));
     }
 
-    private static async Task<IResult> GetBatchAsync(Guid id, HttpContext context, TenantDbContext db, CurrentUser currentUser, CancellationToken ct)
+    private static async Task<Results<Ok<ImportBatchResponse>, ProblemHttpResult>> GetBatchAsync(Guid id, HttpContext context, TenantDbContext db, CurrentUser currentUser, CancellationToken ct)
     {
         var batch = await db.ImportBatches.FirstOrDefaultAsync(b => b.Id == id, ct);
         if (batch is null)
@@ -124,7 +125,7 @@ public static class ImportEndpoints
         return TypedResults.Ok(ToResponse(batch, rows, tenant.BaseCurrency));
     }
 
-    private static async Task<IResult> ListRowsAsync(
+    private static async Task<Results<Ok<ImportRowListResponse>, ProblemHttpResult>> ListRowsAsync(
         Guid id, HttpContext context, TenantDbContext db, CancellationToken ct, string? outcome = null, int limit = 100, int? cursor = null)
     {
         if (!await db.ImportBatches.AnyAsync(b => b.Id == id, ct))
@@ -153,7 +154,7 @@ public static class ImportEndpoints
         return TypedResults.Ok(new ImportRowListResponse(items, hasMore ? items[^1].RowNo.ToString(CultureInfo.InvariantCulture) : null, totalCount));
     }
 
-    private static async Task<IResult> ApplyMappingAsync(
+    private static async Task<Results<Ok<ImportBatchResponse>, ProblemHttpResult>> ApplyMappingAsync(
         Guid id, ApplyMappingRequest request, HttpContext context, TenantDbContext db, CurrentUser currentUser, ImportService imports, CancellationToken ct)
     {
         var batch = await db.ImportBatches.FirstOrDefaultAsync(b => b.Id == id, ct);
@@ -223,7 +224,7 @@ public static class ImportEndpoints
         return TypedResults.Ok(ToResponse(batch, rows, tenant.BaseCurrency));
     }
 
-    private static async Task<IResult> ResolveRowAsync(
+    private static async Task<Results<Ok<ImportRowResponse>, ProblemHttpResult>> ResolveRowAsync(
         Guid id, Guid rowId, ResolveRowRequest request, HttpContext context, TenantDbContext db, CurrentUser currentUser, ImportService imports, CancellationToken ct)
     {
         var batch = await db.ImportBatches.FirstOrDefaultAsync(b => b.Id == id, ct);
@@ -250,7 +251,7 @@ public static class ImportEndpoints
         return TypedResults.Ok(ToResponse(row));
     }
 
-    private static async Task<IResult> CommitAsync(Guid id, HttpContext context, TenantDbContext db, CurrentUser currentUser, ImportService imports, CancellationToken ct)
+    private static async Task<Results<Ok<CommitResponse>, ProblemHttpResult>> CommitAsync(Guid id, HttpContext context, TenantDbContext db, CurrentUser currentUser, ImportService imports, CancellationToken ct)
     {
         var batch = await db.ImportBatches.FirstOrDefaultAsync(b => b.Id == id, ct);
         if (batch is null)
@@ -274,7 +275,7 @@ public static class ImportEndpoints
         return TypedResults.Ok(new CommitResponse(batch.Id, batch.Status.ToString(), result.Created, ToDto(result.Totals)));
     }
 
-    private static async Task<IResult> CancelAsync(Guid id, HttpContext context, TenantDbContext db, CurrentUser currentUser, ImportService imports, CancellationToken ct)
+    private static async Task<Results<NoContent, ProblemHttpResult>> CancelAsync(Guid id, HttpContext context, TenantDbContext db, CurrentUser currentUser, ImportService imports, CancellationToken ct)
     {
         var batch = await db.ImportBatches.FirstOrDefaultAsync(b => b.Id == id, ct);
         if (batch is null)
@@ -296,13 +297,13 @@ public static class ImportEndpoints
     // Saved mappings
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> ListMappingsAsync(TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<ImportMappingListResponse>, ProblemHttpResult>> ListMappingsAsync(TenantDbContext db, CancellationToken ct)
     {
         var mappings = await db.ImportMappings.OrderBy(m => m.Name).ToListAsync(ct);
         return TypedResults.Ok(new ImportMappingListResponse(mappings.Select(ToResponse).ToList()));
     }
 
-    private static async Task<IResult> CreateMappingAsync(ImportMappingRequest request, HttpContext context, TenantDbContext db, CurrentUser currentUser, CancellationToken ct)
+    private static async Task<Results<Created<ImportMappingResponse>, ProblemHttpResult>> CreateMappingAsync(ImportMappingRequest request, HttpContext context, TenantDbContext db, CurrentUser currentUser, CancellationToken ct)
     {
         var validation = new Validation().Require("name", request.Name).MaxLength("name", request.Name, 100);
         if (request.ColumnMap is null || request.ColumnMap.Count == 0)
@@ -343,7 +344,7 @@ public static class ImportEndpoints
         return TypedResults.Created($"/api/v1/import-mappings/{mapping.Id}", ToResponse(mapping));
     }
 
-    private static async Task<IResult> DeleteMappingAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteMappingAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var mapping = await db.ImportMappings.FirstOrDefaultAsync(m => m.Id == id, ct);
         if (mapping is null)
@@ -362,7 +363,7 @@ public static class ImportEndpoints
     // Invoices (read-only in 3a)
     // ---------------------------------------------------------------------------------------
 
-    private static async Task<IResult> ListInvoicesAsync(
+    private static async Task<Results<Ok<InvoiceListResponse>, ProblemHttpResult>> ListInvoicesAsync(
         TenantDbContext db, CancellationToken ct, Guid? customerId = null, string? status = null, string? currency = null,
         string? q = null, DateOnly? dueBefore = null, DateOnly? dueAfter = null, int limit = 50, Guid? cursor = null)
     {
@@ -413,7 +414,7 @@ public static class ImportEndpoints
         return TypedResults.Ok(new InvoiceListResponse(items, hasMore ? items[^1].Id.ToString() : null, totalCount));
     }
 
-    private static async Task<IResult> GetInvoiceAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
+    private static async Task<Results<Ok<InvoiceDetailResponse>, ProblemHttpResult>> GetInvoiceAsync(Guid id, HttpContext context, TenantDbContext db, CancellationToken ct)
     {
         var invoice = await db.Invoices.FirstOrDefaultAsync(i => i.Id == id, ct);
         return invoice is null ? ApiProblems.NotFoundProblem(context) : TypedResults.Ok(await LedgerEndpoints.InvoiceDetailAsync(invoice, db, ct));

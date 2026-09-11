@@ -766,7 +766,12 @@ public sealed record InvariantRunResponse(Guid Id, DateTimeOffset RanAt, string 
 /// <summary>Counts, ids and thresholds only — never a customer, an address or an amount (SEC-41).</summary>
 public sealed record AlertDto(Guid Id, string Kind, string Severity, string Summary, JsonElement Details, DateTimeOffset RaisedAt, string EmailDelivery, string WebhookDelivery, DateTimeOffset? AcknowledgedAt, Guid? AcknowledgedBy);
 
-public sealed record AlertListResponse(IReadOnlyList<AlertDto> Items, int OpenCount);
+public sealed record AlertListResponse(IReadOnlyList<AlertDto> Items, int OpenCount, bool OwnerEmailEnabled = false);
+
+/// <summary>Slice 22: whether the organization's Owners are emailed on critical alerts, in addition to the operator.</summary>
+public sealed record AlertSettingsRequest(bool? OwnerEmailEnabled);
+
+public sealed record AlertSettingsResponse(bool OwnerEmailEnabled);
 
 // ---- Slice 18: typed list envelopes for the two responses that were anonymous objects (same JSON) ----
 

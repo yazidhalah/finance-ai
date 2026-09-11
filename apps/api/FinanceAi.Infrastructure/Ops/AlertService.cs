@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using FinanceAi.Domain.Authorization;
 using FinanceAi.Domain.Entities;
 using FinanceAi.Infrastructure.Database;
 using FinanceAi.Infrastructure.Messaging;
@@ -110,7 +111,15 @@ public sealed class AlertService(TenantDbContext db, IMailTransport mail, IAlert
 
     private async Task<string> DeliverEmailAsync(AlertEnvelope e, CancellationToken ct)
     {
-        var recipients = Recipients;
+        var recipients = Recipients.ToList();
+        // Slice 22: the organization's Owners, when they asked for it and the alert is critical — never for warnings.
+        if (e.Severity == AlertSeverity.Critical && await db.TenantSettings.AnyAsync(s => s.AlertOwnerEmailEnabled, ct))
+        {
+            var owners = await db.TenantMemberships.Where(m => m.Status == MembershipStatus.Active && m.Role == TenantRole.Owner)
+                .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => u.Email).Distinct().ToListAsync(ct);
+            recipients.AddRange(owners.Where(o => !recipients.Contains(o, StringComparer.OrdinalIgnoreCase)));
+        }
+
         if (recipients.Count == 0)
         {
             return AlertDelivery.Skipped;

@@ -107,7 +107,7 @@ public sealed class OpenApiSnapshotTests(ApiTestFixture fixture)
             }
         }
 
-        Assert.Equal(147, count);
+        Assert.Equal(148, count);
         Assert.Empty(undeclared);
         Assert.Equal(
             ["POST /api/v1/auth/accept-invitation", "POST /api/v1/auth/forgot-password", "POST /api/v1/auth/login", "POST /api/v1/auth/refresh", "POST /api/v1/auth/register", "POST /api/v1/auth/reset-password"],
