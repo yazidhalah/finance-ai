@@ -763,3 +763,9 @@ public sealed record InvariantRunResponse(Guid Id, DateTimeOffset RanAt, string 
 public sealed record AlertDto(Guid Id, string Kind, string Severity, string Summary, JsonElement Details, DateTimeOffset RaisedAt, string EmailDelivery, string WebhookDelivery, DateTimeOffset? AcknowledgedAt, Guid? AcknowledgedBy);
 
 public sealed record AlertListResponse(IReadOnlyList<AlertDto> Items, int OpenCount);
+
+// ---- Slice 18: typed list envelopes for the two responses that were anonymous objects (same JSON) ----
+
+public sealed record TimelineListResponse(IReadOnlyList<TimelineEntryDto> Items);
+
+public sealed record PlaceholderListResponse(IReadOnlyList<PlaceholderDto> Items);

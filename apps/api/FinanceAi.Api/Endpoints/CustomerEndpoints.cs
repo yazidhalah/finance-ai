@@ -32,17 +32,17 @@ public static class CustomerEndpoints
 
         var customers = api.MapGroup("/customers");
 
-        customers.MapGet("/", ListAsync).RequiresPermission(Permissions.CustomersRead).WithName("ListCustomers");
-        customers.MapPost("/", CreateAsync).RequiresPermission(Permissions.CustomersWrite).WithName("CreateCustomer");
-        customers.MapGet("/duplicates", DuplicatesAsync).RequiresPermission(Permissions.CustomersRead).WithName("CustomerDuplicates");
-        customers.MapGet("/{id:guid}", GetAsync).RequiresPermission(Permissions.CustomersRead).WithName("GetCustomer");
-        customers.MapPatch("/{id:guid}", UpdateAsync).RequiresPermission(Permissions.CustomersWrite).WithName("UpdateCustomer");
-        customers.MapDelete("/{id:guid}", DeleteAsync).RequiresPermission(Permissions.CustomersWrite).WithName("DeleteCustomer");
+        customers.MapGet("/", ListAsync).Produces<CustomerListResponse>(200).RequiresPermission(Permissions.CustomersRead).WithName("ListCustomers");
+        customers.MapPost("/", CreateAsync).Produces<CustomerResponse>(201).RequiresPermission(Permissions.CustomersWrite).WithName("CreateCustomer");
+        customers.MapGet("/duplicates", DuplicatesAsync).Produces<DuplicateListResponse>(200).RequiresPermission(Permissions.CustomersRead).WithName("CustomerDuplicates");
+        customers.MapGet("/{id:guid}", GetAsync).Produces<CustomerResponse>(200).RequiresPermission(Permissions.CustomersRead).WithName("GetCustomer");
+        customers.MapPatch("/{id:guid}", UpdateAsync).Produces<CustomerResponse>(200).RequiresPermission(Permissions.CustomersWrite).WithName("UpdateCustomer");
+        customers.MapDelete("/{id:guid}", DeleteAsync).Produces(204).RequiresPermission(Permissions.CustomersWrite).WithName("DeleteCustomer");
 
-        customers.MapGet("/{id:guid}/contacts", ListContactsAsync).RequiresPermission(Permissions.CustomersRead).WithName("ListContacts");
-        customers.MapPost("/{id:guid}/contacts", CreateContactAsync).RequiresPermission(Permissions.CustomersWrite).WithName("CreateContact");
-        customers.MapPatch("/{id:guid}/contacts/{contactId:guid}", UpdateContactAsync).RequiresPermission(Permissions.CustomersWrite).WithName("UpdateContact");
-        customers.MapDelete("/{id:guid}/contacts/{contactId:guid}", DeleteContactAsync).RequiresPermission(Permissions.CustomersWrite).WithName("DeleteContact");
+        customers.MapGet("/{id:guid}/contacts", ListContactsAsync).Produces<ContactListResponse>(200).RequiresPermission(Permissions.CustomersRead).WithName("ListContacts");
+        customers.MapPost("/{id:guid}/contacts", CreateContactAsync).Produces<ContactResponse>(201).RequiresPermission(Permissions.CustomersWrite).WithName("CreateContact");
+        customers.MapPatch("/{id:guid}/contacts/{contactId:guid}", UpdateContactAsync).Produces<ContactResponse>(200).RequiresPermission(Permissions.CustomersWrite).WithName("UpdateContact");
+        customers.MapDelete("/{id:guid}/contacts/{contactId:guid}", DeleteContactAsync).Produces(204).RequiresPermission(Permissions.CustomersWrite).WithName("DeleteContact");
 
         return api;
     }

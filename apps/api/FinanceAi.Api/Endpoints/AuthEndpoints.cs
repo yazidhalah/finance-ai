@@ -25,20 +25,20 @@ public static class AuthEndpoints
 
         var auth = api.MapGroup("/auth").RequireRateLimiting(RateLimitPolicies.Auth);
 
-        auth.MapPost("/register", RegisterAsync).AllowAnonymousEndpoint().WithName("Register");
-        auth.MapPost("/login", LoginAsync).AllowAnonymousEndpoint().WithName("Login");
-        auth.MapPost("/refresh", RefreshAsync).AllowAnonymousEndpoint().WithName("Refresh");
+        auth.MapPost("/register", RegisterAsync).Produces<RegisterResponse>(202).AllowAnonymousEndpoint().WithName("Register");
+        auth.MapPost("/login", LoginAsync).Produces<SessionResponse>(200).AllowAnonymousEndpoint().WithName("Login");
+        auth.MapPost("/refresh", RefreshAsync).Produces<SessionResponse>(200).AllowAnonymousEndpoint().WithName("Refresh");
         // Slice 12: the invitee has no session yet. Anonymous by design, rate limited with the rest of the group.
-        auth.MapPost("/accept-invitation", AcceptInvitationAsync).AllowAnonymousEndpoint().WithName("AcceptInvitation");
+        auth.MapPost("/accept-invitation", AcceptInvitationAsync).Produces<AcceptInvitationResponse>(200).AllowAnonymousEndpoint().WithName("AcceptInvitation");
         // Slice 13: password reset is anonymous by nature; MFA enrolment and re-authentication need a session but not a second factor yet.
-        auth.MapPost("/forgot-password", ForgotPasswordAsync).AllowAnonymousEndpoint().WithName("ForgotPassword");
-        auth.MapPost("/reset-password", ResetPasswordAsync).AllowAnonymousEndpoint().WithName("ResetPassword");
-        auth.MapPost("/mfa/enroll", MfaEnrollAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("MfaEnroll");
-        auth.MapPost("/mfa/verify", MfaVerifyAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("MfaVerify");
-        auth.MapPost("/reauthenticate", ReauthenticateAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("Reauthenticate");
-        auth.MapPost("/logout", LogoutAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("Logout");
-        auth.MapGet("/tenants", ListTenantsAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("ListTenants");
-        auth.MapPost("/switch-tenant", SwitchTenantAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("SwitchTenant");
+        auth.MapPost("/forgot-password", ForgotPasswordAsync).Produces<AcceptedResponse>(202).AllowAnonymousEndpoint().WithName("ForgotPassword");
+        auth.MapPost("/reset-password", ResetPasswordAsync).Produces<AcceptedResponse>(200).AllowAnonymousEndpoint().WithName("ResetPassword");
+        auth.MapPost("/mfa/enroll", MfaEnrollAsync).Produces<MfaEnrolmentResponse>(200).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("MfaEnroll");
+        auth.MapPost("/mfa/verify", MfaVerifyAsync).Produces<MfaActivatedResponse>(200).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("MfaVerify");
+        auth.MapPost("/reauthenticate", ReauthenticateAsync).Produces<ReauthenticateResponse>(200).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("Reauthenticate");
+        auth.MapPost("/logout", LogoutAsync).Produces(204).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("Logout");
+        auth.MapGet("/tenants", ListTenantsAsync).Produces<TenantListResponse>(200).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("ListTenants");
+        auth.MapPost("/switch-tenant", SwitchTenantAsync).Produces<SessionResponse>(200).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("SwitchTenant");
 
         return api;
     }

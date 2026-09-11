@@ -22,10 +22,10 @@ public static class OpsEndpoints
     {
         ArgumentNullException.ThrowIfNull(api);
 
-        api.MapGet("/organization/invariants", LatestRunAsync).RequiresPermission(Permissions.AuditRead).WithName("LatestInvariantRun");
-        api.MapPost("/organization/invariants/run", RunAsync).RequiresPermission(Permissions.TenantSettingsWrite).WithName("RunInvariants");
-        api.MapGet("/organization/alerts", ListAlertsAsync).RequiresPermission(Permissions.AuditRead).WithName("ListAlerts");
-        api.MapPost("/organization/alerts/{id:guid}/acknowledge", AcknowledgeAsync).RequiresPermission(Permissions.TenantSettingsWrite).WithName("AcknowledgeAlert");
+        api.MapGet("/organization/invariants", LatestRunAsync).Produces<LatestInvariantRunResponse>(200).RequiresPermission(Permissions.AuditRead).WithName("LatestInvariantRun");
+        api.MapPost("/organization/invariants/run", RunAsync).Produces<InvariantRunResponse>(200).RequiresPermission(Permissions.TenantSettingsWrite).WithName("RunInvariants");
+        api.MapGet("/organization/alerts", ListAlertsAsync).Produces<AlertListResponse>(200).RequiresPermission(Permissions.AuditRead).WithName("ListAlerts");
+        api.MapPost("/organization/alerts/{id:guid}/acknowledge", AcknowledgeAsync).Produces<AlertDto>(200).RequiresPermission(Permissions.TenantSettingsWrite).WithName("AcknowledgeAlert");
 
         return api;
     }

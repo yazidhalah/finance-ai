@@ -23,11 +23,11 @@ public static class BriefingEndpoints
         ArgumentNullException.ThrowIfNull(api);
 
         var briefings = api.MapGroup("/briefings");
-        briefings.MapGet("/today", TodayAsync).RequiresPermission(Permissions.CasesRead).WithName("BriefingToday");
-        briefings.MapGet("/{date}", ByDateAsync).RequiresPermission(Permissions.CasesRead).WithName("BriefingByDate");
-        briefings.MapPost("/regenerate", RegenerateAsync).RequiresPermission(Permissions.AiSettingsWrite).WithName("BriefingRegenerate");
-        api.MapGet("/organization/briefing-settings", SettingsAsync).RequiresPermission(Permissions.TenantRead).WithName("BriefingSettings");
-        api.MapPatch("/organization/briefing-settings", UpdateSettingsAsync).RequiresPermission(Permissions.TenantSettingsWrite).WithName("UpdateBriefingSettings");
+        briefings.MapGet("/today", TodayAsync).Produces<BriefingResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("BriefingToday");
+        briefings.MapGet("/{date}", ByDateAsync).Produces<BriefingResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("BriefingByDate");
+        briefings.MapPost("/regenerate", RegenerateAsync).Produces<BriefingResponse>(200).RequiresPermission(Permissions.AiSettingsWrite).WithName("BriefingRegenerate");
+        api.MapGet("/organization/briefing-settings", SettingsAsync).Produces<BriefingSettingsResponse>(200).RequiresPermission(Permissions.TenantRead).WithName("BriefingSettings");
+        api.MapPatch("/organization/briefing-settings", UpdateSettingsAsync).Produces<BriefingSettingsResponse>(200).RequiresPermission(Permissions.TenantSettingsWrite).WithName("UpdateBriefingSettings");
 
         return api;
     }

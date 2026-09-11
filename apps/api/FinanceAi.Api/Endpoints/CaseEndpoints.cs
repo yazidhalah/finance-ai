@@ -21,19 +21,19 @@ public static class CaseEndpoints
     {
         ArgumentNullException.ThrowIfNull(api);
 
-        api.MapGet("/queue", QueueAsync).RequiresPermission(Permissions.CasesRead).WithName("Queue");
-        api.MapGet("/queue/summary", SummaryAsync).RequiresPermission(Permissions.CasesRead).WithName("QueueSummary");
+        api.MapGet("/queue", QueueAsync).Produces<QueueResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("Queue");
+        api.MapGet("/queue/summary", SummaryAsync).Produces<QueueSummaryResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("QueueSummary");
 
         var cases = api.MapGroup("/cases");
-        cases.MapGet("/", ListAsync).RequiresPermission(Permissions.CasesRead).WithName("ListCases");
-        cases.MapPost("/", CreateAsync).RequiresPermission(Permissions.CasesWrite).WithName("CreateCase");
-        cases.MapPost("/sweep", SweepAsync).RequiresPermission(Permissions.CasesWrite).WithName("SweepCases");
-        cases.MapGet("/{id:guid}", GetAsync).RequiresPermission(Permissions.CasesRead).WithName("GetCase");
-        cases.MapGet("/{id:guid}/timeline", TimelineAsync).RequiresPermission(Permissions.CasesRead).WithName("CaseTimeline");
-        cases.MapPost("/{id:guid}/transitions", TransitionAsync).RequiresPermission(Permissions.CasesWrite).WithName("CaseTransition");
-        cases.MapPost("/{id:guid}/assign", AssignAsync).RequiresPermission(Permissions.CasesAssign).WithName("AssignCase");
-        cases.MapPost("/{id:guid}/activities", ActivityAsync).RequiresPermission(Permissions.CasesWrite).WithName("LogCaseActivity");
-        cases.MapPost("/{id:guid}/snooze", SnoozeAsync).RequiresPermission(Permissions.CasesWrite).WithName("SnoozeCase");
+        cases.MapGet("/", ListAsync).Produces<CaseListResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("ListCases");
+        cases.MapPost("/", CreateAsync).Produces<QueueItemDto>(201).RequiresPermission(Permissions.CasesWrite).WithName("CreateCase");
+        cases.MapPost("/sweep", SweepAsync).Produces<SweepResponse>(200).RequiresPermission(Permissions.CasesWrite).WithName("SweepCases");
+        cases.MapGet("/{id:guid}", GetAsync).Produces<CaseDetailResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("GetCase");
+        cases.MapGet("/{id:guid}/timeline", TimelineAsync).Produces<TimelineListResponse>(200).RequiresPermission(Permissions.CasesRead).WithName("CaseTimeline");
+        cases.MapPost("/{id:guid}/transitions", TransitionAsync).Produces<QueueItemDto>(200).RequiresPermission(Permissions.CasesWrite).WithName("CaseTransition");
+        cases.MapPost("/{id:guid}/assign", AssignAsync).Produces<QueueItemDto>(200).RequiresPermission(Permissions.CasesAssign).WithName("AssignCase");
+        cases.MapPost("/{id:guid}/activities", ActivityAsync).Produces<TimelineEntryDto>(201).RequiresPermission(Permissions.CasesWrite).WithName("LogCaseActivity");
+        cases.MapPost("/{id:guid}/snooze", SnoozeAsync).Produces<QueueItemDto>(200).RequiresPermission(Permissions.CasesWrite).WithName("SnoozeCase");
 
         return api;
     }
@@ -167,7 +167,7 @@ public static class CaseEndpoints
             return ApiProblems.NotFoundProblem(context);
         }
 
-        return TypedResults.Ok(new { items = await TimelineEntriesAsync(c, db, ct) });
+        return TypedResults.Ok(new TimelineListResponse(await TimelineEntriesAsync(c, db, ct)));
     }
 
     /// <summary>Activities plus allocations to in-scope invoices, one chronological stream (doc 05 <c>/timeline</c>).</summary>
