@@ -110,6 +110,14 @@ machinery proven end-to-end before any business data exists.
 | PATCH | `/organization/members/{id}` | `users.role.write` | Change role. Cannot demote the last Owner. |
 | POST | `/organization/members/{id}/deactivate` | `users.deactivate` | |
 | POST | `/organization/transfer-ownership` | `tenant.transfer_ownership` | Requires re-authentication. |
+
+> **Amended in slice 12 (API-01a).** As built: `POST /organization/members/invite` answers `202 { accepted: true }`
+> whatever the address is (SEC-07) and never accepts `Owner`; `GET /organization/invitations` (`users.read`) and
+> `POST /organization/invitations/{id}/revoke` (`users.invite`) manage pending invitations; `POST /auth/accept-invitation`
+> `{ token, fullName?, password? }` is anonymous (auth rate limit) and answers `400 invitation_invalid` for every unusable
+> token and `400 password_required` when the address has no account yet; `PATCH /organization/members/{id}` `{ role }`
+> refuses `Owner` (`owner_via_transfer_only`) and the last Owner's demotion (`last_owner`); `deactivate` refuses
+> yourself and the last Owner, and revokes the member's refresh tokens. Transfer of ownership remains deferred.
 | GET | `/audit` | `audit.read` | Filter by entity, actor, type, date range. |
 
 **Example — login**

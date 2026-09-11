@@ -1013,6 +1013,14 @@ violate FIN-01 at the audit layer.
 
 ---
 
+> **Amended in slice 12 (DM-30a).** As built (`database/migrations/0012_member_invitations.sql`):
+> - `member_invitations` (id, tenant_id, email citext, role ∈ {Admin, Accountant, Collector, Viewer} — never Owner,
+>   locale, `token_hash` (64 hex; the token itself lives only in the email), invited_by, expires_at (7 days),
+>   accepted_at + accepted_user_id, revoked_at + revoked_by). `UNIQUE (tenant_id, id)`, a unique token hash, RLS
+>   forced with the platform-scope clause (like `refresh_tokens`: the accept flow reads by hash before a tenant is
+>   known, and only `PlatformIdentityStore` may open that scope). No DELETE.
+> - `refresh_tokens.revoked_reason` gains `membership_deactivated`.
+
 ## 6. Views and functions
 
 **DM-30** `v_invoice_balances` — derived balance per invoice (the FIN-10 authority),

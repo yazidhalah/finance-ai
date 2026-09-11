@@ -28,6 +28,8 @@ public static class AuthEndpoints
         auth.MapPost("/register", RegisterAsync).AllowAnonymousEndpoint().WithName("Register");
         auth.MapPost("/login", LoginAsync).AllowAnonymousEndpoint().WithName("Login");
         auth.MapPost("/refresh", RefreshAsync).AllowAnonymousEndpoint().WithName("Refresh");
+        // Slice 12: the invitee has no session yet. Anonymous by design, rate limited with the rest of the group.
+        auth.MapPost("/accept-invitation", AcceptInvitationAsync).AllowAnonymousEndpoint().WithName("AcceptInvitation");
         auth.MapPost("/logout", LogoutAsync).RequiresAuthenticatedUser().WithName("Logout");
         auth.MapGet("/tenants", ListTenantsAsync).RequiresAuthenticatedUser().WithName("ListTenants");
         auth.MapPost("/switch-tenant", SwitchTenantAsync).RequiresAuthenticatedUser().WithName("SwitchTenant");
@@ -239,4 +241,25 @@ public static class AuthEndpoints
             SameSite = SameSiteMode.Strict,
             Path = RefreshCookiePath,
         });
+
+    /// <summary>
+    /// Every failure is <c>400 invitation_invalid</c> with the same body: an unknown, expired, revoked or used token is
+    /// not distinguished (SEC-07). A valid token for an address without a user needs a name and a password.
+    /// </summary>
+    private static async Task<IResult> AcceptInvitationAsync(AcceptInvitationRequest request, HttpContext context, PlatformIdentityStore identity, ILoggerFactory loggerFactory, CancellationToken ct)
+    {
+        var validation = new Validation().Require("token", request.Token).MaxLength("fullName", request.FullName, 200).MaxLength("password", request.Password, 512);
+        if (request.Password is { Length: > 0 }) validation.MinLength("password", request.Password, Argon2idPasswordHasher.MinimumPasswordLength, "too_short");
+        if (validation.HasErrors) return ApiProblems.ValidationProblem(context, validation.Errors);
+
+        var result = await identity.AcceptInvitationAsync(new PlatformIdentityStore.AcceptInvitationCommand(request.Token!.Trim(), request.FullName, request.Password, context.ClientIp(), context.RequestId()), ct);
+        loggerFactory.CreateLogger(typeof(AuthEndpoints)).LogInformation("Invitation acceptance processed with outcome {Outcome}.", result.Outcome);
+        return result.Outcome switch
+        {
+            PlatformIdentityStore.AcceptInvitationOutcome.Accepted => TypedResults.Ok(new AcceptInvitationResponse(result.Email!, result.TenantName!, result.CreatedUser)),
+            PlatformIdentityStore.AcceptInvitationOutcome.PasswordRequired => ApiProblems.Create(context, StatusCodes.Status400BadRequest, "password_required", "This address has no account yet; a name and a password are needed.", "errors.invitation.password_required",
+                [new ApiProblems.FieldError("password", "required", "errors.password.required")]),
+            _ => ApiProblems.Create(context, StatusCodes.Status400BadRequest, "invitation_invalid", "This invitation cannot be used.", "errors.invitation.invalid"),
+        };
+    }
 }

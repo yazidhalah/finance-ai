@@ -698,3 +698,23 @@ public sealed record BriefingResponse(
 public sealed record BriefingSettingsResponse(string BriefingSendAt, string BriefingLanguage, bool BriefingEmailEnabled, IReadOnlyList<Guid> RecipientUserIds, IReadOnlyList<MemberDto> Members, bool TemplateApproved);
 
 public sealed record BriefingSettingsRequest(string? BriefingSendAt, string? BriefingLanguage, bool? BriefingEmailEnabled, IReadOnlyList<Guid>? RecipientUserIds);
+
+// ---------------------------------------------------------------------------------------------
+// Slice 12 — member invitations and role management
+// ---------------------------------------------------------------------------------------------
+
+public sealed record InviteMemberRequest(string? Email, string? Role, string? Locale);
+
+/// <summary>Byte-identical whether the address is new, an existing user or already a member (SEC-07).</summary>
+public sealed record InviteAcceptedResponse(bool Accepted);
+
+public sealed record InvitationDto(Guid Id, string Email, string Role, string Locale, string Status, Guid InvitedBy, string ExpiresAt, string CreatedAt, string? AcceptedAt, string? RevokedAt);
+
+public sealed record InvitationListResponse(IReadOnlyList<InvitationDto> Items);
+
+public sealed record AcceptInvitationRequest(string? Token, string? FullName, string? Password);
+
+/// <summary>What the invitee sees on success: where they now belong and which address to sign in with.</summary>
+public sealed record AcceptInvitationResponse(string Email, string OrganizationName, bool CreatedAccount);
+
+public sealed record ChangeRoleRequest(string? Role);

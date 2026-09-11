@@ -85,6 +85,8 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
 
     public DbSet<DailyBriefing> DailyBriefings => this.Set<DailyBriefing>();
 
+    public DbSet<MemberInvitation> MemberInvitations => this.Set<MemberInvitation>();
+
     public override int SaveChanges()
     {
         this.StampTenant();
@@ -116,6 +118,7 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
         ConfigureMessaging(model);
         ConfigureAi(model);
         ConfigureBriefings(model);
+        ConfigureInvitations(model);
 
         this.ApplyTenantQueryFilters(model);
 
@@ -948,6 +951,28 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.TemplateVersion).HasColumnName("template_version");
             e.Property(x => x.DeliveryStatus).HasColumnName("delivery_status");
             e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
+        });
+    }
+
+    private static void ConfigureInvitations(ModelBuilder model)
+    {
+        model.Entity<MemberInvitation>(e =>
+        {
+            e.ToTable("member_invitations");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.Email).HasColumnName("email").HasColumnType("citext");
+            e.Property(x => x.Role).HasColumnName("role").HasConversion<string>();
+            e.Property(x => x.Locale).HasColumnName("locale");
+            e.Property(x => x.TokenHash).HasColumnName("token_hash");
+            e.Property(x => x.InvitedBy).HasColumnName("invited_by");
+            e.Property(x => x.ExpiresAt).HasColumnName("expires_at");
+            e.Property(x => x.AcceptedAt).HasColumnName("accepted_at");
+            e.Property(x => x.AcceptedUserId).HasColumnName("accepted_user_id");
+            e.Property(x => x.RevokedAt).HasColumnName("revoked_at");
+            e.Property(x => x.RevokedBy).HasColumnName("revoked_by");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
         });
     }
 }

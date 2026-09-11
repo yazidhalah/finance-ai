@@ -43,6 +43,12 @@ public static class OrganizationEndpoints
             .RequiresPermission(Permissions.UsersRead).WithName("ListMembers");
         organization.MapGet("/members/{id:guid}", GetMemberAsync)
             .RequiresPermission(Permissions.UsersRead).WithName("GetMember");
+        // Slice 12
+        organization.MapPost("/members/invite", InviteAsync).RequiresPermission(Permissions.UsersInvite).WithName("InviteMember");
+        organization.MapGet("/invitations", ListInvitationsAsync).RequiresPermission(Permissions.UsersRead).WithName("ListInvitations");
+        organization.MapPost("/invitations/{id:guid}/revoke", RevokeInvitationAsync).RequiresPermission(Permissions.UsersInvite).WithName("RevokeInvitation");
+        organization.MapPatch("/members/{id:guid}", ChangeRoleAsync).RequiresPermission(Permissions.UsersRoleWrite).WithName("ChangeMemberRole");
+        organization.MapPost("/members/{id:guid}/deactivate", DeactivateMemberAsync).RequiresPermission(Permissions.UsersDeactivate).WithName("DeactivateMember");
 
         return api;
     }
@@ -302,4 +308,76 @@ public static class OrganizationEndpoints
             changes[field] = new { old = oldValue, @new = newValue };
         }
     }
+
+    // ---------------------------------------------------------------------------------------
+    // Slice 12 — invitations, role change, deactivation
+    // ---------------------------------------------------------------------------------------
+
+    private static async Task<IResult> InviteAsync(InviteMemberRequest request, HttpContext context, CurrentUser user, FinanceAi.Infrastructure.Members.MembersService members, ILoggerFactory loggerFactory, CancellationToken ct)
+    {
+        var validation = new Validation().Require("email", request.Email).Email("email", request.Email).MaxLength("email", request.Email, 254).Require("role", request.Role).Locale("locale", request.Locale);
+        if (request.Role is not null && (!Enum.TryParse<TenantRole>(request.Role, out var parsed) || !RoleAssignment.CanAssign(parsed))) validation.Require("role", null, "invalid");
+        if (validation.HasErrors) return ApiProblems.ValidationProblem(context, validation.Errors);
+        var outcome = await members.InviteAsync(request.Email!, Enum.Parse<TenantRole>(request.Role!), request.Locale ?? Locales.Default, user.UserId, ct);
+        // Recorded, never rendered (SEC-07): the body is the same for a new address and an existing member.
+        loggerFactory.CreateLogger(typeof(OrganizationEndpoints)).LogInformation("Invitation processed with outcome {Outcome}.", outcome.Outcome);
+        return TypedResults.Accepted((string?)null, new InviteAcceptedResponse(true));
+    }
+
+    private static async Task<IResult> ListInvitationsAsync(TenantDbContext db, TimeProvider time, CancellationToken ct)
+    {
+        var now = time.GetUtcNow();
+        var rows = await db.MemberInvitations.AsNoTracking().OrderByDescending(i => i.CreatedAt).Take(200).ToListAsync(ct);
+        return TypedResults.Ok(new InvitationListResponse(rows.Select(i => Invitation(i, now)).ToList()));
+    }
+
+    private static async Task<IResult> RevokeInvitationAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, FinanceAi.Infrastructure.Members.MembersService members, TimeProvider time, CancellationToken ct)
+    {
+        if (!await db.MemberInvitations.AnyAsync(i => i.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
+        try
+        {
+            var i = await members.RevokeAsync(id, user.UserId, ct);
+            return TypedResults.Ok(Invitation(i, time.GetUtcNow()));
+        }
+        catch (FinanceAi.Infrastructure.Cases.CaseException ex) { return MemberRule(context, ex); }
+    }
+
+    private static async Task<IResult> ChangeRoleAsync(Guid id, ChangeRoleRequest request, HttpContext context, CurrentUser user, TenantDbContext db, FinanceAi.Infrastructure.Members.MembersService members, CancellationToken ct)
+    {
+        if (!await db.TenantMemberships.AnyAsync(m => m.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
+        if (request.Role is null || !Enum.TryParse<TenantRole>(request.Role, out var role) || !Enum.IsDefined(role)) return ApiProblems.ValidationProblem(context, [new ApiProblems.FieldError("role", "invalid", "errors.validation.role.invalid")]);
+        try
+        {
+            var m = await members.ChangeRoleAsync(id, role, user.UserId, ct);
+            return TypedResults.Ok(await MemberAsync(m, db, ct));
+        }
+        catch (FinanceAi.Infrastructure.Cases.CaseException ex) { return MemberRule(context, ex); }
+    }
+
+    private static async Task<IResult> DeactivateMemberAsync(Guid id, HttpContext context, CurrentUser user, TenantDbContext db, FinanceAi.Infrastructure.Members.MembersService members, CancellationToken ct)
+    {
+        if (!await db.TenantMemberships.AnyAsync(m => m.Id == id, ct)) return ApiProblems.NotFoundProblem(context);
+        try
+        {
+            var m = await members.DeactivateAsync(id, user.UserId, ct);
+            return TypedResults.Ok(await MemberAsync(m, db, ct));
+        }
+        catch (FinanceAi.Infrastructure.Cases.CaseException ex) { return MemberRule(context, ex); }
+    }
+
+    private static async Task<MemberDto> MemberAsync(TenantMembership m, TenantDbContext db, CancellationToken ct)
+    {
+        var u = await db.Users.Where(x => x.Id == m.UserId).Select(x => new { x.Email, x.FullName }).FirstAsync(ct);
+        return new MemberDto(m.Id, m.UserId, u.Email, u.FullName, m.Role.ToString(), m.Status.ToString(), m.CreatedAt);
+    }
+
+    private static InvitationDto Invitation(MemberInvitation i, DateTimeOffset now) => new(
+        i.Id, i.Email, i.Role.ToString(), i.Locale, i.Status(now), i.InvitedBy, i.ExpiresAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+        i.CreatedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture), i.AcceptedAt?.ToString("O", System.Globalization.CultureInfo.InvariantCulture), i.RevokedAt?.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
+
+    private static IResult MemberRule(HttpContext context, FinanceAi.Infrastructure.Cases.CaseException ex) => ex.Code switch
+    {
+        "member_not_found" or "invitation_not_found" => ApiProblems.NotFoundProblem(context),
+        _ => ApiProblems.BusinessRuleProblem(context, ex.Code, ex.Field, ex.Meta),
+    };
 }

@@ -137,6 +137,7 @@ public static class ApiServiceRegistration
         services.AddSingleton<FinanceAi.Infrastructure.Ai.IAiClient, FinanceAi.Infrastructure.Ai.HttpAiClient>();
         services.AddScoped<FinanceAi.Infrastructure.Ai.InboundService>();
         services.AddScoped<FinanceAi.Infrastructure.Briefings.BriefingService>();
+        services.AddScoped<FinanceAi.Infrastructure.Members.MembersService>();
         services.AddScoped<FinanceAi.Infrastructure.Cases.IBriefingHooks>(sp => sp.GetRequiredService<FinanceAi.Infrastructure.Briefings.BriefingService>());
 
         services.AddSingleton<IPasswordHasher, Argon2idPasswordHasher>();

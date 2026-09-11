@@ -1299,3 +1299,35 @@ export const briefingsApi = {
   updateSettings: (body: { briefingSendAt?: string; briefingLanguage?: 'ar' | 'en'; briefingEmailEnabled?: boolean; recipientUserIds?: string[] }) =>
     request<BriefingSettings>('/organization/briefing-settings', { method: 'PATCH', body }),
 }
+
+// ---------------------------------------------------------------------------------------------
+// Slice 12 — member invitations and role management
+// ---------------------------------------------------------------------------------------------
+
+export const assignableRoles = ['Admin', 'Accountant', 'Collector', 'Viewer'] as const
+export type AssignableRole = (typeof assignableRoles)[number]
+
+export interface Invitation {
+  id: string
+  email: string
+  role: string
+  locale: string
+  status: 'Pending' | 'Accepted' | 'Revoked' | 'Expired'
+  invitedBy: string
+  expiresAt: string
+  createdAt: string
+  acceptedAt: string | null
+  revokedAt: string | null
+}
+
+export type Member = Awaited<ReturnType<typeof api.members>>['items'][number]
+
+export const membersApi = {
+  invite: (body: { email: string; role: AssignableRole; locale: 'ar-JO' | 'en-JO' }) => request<{ accepted: boolean }>('/organization/members/invite', { method: 'POST', body }),
+  invitations: () => request<{ items: Invitation[] }>('/organization/invitations'),
+  revoke: (id: string) => request<Invitation>(`/organization/invitations/${id}/revoke`, { method: 'POST', body: {} }),
+  changeRole: (id: string, role: AssignableRole) => request<Member>(`/organization/members/${id}`, { method: 'PATCH', body: { role } }),
+  deactivate: (id: string) => request<Member>(`/organization/members/${id}/deactivate`, { method: 'POST', body: {} }),
+  /** Anonymous: the invitee has no session yet. */
+  accept: (body: { token: string; fullName?: string; password?: string }) => request<{ email: string; organizationName: string; createdAccount: boolean }>('/auth/accept-invitation', { method: 'POST', body }),
+}

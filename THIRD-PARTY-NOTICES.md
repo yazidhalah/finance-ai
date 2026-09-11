@@ -9,7 +9,7 @@ source-available license is a blocking review finding, not a discussion.
 
 Versions are pinned; lockfiles (`package-lock.json`, `packages.lock.json`) are committed.
 
-Last updated: slice 11 — v1 acceptance (Playwright for the E2E suite, test-only). Slice 10 added no dependency (LangGraph deliberately not adopted, slice 10 D-1). Slice 9 added the Python AI service and its dependency tree, the Qwen3 model weights and the Ollama runtime; see the flagged `certifi` entry.
+Last updated: slice 12 — members and the restore drill (no dependency added; `pg_dump`/`pg_restore` are the PostgreSQL client tools, PostgreSQL License). Slice 11 added Playwright for the E2E suite, test-only. Slice 10 added no dependency (LangGraph deliberately not adopted, slice 10 D-1). Slice 9 added the Python AI service and its dependency tree, the Qwen3 model weights and the Ollama runtime; see the flagged `certifi` entry.
 
 ---
 

@@ -69,6 +69,30 @@ jobs:
       - run: python -m venv services/ai/.venv && services/ai/.venv/bin/pip install -r services/ai/requirements.txt
       - run: services/ai/.venv/bin/python -m pytest -c services/ai/pytest.ini
 
+  ops:
+    name: ops · restore drill (T-150)
+    runs-on: ubuntu-24.04
+    needs: [api]
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env: { POSTGRES_USER: finance, POSTGRES_PASSWORD: ci_only, POSTGRES_DB: finance_ai }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U finance" --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { global-json-file: global.json }
+      - name: Write .env
+        run: |
+          cp .env.example .env
+          sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci_only/; s/^POSTGRES_APP_PASSWORD=.*/POSTGRES_APP_PASSWORD=ci_app/; s/^POSTGRES_MIGRATOR_PASSWORD=.*/POSTGRES_MIGRATOR_PASSWORD=ci_migrator/; s/^POSTGRES_REPORTING_PASSWORD=.*/POSTGRES_REPORTING_PASSWORD=ci_reporting/' .env
+          sed -i "s|^JWT_SIGNING_KEY_PEM_BASE64=.*|JWT_SIGNING_KEY_PEM_BASE64=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null | base64 -w0)|" .env
+      - run: sudo apt-get install -y -q postgresql-client
+      # A migrated, seeded database: the migrator applies every migration, then the drill dumps, restores and compares.
+      - run: dotnet run --project apps/api/FinanceAi.Migrator -c Release -- up
+      - run: infrastructure/restore-drill.sh
+
   e2e:
     name: e2e · Playwright · en + ar
     runs-on: ubuntu-24.04
