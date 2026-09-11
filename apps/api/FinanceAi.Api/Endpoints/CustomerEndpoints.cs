@@ -163,7 +163,24 @@ public static class CustomerEndpoints
         var customer = await db.Customers.FirstOrDefaultAsync(c => c.Id == id, ct);
 
         // Another tenant's customer, a deleted customer and a random id are the same answer (SEC-13).
-        return customer is null ? ApiProblems.NotFoundProblem(context) : TypedResults.Ok(ToResponse(customer));
+        if (customer is null)
+        {
+            return ApiProblems.NotFoundProblem(context);
+        }
+
+        // FIN-15: open balance per currency from the derived cache, grouped in the database so no
+        // two currencies are ever added together (FIN-04). Nothing is netted.
+        var balances = await db.Invoices
+            .Where(i => i.CustomerId == id && i.Status == InvoiceStatus.Open && i.BalanceCache > 0m)
+            .GroupBy(i => i.Currency)
+            .Select(g => new { Currency = g.Key, Open = g.Sum(i => i.BalanceCache), Count = g.Count() })
+            .OrderBy(g => g.Currency)
+            .ToListAsync(ct);
+
+        return TypedResults.Ok(ToResponse(customer) with
+        {
+            Balances = balances.Select(b => new CustomerBalanceDto(b.Currency, MoneyDto.From(b.Open, b.Currency), b.Count)).ToList(),
+        });
     }
 
     private static async Task<IResult> UpdateAsync(

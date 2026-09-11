@@ -1,8 +1,11 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using FinanceAi.Api.Authorization;
 using FinanceAi.Domain.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Routing.Patterns;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,7 +25,7 @@ namespace FinanceAi.SecurityTests;
 public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
 {
     private sealed record EndpointUnderTest(
-        string Method, string Template, RequiredPermission? Permission, DeclaredAccess? Access);
+        string Method, string Template, RequiredPermission? Permission, DeclaredAccess? Access, bool Multipart);
 
     /// <summary>AC-24 / SEC-14: no token, no access — for every endpoint that is not anonymous.</summary>
     [Fact]
@@ -94,7 +97,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
         // Pinned so that a permission becoming universal is a deliberate, visible change rather than
         // a quiet loss of test coverage.
         Assert.Equal(
-            ["customers.read", "tenant.read"],
+            ["customers.read", "invoices.read", "tenant.read"],
             universal.Distinct(StringComparer.Ordinal).OrderBy(p => p, StringComparer.Ordinal).ToList());
     }
 
@@ -159,7 +162,8 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
 
         foreach (var endpoint in withIdParameter)
         {
-            var response = await SendAsync(clientA, endpoint, IdFor(endpoint, idsInB), idsInB.ContactId);
+            var secondary = endpoint.Template.Contains("{rowId", StringComparison.Ordinal) ? idsInB.RowId : idsInB.ContactId;
+            var response = await SendAsync(clientA, endpoint, IdFor(endpoint, idsInB), secondary);
 
             Assert.True(
                 response.StatusCode == HttpStatusCode.NotFound,
@@ -211,7 +215,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     {
         var endpoints = this.Endpoints();
 
-        Assert.Equal(23, endpoints.Count);
+        Assert.Equal(36, endpoints.Count);
         Assert.All(endpoints, e => Assert.True(e.Permission is not null || e.Access is not null));
 
         // The anonymous set is exactly registration, login and refresh — nothing has drifted into it.
@@ -241,7 +245,8 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
                     m,
                     e.Template,
                     e.Endpoint.Metadata.GetMetadata<RequiredPermission>(),
-                    e.Endpoint.Metadata.GetMetadata<DeclaredAccess>())))
+                    e.Endpoint.Metadata.GetMetadata<DeclaredAccess>(),
+                    e.Endpoint.Metadata.GetMetadata<IAcceptsMetadata>()?.ContentTypes.Any(c => c.StartsWith("multipart/", StringComparison.OrdinalIgnoreCase)) == true)))
             .OrderBy(e => e.Template, StringComparer.Ordinal)
             .ThenBy(e => e.Method, StringComparer.Ordinal)
             .ToList();
@@ -249,7 +254,7 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
     private static string Normalize(string? template) =>
         (template ?? string.Empty).Trim('/');
 
-    private sealed record ForeignIds(Guid MembershipId, Guid CustomerId, Guid ContactId);
+    private sealed record ForeignIds(Guid MembershipId, Guid CustomerId, Guid ContactId, Guid BatchId, Guid RowId, Guid MappingId, Guid InvoiceId);
 
     /// <summary>One real row of every {id}-addressed entity, inside organization B.</summary>
     private async Task<ForeignIds> CreateEntitiesInAsync(ApiScenario.Organization organization)
@@ -266,12 +271,41 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
         var contact = await (await client.PostAsJsonAsync($"/api/v1/customers/{customerId}/contacts", new { name = "Sweep contact" }, ApiScenario.Json))
             .Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(ApiScenario.Json);
 
+        // Slice 3: a committed import, so batch, row, mapping and invoice ids are all real.
+        var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(Encoding.UTF8.GetBytes("Invoice No,Customer,Issue Date,Total\nSW-1,Sweep target,2026-09-01,1\n"));
+        file.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        form.Add(file, "file", "sweep.csv");
+        var batch = await (await client.PostAsync("/api/v1/imports", form)).Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(ApiScenario.Json);
+        var batchId = batch.GetProperty("id").GetGuid();
+
+        var mapped = await (await client.PostAsJsonAsync($"/api/v1/imports/{batchId}/mapping", new
+        {
+            columnMap = new Dictionary<string, string> { ["Invoice No"] = "invoice_number", ["Customer"] = "customer_name", ["Issue Date"] = "issue_date", ["Total"] = "total_amount" },
+            saveAs = "sweep mapping",
+        }, ApiScenario.Json)).Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(ApiScenario.Json);
+        var mappingId = mapped.GetProperty("mappingId").GetGuid();
+
+        var rows = await client.GetFromJsonAsync<System.Text.Json.JsonElement>($"/api/v1/imports/{batchId}/rows", ApiScenario.Json);
+        var rowId = rows.GetProperty("items")[0].GetProperty("id").GetGuid();
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, (await client.PostAsync($"/api/v1/imports/{batchId}/commit", null)).StatusCode);
+        var invoices = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/v1/invoices", ApiScenario.Json);
+        var invoiceId = invoices.GetProperty("items")[0].GetProperty("id").GetGuid();
+
         Assert.NotEqual(Guid.Empty, membershipId);
-        return new ForeignIds(membershipId, customerId, contact.GetProperty("id").GetGuid());
+        return new ForeignIds(membershipId, customerId, contact.GetProperty("id").GetGuid(), batchId, rowId, mappingId, invoiceId);
     }
 
-    private static Guid IdFor(EndpointUnderTest endpoint, ForeignIds ids) =>
-        endpoint.Template.Contains("customers", StringComparison.Ordinal) ? ids.CustomerId : ids.MembershipId;
+    /// <summary>Which of B's real ids a route is addressed with. A new entity with an {id} route registers here.</summary>
+    private static Guid IdFor(EndpointUnderTest endpoint, ForeignIds ids) => endpoint.Template switch
+    {
+        var t when t.Contains("import-mappings", StringComparison.Ordinal) => ids.MappingId,
+        var t when t.Contains("imports", StringComparison.Ordinal) => ids.BatchId,
+        var t when t.Contains("invoices", StringComparison.Ordinal) => ids.InvoiceId,
+        var t when t.Contains("customers", StringComparison.Ordinal) => ids.CustomerId,
+        _ => ids.MembershipId,
+    };
 
     private static Task<HttpResponseMessage> SendAsync(
         HttpClient client, EndpointUnderTest endpoint, Guid id, Guid? secondaryId = null)
@@ -279,11 +313,22 @@ public sealed class EndpointAuthorizationSweepTests(ApiTestFixture fixture)
         var path = "/" + endpoint.Template
             .Replace("{id:guid}", id.ToString(), StringComparison.Ordinal)
             .Replace("{id}", id.ToString(), StringComparison.Ordinal)
-            .Replace("{contactId:guid}", (secondaryId ?? Guid.CreateVersion7()).ToString(), StringComparison.Ordinal);
+            .Replace("{contactId:guid}", (secondaryId ?? Guid.CreateVersion7()).ToString(), StringComparison.Ordinal)
+            .Replace("{rowId:guid}", (secondaryId ?? Guid.CreateVersion7()).ToString(), StringComparison.Ordinal);
 
         var request = new HttpRequestMessage(new HttpMethod(endpoint.Method), path);
 
-        if (endpoint.Method is "POST" or "PATCH" or "PUT")
+        if (endpoint.Multipart)
+        {
+            // Routing answers 415 to the wrong content type before any middleware runs, which would
+            // mask the 401/403 this sweep is here to prove. Speak the endpoint's language.
+            var form = new MultipartFormDataContent();
+            var file = new ByteArrayContent(Encoding.UTF8.GetBytes("a,b\n1,2\n"));
+            file.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+            form.Add(file, "file", "sweep.csv");
+            request.Content = form;
+        }
+        else if (endpoint.Method is "POST" or "PATCH" or "PUT")
         {
             request.Content = JsonContent.Create(new { }, options: ApiScenario.Json);
         }

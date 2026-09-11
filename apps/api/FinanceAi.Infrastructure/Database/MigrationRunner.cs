@@ -37,13 +37,24 @@ public sealed class MigrationRunner(TextWriter? log = null)
         await using var connection = new NpgsqlConnection(adminConnectionString);
         await connection.OpenAsync(ct);
 
+        // Roles are cluster-wide. Two bootstraps at once — two test assemblies, two deploys — would
+        // race on pg_authid ("tuple concurrently updated"). One transaction under one cluster-wide
+        // advisory lock makes the bootstrap serial and idempotent.
+        await using var transaction = await connection.BeginTransactionAsync(ct);
+        await using (var lockCommand = new NpgsqlCommand("SELECT pg_advisory_xact_lock(0x46494E41, 0x424F4F54)", connection, transaction))
+        {
+            await lockCommand.ExecuteNonQueryAsync(ct);
+        }
+
         foreach (var (name, sql) in SqlScripts.Bootstrap)
         {
             var rendered = Substitute(sql, passwords);
-            await using var command = new NpgsqlCommand(rendered, connection);
+            await using var command = new NpgsqlCommand(rendered, connection, transaction);
             await command.ExecuteNonQueryAsync(ct);
             this.log.WriteLine($"bootstrap: applied {name}");
         }
+
+        await transaction.CommitAsync(ct);
     }
 
     /// <summary>

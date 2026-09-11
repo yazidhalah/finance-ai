@@ -290,3 +290,138 @@ export const customersApi = {
   removeContact: (id: string, contactId: string) =>
     request<void>(`/customers/${id}/contacts/${contactId}`, { method: 'DELETE' }),
 }
+
+// ---------------------------------------------------------------------------------------
+// Slice 3 — Invoice import
+// ---------------------------------------------------------------------------------------
+
+export interface ControlTotal {
+  currency: string
+  total: Money
+  count: number
+}
+
+export interface ImportBatch {
+  id: string
+  fileName: string
+  fileKind: 'csv' | 'xlsx'
+  fileSize: number
+  status: 'Uploaded' | 'Parsing' | 'Preview' | 'Committing' | 'Committed' | 'Failed' | 'Cancelled'
+  headers: string[]
+  columnMap: Record<string, string> | null
+  dateFormat: string
+  decimalSeparator: string
+  mappingId: string | null
+  rowCount: number
+  acceptedCount: number
+  rejectedCount: number
+  duplicateCount: number
+  warningCount: number
+  forced: boolean
+  controlTotals: ControlTotal[]
+  uploadedAt: string
+  committedAt: string | null
+  rowVersion: string
+}
+
+export interface ImportRow {
+  id: string
+  rowNo: number
+  raw: Record<string, string>
+  parsed: Record<string, string | null> | null
+  outcome: 'Pending' | 'Accepted' | 'Rejected' | 'Duplicate' | 'Warning' | 'Skipped'
+  errorCode: string | null
+  errorDetail: string | null
+  customerId: string | null
+  invoiceId: string | null
+}
+
+export interface ImportMapping {
+  id: string
+  name: string
+  columnMap: Record<string, string>
+  dateFormat: string
+  decimalSeparator: string
+}
+
+export interface Invoice {
+  id: string
+  customerId: string
+  invoiceNumber: string
+  status: string
+  issueDate: string
+  dueDate: string
+  currency: string
+  netAmount: Money
+  taxAmount: Money
+  totalAmount: Money
+  openBalance: Money
+  fxRateToBase: string
+  baseCurrency: string
+  poReference: string | null
+  externalId: string | null
+  source: string
+  importBatchId: string | null
+}
+
+/** The mappable targets; mirrors ImportFields on the server. */
+export const importTargets = [
+  'invoice_number', 'customer_code', 'customer_name', 'issue_date', 'due_date', 'currency',
+  'net_amount', 'tax_amount', 'total_amount', 'po_reference', 'external_id', 'fx_rate_to_base', 'notes',
+] as const
+
+export const importsApi = {
+  upload: async (file: File, force: boolean) => {
+    const form = new FormData()
+    form.append('file', file, file.name)
+    const headers: Record<string, string> = { Accept: 'application/json' }
+    const token = getAccessToken()
+    if (token) headers.Authorization = `Bearer ${token}`
+
+    const response = await fetch(`${baseUrl}/imports${force ? '?force=true' : ''}`, {
+      method: 'POST',
+      headers,
+      body: form,
+      credentials: 'same-origin',
+    })
+
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as Partial<Problem>
+      throw new ApiError({
+        status: response.status,
+        code: body.code ?? 'unknown',
+        messageKey: body.messageKey ?? 'errors.unknown',
+        traceId: body.traceId,
+        errors: body.errors,
+      })
+    }
+
+    return (await response.json()) as ImportBatch
+  },
+
+  list: () => request<{ items: ImportBatch[]; nextCursor: string | null; totalCount: number }>('/imports'),
+  get: (id: string) => request<ImportBatch>(`/imports/${id}`),
+  rows: (id: string, outcome?: string) =>
+    request<{ items: ImportRow[]; nextCursor: string | null; totalCount: number }>(
+      `/imports/${id}/rows?limit=500${outcome ? `&outcome=${outcome}` : ''}`,
+    ),
+  map: (id: string, body: { columnMap?: Record<string, string>; dateFormat?: string; decimalSeparator?: string; mappingId?: string; saveAs?: string }) =>
+    request<ImportBatch>(`/imports/${id}/mapping`, { method: 'POST', body }),
+  resolve: (id: string, rowId: string, body: { action: 'skip' | 'assign_customer' | 'create_customer'; customerId?: string }) =>
+    request<ImportRow>(`/imports/${id}/rows/${rowId}/resolve`, { method: 'POST', body }),
+  commit: (id: string) =>
+    request<{ batchId: string; status: string; invoicesCreated: number; totals: ControlTotal[] }>(`/imports/${id}/commit`, { method: 'POST' }),
+  cancel: (id: string) => request<void>(`/imports/${id}/cancel`, { method: 'POST' }),
+  mappings: () => request<{ items: ImportMapping[] }>('/import-mappings'),
+}
+
+export const invoicesApi = {
+  list: (params: { customerId?: string; status?: string; cursor?: string }) => {
+    const query = new URLSearchParams()
+    if (params.customerId) query.set('customerId', params.customerId)
+    if (params.status) query.set('status', params.status)
+    if (params.cursor) query.set('cursor', params.cursor)
+    const suffix = query.size ? `?${query}` : ''
+    return request<{ items: Invoice[]; nextCursor: string | null; totalCount: number }>(`/invoices${suffix}`)
+  },
+}

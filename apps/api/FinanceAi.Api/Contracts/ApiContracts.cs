@@ -254,8 +254,8 @@ public sealed record CustomerResponse(
     int BrokenPromiseCount12m,
     int BouncedChequeCount12m,
     string? Notes,
-    /// <summary>FIN-15 balance blocks per currency. Empty until slice 3 — an empty list, not zeros (D-2).</summary>
-    IReadOnlyList<object> Balances,
+    /// <summary>FIN-15 balance blocks per currency; one per currency with an Open invoice. Empty means no open invoices.</summary>
+    IReadOnlyList<CustomerBalanceDto> Balances,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     string RowVersion);
@@ -288,3 +288,93 @@ public sealed record ContactListResponse(IReadOnlyList<ContactResponse> Items);
 public sealed record DuplicateCandidate(Guid CustomerId, Guid OtherCustomerId, string? NameA, string? NameB, double Similarity);
 
 public sealed record DuplicateListResponse(IReadOnlyList<DuplicateCandidate> Items);
+
+// ---------------------------------------------------------------------------------------
+// Slice 3 — Invoice import
+// ---------------------------------------------------------------------------------------
+
+public sealed record ImportBatchResponse(
+    Guid Id,
+    string FileName,
+    string FileKind,
+    long FileSize,
+    string Status,
+    IReadOnlyList<string> Headers,
+    IReadOnlyDictionary<string, string>? ColumnMap,
+    string DateFormat,
+    string DecimalSeparator,
+    Guid? MappingId,
+    int RowCount,
+    int AcceptedCount,
+    int RejectedCount,
+    int DuplicateCount,
+    int WarningCount,
+    bool Forced,
+    /// <summary>FIN-04: one entry per currency, never a grand total.</summary>
+    IReadOnlyList<ControlTotalDto> ControlTotals,
+    DateTimeOffset UploadedAt,
+    DateTimeOffset? CommittedAt,
+    string RowVersion);
+
+public sealed record ControlTotalDto(string Currency, MoneyDto Total, int Count);
+
+public sealed record ImportBatchListResponse(IReadOnlyList<ImportBatchResponse> Items, string? NextCursor, int TotalCount);
+
+public sealed record ImportRowResponse(
+    Guid Id,
+    int RowNo,
+    IReadOnlyDictionary<string, string> Raw,
+    IReadOnlyDictionary<string, string?>? Parsed,
+    string Outcome,
+    string? ErrorCode,
+    string? ErrorDetail,
+    Guid? CustomerId,
+    Guid? InvoiceId);
+
+public sealed record ImportRowListResponse(IReadOnlyList<ImportRowResponse> Items, string? NextCursor, int TotalCount);
+
+public sealed record ApplyMappingRequest(
+    IReadOnlyDictionary<string, string>? ColumnMap,
+    string? DateFormat,
+    string? DecimalSeparator,
+    Guid? MappingId,
+    /// <summary>When set, the applied mapping is also saved under this name for reuse.</summary>
+    string? SaveAs);
+
+public sealed record ResolveRowRequest(string? Action, Guid? CustomerId);
+
+public sealed record CommitResponse(Guid BatchId, string Status, int InvoicesCreated, IReadOnlyList<ControlTotalDto> Totals);
+
+public sealed record ImportMappingRequest(string? Name, IReadOnlyDictionary<string, string>? ColumnMap, string? DateFormat, string? DecimalSeparator);
+
+public sealed record ImportMappingResponse(Guid Id, string Name, IReadOnlyDictionary<string, string> ColumnMap, string DateFormat, string DecimalSeparator);
+
+public sealed record ImportMappingListResponse(IReadOnlyList<ImportMappingResponse> Items);
+
+public sealed record InvoiceResponse(
+    Guid Id,
+    Guid CustomerId,
+    string InvoiceNumber,
+    string Status,
+    string IssueDate,
+    string DueDate,
+    string Currency,
+    MoneyDto NetAmount,
+    MoneyDto TaxAmount,
+    MoneyDto TotalAmount,
+    /// <summary>FIN-10: the derived balance. Equal to the total until 3b introduces allocations.</summary>
+    MoneyDto OpenBalance,
+    string FxRateToBase,
+    string BaseCurrency,
+    string? PoReference,
+    string? ExternalId,
+    string? Notes,
+    string Source,
+    Guid? ImportBatchId,
+    DateTimeOffset CreatedAt,
+    string RowVersion);
+
+public sealed record InvoiceListResponse(IReadOnlyList<InvoiceResponse> Items, string? NextCursor, int TotalCount);
+
+/// <summary>FIN-15: the open balance per currency, never netted, never summed across currencies.</summary>
+public sealed record CustomerBalanceDto(string Currency, MoneyDto OpenBalance, int OpenInvoiceCount);

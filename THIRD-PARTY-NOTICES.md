@@ -9,7 +9,7 @@ source-available license is a blocking review finding, not a discussion.
 
 Versions are pinned; lockfiles (`package-lock.json`, `packages.lock.json`) are committed.
 
-Last updated: slice 2 — Customers.
+Last updated: slice 3a — Invoice Import (no dependency added: CSV and XLSX are parsed in-house).
 
 ---
 
