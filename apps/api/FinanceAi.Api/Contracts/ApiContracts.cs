@@ -491,3 +491,46 @@ public sealed record DsoResponse(string AsOf, IReadOnlyList<DsoDto> Currencies, 
 public sealed record ReconciliationMismatchDto(Guid InvoiceId, string InvoiceNumber, string Rule, MoneyDto Cached, MoneyDto Derived, string Status);
 
 public sealed record ReconciliationResponse(string CheckedAt, int InvoicesChecked, IReadOnlyList<ReconciliationMismatchDto> Mismatches);
+
+// ---------------------------------------------------------------------------------------
+// Slice 5 — Collection queue & cases (doc 05 slice 5).
+// ---------------------------------------------------------------------------------------
+
+public sealed record PriorityFactorDto(string Factor, int Contribution, string Detail);
+
+public sealed record SuggestedActionDto(string Kind, string? TemplateKey, string Language);
+
+public sealed record CaseCustomerDto(Guid Id, string? Code, string? NameAr, string? NameEn, string PreferredLanguage, string RiskFlag, int BrokenPromiseCount12m, int BouncedChequeCount12m);
+
+public sealed record QueueItemDto(
+    Guid CaseId, long CaseNumber, CaseCustomerDto Customer, string Status, int PriorityScore, int WeightsVersion,
+    IReadOnlyList<PriorityFactorDto> PriorityFactors, IReadOnlyList<CustomerPositionDto> OverdueBalances, int MaxDaysPastDue, string Bucket,
+    int InvoiceCount, Guid? AssignedTo, string? NextActionAt, string? LastContactAt, bool AutomationDisabled, SuggestedActionDto SuggestedAction);
+
+public sealed record QueueResponse(IReadOnlyList<QueueItemDto> Items, int TotalCount, string AsOf, bool ScopedToAssignee);
+
+public sealed record QueueSummaryResponse(IReadOnlyDictionary<string, int> ByStatus, IReadOnlyDictionary<string, int> ByBucket, int QueueSize, int Suppressed, bool ScopedToAssignee);
+
+public sealed record CaseListResponse(IReadOnlyList<QueueItemDto> Items, int TotalCount, bool ScopedToAssignee);
+
+public sealed record CaseInvoiceDto(Guid InvoiceId, string InvoiceNumber, string Currency, string IssueDate, string DueDate, MoneyDto TotalAmount, MoneyDto OpenBalance, int DaysPastDue, string Status, string AddedAt, string? RemovedAt, string? RemovedReason);
+
+public sealed record TimelineEntryDto(string Id, string Kind, string OccurredAt, string ActorKind, Guid? ActorUserId, string Summary, System.Text.Json.JsonElement? Detail);
+
+public sealed record CaseDetailResponse(
+    QueueItemDto Case, string OpenedAt, string? HoldUntil, string? HoldReason, string? EscalatedAt, Guid? EscalatedBy, string? EscalationReason,
+    string? ClosedAt, string? CloseReason, string? NextActionReason, long RowVersion,
+    IReadOnlyList<CaseInvoiceDto> Invoices, IReadOnlyList<TimelineEntryDto> Timeline,
+    IReadOnlyList<object> Promises, IReadOnlyList<object> Disputes, IReadOnlyList<object> Messages);
+
+public sealed record CreateCaseRequest(Guid? CustomerId);
+
+public sealed record CaseTransitionRequest(string? Event, string? ReasonCode, string? Note, string? HoldUntil);
+
+public sealed record AssignCaseRequest(Guid? UserId);
+
+public sealed record CaseActivityRequest(string? Kind, string? Summary, System.Text.Json.JsonElement? Detail);
+
+public sealed record SnoozeRequest(string? UntilDate, string? Reason);
+
+public sealed record SweepResponse(int Created, int Resolved, int Resumed, int FollowedUp, int Rescored);

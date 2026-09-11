@@ -711,3 +711,128 @@ export const reportsApi = {
   export: (format: 'csv' | 'xlsx', locale: string, q: AgingQuery = {}) =>
     request<Blob>(`/reports/aging/export${agingQuery({ ...q })}${agingQuery(q) ? '&' : '?'}format=${format}&locale=${locale}`, { raw: true }),
 }
+
+// ---------------------------------------------------------------------------------------
+// Slice 5 — Collection queue & cases (doc 05 slice 5). The score and its breakdown are the server's.
+// ---------------------------------------------------------------------------------------
+
+export interface CustomerPosition {
+  currency: string
+  openBalance: Money
+  openInvoiceCount: number
+  unappliedCash: Money
+  unappliedCredit: Money
+}
+
+export interface PriorityFactor {
+  factor: string
+  contribution: number
+  detail: string
+}
+
+export interface CaseCustomer {
+  id: string
+  code: string | null
+  nameAr: string | null
+  nameEn: string | null
+  preferredLanguage: string
+  riskFlag: string
+  brokenPromiseCount12m: number
+  bouncedChequeCount12m: number
+}
+
+export type CaseStatus = 'Open' | 'InProgress' | 'AwaitingCustomer' | 'PromiseActive' | 'Disputed' | 'OnHold' | 'Escalated' | 'Resolved' | 'Abandoned'
+
+export interface QueueItem {
+  caseId: string
+  caseNumber: number
+  customer: CaseCustomer
+  status: CaseStatus
+  priorityScore: number
+  weightsVersion: number
+  priorityFactors: PriorityFactor[]
+  overdueBalances: CustomerPosition[]
+  maxDaysPastDue: number
+  bucket: string
+  invoiceCount: number
+  assignedTo: string | null
+  nextActionAt: string | null
+  lastContactAt: string | null
+  automationDisabled: boolean
+  suggestedAction: { kind: string; templateKey: string | null; language: string }
+}
+
+export interface CaseInvoice {
+  invoiceId: string
+  invoiceNumber: string
+  currency: string
+  issueDate: string
+  dueDate: string
+  totalAmount: Money
+  openBalance: Money
+  daysPastDue: number
+  status: string
+  addedAt: string
+  removedAt: string | null
+  removedReason: string | null
+}
+
+export interface TimelineEntry {
+  id: string
+  kind: string
+  occurredAt: string
+  actorKind: string
+  actorUserId: string | null
+  summary: string
+  detail: unknown
+}
+
+export interface CaseDetail {
+  case: QueueItem
+  openedAt: string
+  holdUntil: string | null
+  holdReason: string | null
+  escalatedAt: string | null
+  escalatedBy: string | null
+  escalationReason: string | null
+  closedAt: string | null
+  closeReason: string | null
+  nextActionReason: string | null
+  rowVersion: number
+  invoices: CaseInvoice[]
+  timeline: TimelineEntry[]
+}
+
+export interface QueueSummary {
+  byStatus: Record<string, number>
+  byBucket: Record<string, number>
+  queueSize: number
+  suppressed: number
+  scopedToAssignee: boolean
+}
+
+export const casesApi = {
+  queue: (q: { assignedTo?: string; bucket?: string; minAmount?: string; limit?: number } = {}) => {
+    const params = new URLSearchParams()
+    for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== '') params.set(k, String(v))
+    const text = params.toString()
+    return request<{ items: QueueItem[]; totalCount: number; asOf: string; scopedToAssignee: boolean }>(`/queue${text ? `?${text}` : ''}`)
+  },
+  summary: () => request<QueueSummary>('/queue/summary'),
+  list: (q: { status?: string; customerId?: string } = {}) => {
+    const params = new URLSearchParams()
+    for (const [k, v] of Object.entries(q)) if (v) params.set(k, v)
+    const text = params.toString()
+    return request<{ items: QueueItem[]; totalCount: number }>(`/cases${text ? `?${text}` : ''}`)
+  },
+  get: (id: string) => request<CaseDetail>(`/cases/${id}`),
+  timeline: (id: string) => request<{ items: TimelineEntry[] }>(`/cases/${id}/timeline`),
+  create: (customerId: string) => request<QueueItem>('/cases', { method: 'POST', body: { customerId } }),
+  sweep: () => request<{ created: number; resolved: number; resumed: number; followedUp: number; rescored: number }>('/cases/sweep', { method: 'POST', body: {} }),
+  transition: (id: string, body: { event: 'contact_logged' | 'hold' | 'resume' | 'escalate' | 'abandon'; reasonCode?: string; note?: string; holdUntil?: string }) =>
+    request<QueueItem>(`/cases/${id}/transitions`, { method: 'POST', body }),
+  assign: (id: string, userId: string | null) => request<QueueItem>(`/cases/${id}/assign`, { method: 'POST', body: { userId } }),
+  logActivity: (id: string, body: { kind: string; summary: string; detail?: unknown }) =>
+    request<TimelineEntry>(`/cases/${id}/activities`, { method: 'POST', body }),
+  snooze: (id: string, untilDate: string, reason?: string) => request<QueueItem>(`/cases/${id}/snooze`, { method: 'POST', body: { untilDate, reason } }),
+}

@@ -81,6 +81,12 @@ public static class RolePermissions
     /// <summary>The effective permissions of a role, as returned by <c>/me</c>.</summary>
     public static IReadOnlySet<string> For(TenantRole role) => Map[role];
 
+    /// <summary>
+    /// PRD-14: the one role the spec names as subject to <c>collector_sees_only_assigned</c>. A visibility
+    /// filter, not an authorization — permissions still decide what a scoped user may do.
+    /// </summary>
+    public static bool IsAssignmentScoped(TenantRole role) => role == TenantRole.Collector;
+
     public static bool Grants(TenantRole role, string permission) =>
         Map[role].Contains(permission);
 

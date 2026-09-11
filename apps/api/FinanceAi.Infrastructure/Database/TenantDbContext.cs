@@ -57,6 +57,12 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
 
     public DbSet<WriteOff> WriteOffs => this.Set<WriteOff>();
 
+    public DbSet<CollectionCase> Cases => this.Set<CollectionCase>();
+
+    public DbSet<CaseInvoice> CaseInvoices => this.Set<CaseInvoice>();
+
+    public DbSet<CaseActivity> CaseActivities => this.Set<CaseActivity>();
+
     public override int SaveChanges()
     {
         this.StampTenant();
@@ -82,6 +88,7 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
         ConfigureInvoices(model);
         ConfigureImport(model);
         ConfigureLedger(model);
+        ConfigureCases(model);
 
         this.ApplyTenantQueryFilters(model);
 
@@ -550,6 +557,72 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.ReversedAt).HasColumnName("reversed_at");
             e.Property(x => x.ReversalReason).HasColumnName("reversal_reason");
             e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
+        });
+    }
+
+    private static void ConfigureCases(ModelBuilder model)
+    {
+        model.Entity<CollectionCase>(e =>
+        {
+            e.ToTable("collection_cases");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.CustomerId).HasColumnName("customer_id");
+            e.Property(x => x.CaseNumber).HasColumnName("case_number");
+            e.Property(x => x.Status).HasColumnName("status").HasConversion<string>();
+            e.Property(x => x.PriorityScore).HasColumnName("priority_score");
+            e.Property(x => x.WeightsVersion).HasColumnName("weights_version");
+            e.Property(x => x.PriorityFactors).HasColumnName("priority_factors").HasColumnType("jsonb");
+            e.Property(x => x.ScoredAt).HasColumnName("scored_at");
+            e.Property(x => x.OverdueBalanceBase).HasColumnName("overdue_balance_base").HasColumnType("numeric(19,3)");
+            e.Property(x => x.MaxDaysPastDue).HasColumnName("max_days_past_due");
+            e.Property(x => x.InvoiceCount).HasColumnName("invoice_count");
+            e.Property(x => x.AssignedTo).HasColumnName("assigned_to");
+            e.Property(x => x.OpenedAt).HasColumnName("opened_at");
+            e.Property(x => x.NextActionAt).HasColumnName("next_action_at");
+            e.Property(x => x.NextActionReason).HasColumnName("next_action_reason");
+            e.Property(x => x.HoldUntil).HasColumnName("hold_until");
+            e.Property(x => x.HoldReason).HasColumnName("hold_reason");
+            e.Property(x => x.EscalatedAt).HasColumnName("escalated_at");
+            e.Property(x => x.EscalatedBy).HasColumnName("escalated_by");
+            e.Property(x => x.EscalationReason).HasColumnName("escalation_reason");
+            e.Property(x => x.ClosedAt).HasColumnName("closed_at");
+            e.Property(x => x.CloseReason).HasColumnName("close_reason");
+            e.Property(x => x.LastContactAt).HasColumnName("last_contact_at");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
+            e.Ignore(x => x.AutomationDisabled);
+        });
+
+        model.Entity<CaseInvoice>(e =>
+        {
+            e.ToTable("case_invoices");
+            e.HasKey(x => new { x.TenantId, x.CaseId, x.InvoiceId });
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.CaseId).HasColumnName("case_id");
+            e.Property(x => x.InvoiceId).HasColumnName("invoice_id");
+            e.Property(x => x.AddedAt).HasColumnName("added_at");
+            e.Property(x => x.RemovedAt).HasColumnName("removed_at");
+            e.Property(x => x.RemovedReason).HasColumnName("removed_reason");
+        });
+
+        model.Entity<CaseActivity>(e =>
+        {
+            e.ToTable("case_activities");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.CaseId).HasColumnName("case_id");
+            e.Property(x => x.Kind).HasColumnName("kind");
+            e.Property(x => x.OccurredAt).HasColumnName("occurred_at");
+            e.Property(x => x.ActorUserId).HasColumnName("actor_user_id");
+            e.Property(x => x.ActorKind).HasColumnName("actor_kind");
+            e.Property(x => x.AiSuggestionId).HasColumnName("ai_suggestion_id");
+            e.Property(x => x.Summary).HasColumnName("summary");
+            e.Property(x => x.Detail).HasColumnName("detail").HasColumnType("jsonb");
         });
     }
 }
