@@ -8,12 +8,20 @@ No other module is designed or built until this one passes its acceptance tests
 
 ## Current phase
 
-**Building, from the approved specification.** Slices 1 (Organization & Authentication),
-2 (Customers), 3a (Invoice Import), 3b (Payments & Allocation), 4 (Aging), 5 (Collection Queue),
-6 (Promise-to-Pay), 7 (Disputes) and 8 (Email Templates & Reminders) are implemented and tested; see
-`docs/slices/`, starting with
-[`docs/slices/slice-01-organization-and-auth.md`](docs/slices/slice-01-organization-and-auth.md)
-for its acceptance criteria, what it deliberately defers, and what its tests found.
+**Built, from the approved specification; awaiting the v1 acceptance pass.** All ten v1 slices — 1 (Organization &
+Authentication), 2 (Customers), 3a (Invoice Import), 3b (Payments & Allocation), 4 (Aging), 5 (Collection Queue),
+6 (Promise-to-Pay), 7 (Disputes), 8 (Email Templates & Reminders), 9 (Local AI: reply classification) and 10 (Daily
+Briefing) — and the twenty slices after them (E2E, invitations, MFA, deployment, invariants and alerts, CI gates, key
+rotation, the typed contract, coverage, supply-chain checks, the acceptance tooling, holidays and the manual invoice,
+email verification and tenant SMTP, breached passwords, per-operation AI switches, the performance suite,
+accessibility, the golden ledger, the corpus loop) are implemented and tested; every row of the API contract (doc 05)
+and every test id of the test strategy (doc 09) has an implementation. See `docs/slices/` — one document and one
+self-review per slice, starting with
+[`docs/slices/slice-01-organization-and-auth.md`](docs/slices/slice-01-organization-and-auth.md).
+
+What remains before the First Product is "done" needs people and hardware, not code: the acceptance pass on a
+consented pilot corpus, the target host and a native Arabic reviewer —
+[docs/ops/acceptance-pass.md](docs/ops/acceptance-pass.md). No second module until it passes.
 
 The specification under [`/docs`](docs/README.md) remains the source of truth. Start there:
 **[docs/README.md](docs/README.md)** — the index and the recommended reading order.
@@ -73,14 +81,20 @@ dotnet format --verify-no-changes     # formatting
 dotnet build --configuration Release  # build
 dotnet test  --configuration Release  # unit + integration + tenant-isolation, against real PostgreSQL
 npm --prefix apps/web run test        # web units: i18n parity, RTL, permission-filtered navigation
-npm --prefix tests/e2e test           # Playwright journeys T-121…T-132 in en and ar (see tests/e2e/README.md)
+npm --prefix tests/e2e test           # Playwright journeys T-121…T-132 and the T-133 accessibility scan, in en and ar (see tests/e2e/README.md)
 infrastructure/restore-drill.sh       # backup → restore into a fresh database → row counts match (T-150, PRD-23)
 services/ai/.venv/bin/python -m pytest -c services/ai/pytest.ini   # the AI service, with a fake model
 infrastructure/check-notices.py       # every direct dependency recorded in THIRD-PARTY-NOTICES.md, licences permissive
 infrastructure/check-notices.py --transitive   # the whole lock-file tree: no copyleft anywhere
 git config core.hooksPath .githooks   # once per clone: gitleaks on staged changes before each commit (SEC-67)
 AI_LIVE_TESTS=1 services/ai/.venv/bin/python -m pytest -c services/ai/pytest.ini   # + the injection corpus against Ollama (slow)
+dotnet test tests/integration/FinanceAi.IntegrationTests -c Release --filter "Category=Performance" --logger "console;verbosity=detailed"   # T-140/141/142 (the nightly runs these)
+UPDATE_GOLDEN=1 dotnet test tests/integration/FinanceAi.IntegrationTests -c Release --filter "FullyQualifiedName~GoldenTenantTests"        # accept a moved number in the golden ledger (T-52), consciously
 ```
+
+The golden ledger (`GoldenTenantTests`, T-52) runs with the integration suite: 2,000 invoices and a scripted year of
+activity rebuilt from a fixed seed through the API and compared to a checked-in file — a financial number that moves
+fails the build until someone accepts it.
 
 The .NET suites provision their own throwaway database per run, apply the real migrations to it, and
 drop it afterwards. Every test creates its own tenants (T-04).
