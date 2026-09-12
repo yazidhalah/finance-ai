@@ -232,8 +232,15 @@ public sealed class GoldenTenantTests(ApiTestFixture fixture, Xunit.Abstractions
     {
         var map = new Dictionary<string, string>
         {
-            ["Invoice No"] = "invoice_number", ["Customer"] = "customer_name", ["Issue Date"] = "issue_date", ["Due Date"] = "due_date",
-            ["Currency"] = "currency", ["Net"] = "net_amount", ["Tax"] = "tax_amount", ["Total"] = "total_amount", ["Rate"] = "fx_rate_to_base",
+            ["Invoice No"] = "invoice_number",
+            ["Customer"] = "customer_name",
+            ["Issue Date"] = "issue_date",
+            ["Due Date"] = "due_date",
+            ["Currency"] = "currency",
+            ["Net"] = "net_amount",
+            ["Tax"] = "tax_amount",
+            ["Total"] = "total_amount",
+            ["Rate"] = "fx_rate_to_base",
         };
         var response = await client.PostAsJsonAsync($"/api/v1/imports/{batchId}/mapping", new { columnMap = map, dateFormat = "yyyy-MM-dd", decimalSeparator = "." }, ApiScenario.Json);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
