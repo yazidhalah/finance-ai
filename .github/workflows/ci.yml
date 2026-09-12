@@ -206,7 +206,8 @@ jobs:
       - run: npm --prefix tests/e2e ci
       - run: npx --prefix tests/e2e playwright install --with-deps chromium
       - run: sudo apt-get install -y -q postgresql-client fonts-noto-core fonts-noto-color-emoji
-      - run: npm --prefix tests/e2e test
+      # The Arabic visual baselines were rendered on this runner (refresh_snapshots) and are compared here (T-120).
+      - run: PLAYWRIGHT_SNAPSHOTS=1 npm --prefix tests/e2e test
         if: ${{ !inputs.refresh_snapshots }}
       # Visual baselines are machine-specific (fonts); this input renders them here so they can be committed from the canonical environment.
       - run: PLAYWRIGHT_SNAPSHOTS=1 npm --prefix tests/e2e test -- --project=ar --update-snapshots

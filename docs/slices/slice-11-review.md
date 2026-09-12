@@ -49,7 +49,8 @@ Arabic run asserts (RTL, isolates, exact amounts) stays on. Flagged below.
 1. **No invitation flow** — T-121's "invite an Accountant → accept" is replaced by seeding a member. If
    invitations are wanted in v1, that is a small slice of its own (slice 12, already on its branch).
 1b. **Visual snapshots are not compared in CI yet** — baselines are font-dependent; run the workflow with
-   `refresh_snapshots`, commit the artifact, then enable `PLAYWRIGHT_SNAPSHOTS=1` in the e2e job.
+   `refresh_snapshots`, commit the artifact, then enable `PLAYWRIGHT_SNAPSHOTS=1` in the e2e job. *Closed after
+   slice 30: baselines rendered by run 34697539060 on the runner, committed, compared in the `e2e` job.*
 2. **Performance tests stay out of CI** (`Category=Performance`), as they need the 50k-invoice seed and
    minutes of runtime; they run locally on demand.
 3. The e2e suite shares the developer database in `.env`; each run creates new organizations and never

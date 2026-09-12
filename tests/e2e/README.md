@@ -37,9 +37,9 @@ npm --prefix tests/e2e run report        # the HTML report
 
 Without root for `install-deps`, the browser's shared libraries can be unpacked locally
 (`apt-get download libnspr4 libnss3 libasound2t64 …` then `dpkg -x` into a directory) and pointed at with
-`LD_LIBRARY_PATH`; the snapshots were produced on a machine with the Noto fonts.
+`LD_LIBRARY_PATH`; the CI runner installs the Noto fonts the baselines were rendered with.
 
-Snapshots live in `specs/journeys.spec.ts-snapshots/` and are compared only with `PLAYWRIGHT_SNAPSHOTS=1`
-(pixels depend on the machine's fonts; the committed baselines came from the developer machine). To produce
-baselines on the canonical CI environment, run the `ci` workflow manually with `refresh_snapshots` and commit
-the uploaded `arabic-snapshots` artifact; then set `PLAYWRIGHT_SNAPSHOTS=1` in the e2e job.
+Snapshots live in `specs/journeys.spec.ts-snapshots/`. The committed baselines are rendered on the CI runner — run
+the `ci` workflow manually with `refresh_snapshots`, download the `arabic-snapshots` artifact, commit it — and the
+`e2e` job compares against them (`PLAYWRIGHT_SNAPSHOTS=1`, `maxDiffPixelRatio` 0.05). Locally the comparison is
+opt-in with the same variable, because a developer machine's fonts render the same table a few percent differently.
