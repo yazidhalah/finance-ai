@@ -245,6 +245,8 @@ public sealed class OutboundMessage : ITenantScoped
     public DateTimeOffset? QueuedAt { get; set; }
     public Guid? SentBy { get; set; }
     public DateTimeOffset? SentAt { get; set; }
+    public DateTimeOffset? DeliveredAt { get; set; }
+    public string? BounceReason { get; set; }
     public int Attempts { get; set; }
     public DateTimeOffset? NextAttemptAt { get; set; }
     public string? ProviderMessageId { get; set; }

@@ -803,3 +803,21 @@ public sealed record CustomerMergeRequest(Guid? SourceCustomerId, string? Confir
 public sealed record MergeTableDto(string Name, int Rows);
 
 public sealed record CustomerMergeResponse(Guid TargetCustomerId, Guid SourceCustomerId, bool Merged, IReadOnlyList<MergeTableDto> Moves, IReadOnlyList<string> ConflictingInvoiceNumbers, bool BothHaveOpenCases, string? ConfirmToken);
+
+// ---- Slice 24: email verification, tenant SMTP, the MTA webhook ----
+
+public sealed record VerifyEmailRequest(string? Token);
+
+/// <summary>Tenant SMTP (doc 05). The password is write-only: send it to set or replace it, omit it to keep the stored one.</summary>
+public sealed record EmailSettingsRequest(string? SmtpHost, int? SmtpPort, bool? SmtpTls, string? SmtpUsername, string? SmtpPassword, string? FromAddress);
+
+public sealed record EmailSettingsResponse(bool Configured, string? SmtpHost, int? SmtpPort, bool? SmtpTls, string? SmtpUsername, bool HasPassword, string? FromAddress, DateTimeOffset? UpdatedAt);
+
+public sealed record EmailSettingsTestResponse(bool Ok, string? Error);
+
+/// <summary>The local MTA's verdicts (doc 05 /webhooks/email-events): <c>messageId</c> is the <c>X-FinanceAi-Message</c> header the mail carried.</summary>
+public sealed record EmailEvent(string? MessageId, string? Event, string? Reason, DateTimeOffset? OccurredAt);
+
+public sealed record EmailEventsRequest(IReadOnlyList<EmailEvent>? Events);
+
+public sealed record EmailEventsResponse(int Applied, int Skipped);

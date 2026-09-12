@@ -36,6 +36,22 @@ stamp="$(date +%s)"
 email="smoke-$stamp@example.test"
 password='Correct-Horse-Battery-9'
 curl -fsS -o /dev/null -H 'content-type: application/json' -d "{\"email\":\"$email\",\"password\":\"$password\",\"fullName\":\"Smoke Owner\",\"organizationName\":\"Smoke $stamp\",\"baseCurrency\":\"JOD\",\"timezone\":\"Asia/Amman\",\"locale\":\"en-JO\"}" "$BASE/api/v1/auth/register" || fail "register"
+# Slice 24: the address must be verified first — the link is in Mailpit (the stack's SMTP host, 127.0.0.1:8025 in dev/CI).
+MAILPIT="${MAILPIT_URL:-http://127.0.0.1:8025}"
+token=""
+for i in $(seq 1 40); do
+  token="$(curl -fsS "$MAILPIT/api/v1/search?query=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote('to:'+sys.argv[1]))" "$email")" | python3 -c '
+import json,sys,re,urllib.request
+s=json.load(sys.stdin); base=sys.argv[1]
+for m in s.get("messages",[]):
+    t=json.load(urllib.request.urlopen(base+"/api/v1/message/"+m["ID"])).get("Text","")
+    x=re.search(r"verify-email\?token=([0-9a-f]{64})",t)
+    if x: print(x.group(1)); break' "$MAILPIT")"
+  [ -n "$token" ] && break
+  sleep 1
+done
+[ -n "$token" ] || fail "no verification mail in Mailpit"
+curl -fsS -o /dev/null -H 'content-type: application/json' -d "{\"token\":\"$token\"}" "$BASE/api/v1/auth/verify-email" || fail "verify-email"
 token="$(curl -fsS -H 'content-type: application/json' -d "{\"email\":\"$email\",\"password\":\"$password\"}" "$BASE/api/v1/auth/login" | python3 -c 'import json,sys; print(json.load(sys.stdin)["accessToken"])')" || fail "login"
 [ -n "$token" ] || fail "no access token"
 curl -fsS -H "authorization: Bearer $token" "$BASE/api/v1/organization" | grep -q "Smoke $stamp" || fail "organization read through the proxy"

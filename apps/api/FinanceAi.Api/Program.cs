@@ -91,7 +91,8 @@ api.MapLedgerEndpoints()
     .MapAiEndpoints()
     .MapBriefingEndpoints()
     .MapOpsEndpoints()
-    .MapHolidayEndpoints();
+    .MapHolidayEndpoints()
+    .MapEmailEndpoints();
 
 // SEC-10: refuse to boot if any endpoint forgot to declare how it is authorized. This runs before
 // the first request is served, so the failure mode of a forgotten declaration is a crash at deploy

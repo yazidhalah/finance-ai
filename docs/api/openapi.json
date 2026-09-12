@@ -361,6 +361,67 @@
         "x-access": "anonymous"
       }
     },
+    "/api/v1/auth/verify-email": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "operationId": "VerifyEmail",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is malformed or fails validation; `errors` names each field.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A business rule refused the request; `errors[0].code` is the rule (doc 03, doc 02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited (API-13); `Retry-After` is set.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-access": "anonymous"
+      }
+    },
     "/api/v1/auth/mfa/enroll": {
       "post": {
         "tags": [
@@ -2925,6 +2986,259 @@
           }
         },
         "x-permission": "tenant.settings.write"
+      }
+    },
+    "/api/v1/organization/email-settings": {
+      "get": {
+        "tags": [
+          "EmailEndpoints"
+        ],
+        "operationId": "EmailSettings",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailSettingsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session (SEC-03), or MFA enrolment is required (403 mfa_enrollment_required is also possible).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role does not hold 'tenant.settings.write', or the session is not strong enough (mfa_enrollment_required, reauthentication_required).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited (API-13); `Retry-After` is set.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "tenant.settings.write"
+      },
+      "put": {
+        "tags": [
+          "EmailEndpoints"
+        ],
+        "operationId": "UpdateEmailSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailSettingsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session (SEC-03), or MFA enrolment is required (403 mfa_enrollment_required is also possible).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role does not hold 'tenant.settings.write', or the session is not strong enough (mfa_enrollment_required, reauthentication_required).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is malformed or fails validation; `errors` names each field.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A business rule refused the request; `errors[0].code` is the rule (doc 03, doc 02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited (API-13); `Retry-After` is set.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "tenant.settings.write",
+        "x-requires-reauthentication": true
+      }
+    },
+    "/api/v1/organization/email-settings/test": {
+      "post": {
+        "tags": [
+          "EmailEndpoints"
+        ],
+        "operationId": "TestEmailSettings",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailSettingsTestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session (SEC-03), or MFA enrolment is required (403 mfa_enrollment_required is also possible).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role does not hold 'tenant.settings.write', or the session is not strong enough (mfa_enrollment_required, reauthentication_required).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is malformed or fails validation; `errors` names each field.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A business rule refused the request; `errors[0].code` is the rule (doc 03, doc 02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited (API-13); `Retry-After` is set.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "tenant.settings.write"
+      }
+    },
+    "/api/v1/webhooks/email-events": {
+      "post": {
+        "tags": [
+          "EmailEndpoints"
+        ],
+        "operationId": "EmailEvents",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailEventsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is malformed or fails validation; `errors` names each field.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A business rule refused the request; `errors[0].code` is the rule (doc 03, doc 02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited (API-13); `Retry-After` is set.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-access": "anonymous"
       }
     },
     "/api/v1/organization": {
@@ -16091,6 +16405,166 @@
         },
         "additionalProperties": false
       },
+      "EmailEventsResponse": {
+        "required": [
+          "applied",
+          "skipped"
+        ],
+        "type": "object",
+        "properties": {
+          "applied": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "skipped": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EmailSettingsRequest": {
+        "required": [
+          "smtpHost",
+          "smtpPort",
+          "smtpTls",
+          "smtpUsername",
+          "smtpPassword",
+          "fromAddress"
+        ],
+        "type": "object",
+        "properties": {
+          "smtpHost": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "smtpPort": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "smtpTls": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "smtpUsername": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "smtpPassword": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fromAddress": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "EmailSettingsResponse": {
+        "required": [
+          "configured",
+          "smtpHost",
+          "smtpPort",
+          "smtpTls",
+          "smtpUsername",
+          "hasPassword",
+          "fromAddress",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "smtpHost": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "smtpPort": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "smtpTls": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "smtpUsername": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "hasPassword": {
+            "type": "boolean"
+          },
+          "fromAddress": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "updatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EmailSettingsTestResponse": {
+        "required": [
+          "ok",
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "ForgotPasswordRequest": {
         "required": [
           "email"
@@ -20169,6 +20643,21 @@
         },
         "additionalProperties": false
       },
+      "VerifyEmailRequest": {
+        "required": [
+          "token"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "WhatsAppLinkResponse": {
         "required": [
           "messageId",
@@ -20517,6 +21006,9 @@
     },
     {
       "name": "OpsEndpoints"
+    },
+    {
+      "name": "EmailEndpoints"
     },
     {
       "name": "CustomerEndpoints"

@@ -9,6 +9,7 @@ import { AiSettingsPanel } from './Inbox'
 import { BriefingSettingsPanel } from './Today'
 import { MembersPanel } from './Members'
 import { SecurityCard } from './Security'
+import { EmailSettingsPanel } from './EmailSettings'
 
 type Organization = Awaited<ReturnType<typeof api.organization>>
 type Member = Awaited<ReturnType<typeof api.members>>['items'][number]
@@ -74,6 +75,7 @@ export function OrganizationPage() {
       {members !== null ? <MembersPanel members={members} onChanged={() => void load()} /> : null}
       <AiSettingsPanel />
       <BriefingSettingsPanel />
+      <EmailSettingsPanel />
       <PermissionsCard />
     </div>
   )

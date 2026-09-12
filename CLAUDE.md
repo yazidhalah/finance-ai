@@ -90,7 +90,11 @@ review-pack`, and the procedure in docs/ops/acceptance-pass.md. Slice 22 typed e
 compiler now checks the OpenAPI contract), documented `Location` on 201s, and let Owners opt into critical-alert
 email (`PATCH /organization/alert-settings`, route pin 148). Slice 23 built the doc 05 rows that had never been
 built: holidays, the manual invoice (A-11), invoice edits, the invoice trail and the two-step customer merge
-(DM-21, migration 0017); route pin 155.
+(DM-21, migration 0017); route pin 155. Slice 24 built the last three: email verification before the first
+sign-in (`POST /auth/verify-email`; existing users need `email_verified_at` set once — runbook), tenant SMTP with
+write-only sealed secrets (`/organization/email-settings`, re-authentication, SEC-66 host policy,
+`SMTP_ALLOW_PRIVATE_HOSTS` for Mailpit) and the HMAC-signed MTA webhook (`EMAIL_WEBHOOK_SECRET`); route pin 160.
+Every row of doc 05 is now implemented.
 What remains before the First Product is "done" is the
 v1 acceptance pass on a pilot corpus and real hardware (doc 09 §5 AI gates are indicative on the
 author-written corpus; Arabic narrative quality needs a native reviewer; T-140 runs nightly on a shared

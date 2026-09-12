@@ -36,9 +36,11 @@ export class Api {
 
   static async register(prefix: string, locale = 'en-JO', timezone = 'Asia/Amman'): Promise<Api> {
     const stamp = Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
-    const api = new Api(`${prefix}-${stamp}@e2e.example`, `${prefix} ${stamp}`)
+    // The organization name keeps the prefix verbatim ("[ai-down]" steers the fake model); the address must be a real one.
+    const api = new Api(`${prefix.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${stamp}@e2e.example`, `${prefix} ${stamp}`)
     const r = await fetch(`${API}/auth/register`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: api.email, password: PASSWORD, fullName: `${prefix} Owner`, organizationName: api.organizationName, baseCurrency: 'JOD', timezone, locale }) })
     if (!r.ok) throw new Error(`register ${r.status}: ${await r.text()}`)
+    await verifyEmail(api.email)   // slice 24: the first sign-in needs the address verified — from the real mail, as a person would
     await api.login()
     return api
   }
@@ -105,7 +107,7 @@ export class Api {
     // The owner's Argon2id hash of PASSWORD, produced by the API's own hasher: the member shares the password, not the row.
     ensureSeededHash(this.email)
     const hash = SEEDED_HASH
-    psql(`INSERT INTO users (id, email, full_name, password_hash, preferred_locale, created_at) VALUES (gen_random_uuid(), '${email}', '${role} Member', '${hash}', 'en-JO', now());
+    psql(`INSERT INTO users (id, email, full_name, password_hash, preferred_locale, created_at, email_verified_at) VALUES (gen_random_uuid(), '${email}', '${role} Member', '${hash}', 'en-JO', now(), now());
           INSERT INTO tenant_memberships (id, tenant_id, user_id, role, status, created_at) SELECT gen_random_uuid(), '${this.tenantId}', id, '${role}', 'Active', now() FROM users WHERE email = '${email}';`)
     return { email, password: PASSWORD }
   }
@@ -119,6 +121,26 @@ export function psql(sql: string): string {
 export let SEEDED_HASH = ''
 export function ensureSeededHash(email: string): void {
   if (!SEEDED_HASH) SEEDED_HASH = psql(`SELECT password_hash FROM users WHERE email = '${email}'`)
+}
+
+/** Slice 24: the verification link lands in Mailpit; follow it through the API. */
+export async function verificationToken(to: string): Promise<string> {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const search = await (await fetch(`http://127.0.0.1:8025/api/v1/search?query=${encodeURIComponent('to:' + to)}`)).json()
+    for (const item of search.messages ?? []) {
+      const message = await (await fetch(`http://127.0.0.1:8025/api/v1/message/${item.ID}`)).json()
+      const m = /verify-email\?token=([0-9a-f]{64})/.exec(message.Text ?? '')
+      if (m) return m[1]!
+    }
+    await new Promise((r) => setTimeout(r, 250))
+  }
+  throw new Error(`no verification mail for ${to}`)
+}
+
+export async function verifyEmail(to: string): Promise<void> {
+  const token = await verificationToken(to)
+  const r = await fetch(`${API}/auth/verify-email`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) })
+  if (!r.ok) throw new Error(`verify-email ${r.status}`)
 }
 
 /** The invitation link lands in Mailpit (the .env SMTP host); the token is the last 64 hex characters of it. */

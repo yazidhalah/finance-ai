@@ -142,7 +142,12 @@ public sealed class SwitchableMailTransport : FinanceAi.Infrastructure.Messaging
 
     public int Sent { get; private set; }
 
-    public Task<string> SendAsync(FinanceAi.Infrastructure.Messaging.OutgoingMail mail, CancellationToken ct)
+    public Task<string> SendAsync(FinanceAi.Infrastructure.Messaging.OutgoingMail mail, CancellationToken ct) => this.SendAsync(mail, null, ct);
+
+    /// <summary>The endpoints the tenant path actually used (slice 24), so a test can see the tenant's host was chosen.</summary>
+    public List<FinanceAi.Infrastructure.Messaging.SmtpEndpoint> ViaTenant { get; } = [];
+
+    public Task<string> SendAsync(FinanceAi.Infrastructure.Messaging.OutgoingMail mail, FinanceAi.Infrastructure.Messaging.SmtpEndpoint? via, CancellationToken ct)
     {
         if (this.FailNext > 0)
         {
@@ -151,7 +156,8 @@ public sealed class SwitchableMailTransport : FinanceAi.Infrastructure.Messaging
         }
 
         this.Sent++;
-        return this.inner.SendAsync(mail, ct);
+        if (via is not null) this.ViaTenant.Add(via);
+        return this.inner.SendAsync(mail, via, ct);
     }
 }
 
@@ -379,9 +385,37 @@ public static class ApiScenario
 
         registration.EnsureSuccessStatusCode();
 
+        // Slice 24: the address must be verified before the first sign-in — through the real mail, as a person would.
+        await VerifyEmailFromMailpitAsync(client, email);
         var session = await LoginAsync(factory, email, ValidPassword);
 
         return new Organization(session.Tenant.Id, session.User.Id, email, organizationName, session);
+    }
+
+    private static readonly HttpClient Mailpit = new() { BaseAddress = new Uri("http://127.0.0.1:8025/") };
+
+    /// <summary>Finds the verification link Mailpit received for the address and follows it. Registration sends synchronously, so one look usually suffices.</summary>
+    public static async Task VerifyEmailFromMailpitAsync(HttpClient client, string email)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        for (var attempt = 0; attempt < 40; attempt++)
+        {
+            var search = await Mailpit.GetFromJsonAsync<JsonElement>($"api/v1/search?query={Uri.EscapeDataString("to:" + email)}&limit=5");
+            foreach (var m in search.GetProperty("messages").EnumerateArray())
+            {
+                var message = await Mailpit.GetFromJsonAsync<JsonElement>($"api/v1/message/{m.GetProperty("ID").GetString()}");
+                var text = message.GetProperty("Text").GetString() ?? string.Empty;
+                var match = System.Text.RegularExpressions.Regex.Match(text, @"verify-email\?token=([0-9a-f]{64})");
+                if (!match.Success) continue;
+                var verified = await client.PostAsJsonAsync("/api/v1/auth/verify-email", new { token = match.Groups[1].Value }, Json);
+                verified.EnsureSuccessStatusCode();
+                return;
+            }
+
+            await Task.Delay(150);
+        }
+
+        throw new InvalidOperationException($"No verification mail for {email} reached Mailpit.");
     }
 
     public static async Task<SessionResponse> LoginAsync(this ApiFactory factory, string email, string password)

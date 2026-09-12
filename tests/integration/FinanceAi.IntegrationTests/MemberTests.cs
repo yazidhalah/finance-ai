@@ -121,7 +121,8 @@ public sealed class MemberTests(ApiTestFixture fixture)
         // The existing member got no mail; the others did.
         await Task.Delay(500);
         var ownMail = await Mailpit.GetFromJsonAsync<JsonElement>($"http://127.0.0.1:8025/api/v1/search?query={Uri.EscapeDataString("to:" + org.OwnerEmail)}");
-        Assert.Equal(0, ownMail.GetProperty("messages_count").GetInt32());
+        // The owner's only mail is the verification link from registration (slice 24) — no invitation.
+        Assert.DoesNotContain(ownMail.GetProperty("messages").EnumerateArray(), m => ((m.GetProperty("Subject").GetString() ?? string.Empty).Contains("invit", StringComparison.OrdinalIgnoreCase) || (m.GetProperty("Subject").GetString() ?? string.Empty).Contains("دعوة", StringComparison.Ordinal)));
         Assert.Equal("already_member", await fixture.Database.ScalarAsync<string>("SELECT reason_code FROM audit_events WHERE tenant_id = @t AND event_type = 'membership.invite_requested' AND reason_code = 'already_member' LIMIT 1", ("t", org.TenantId)));
 
         // Owner cannot be invited.

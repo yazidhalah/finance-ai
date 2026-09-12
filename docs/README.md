@@ -32,6 +32,7 @@ Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), sl
 | 21 | [slices/slice-21-acceptance-tooling.md](slices/slice-21-acceptance-tooling.md) · [review](slices/slice-21-review.md) | The pilot corpus importer (redaction, provenance, T-90/T-91 readiness), the generated Arabic review pack, and [ops/acceptance-pass.md](ops/acceptance-pass.md) — the procedure for "First Product done" |
 | 22 | [slices/slice-22-deferred-items.md](slices/slice-22-deferred-items.md) · [review](slices/slice-22-review.md) | Typed handler results (the compiler checks the contract; found one bare 404), `Location` on every 201, Owners emailed on critical alerts (`PATCH /organization/alert-settings`) |
 | 23 | [slices/slice-23-contract-completion.md](slices/slice-23-contract-completion.md) · [review](slices/slice-23-review.md) | The five ledger/organization rows of doc 05 that were never built: holidays (FIN-73), manual invoice (A-11), invoice edits, the invoice trail, the two-step customer merge (DM-21, migration 0017) |
+| 24 | [slices/slice-24-email-completion.md](slices/slice-24-email-completion.md) · [review](slices/slice-24-review.md) | The last three doc 05 rows: email verification before the first sign-in, tenant SMTP with write-only secrets (SEC-09/66/67), the signed MTA webhook (Sent → Delivered/Bounced); migration 0018 |
 
 **Open questions still outstanding.** Q-01, Q-02, Q-04 and Q-06 in document 00 remain unanswered.
 Slices 1–10 proceeded on the documented defaults (A-01…A-05, A-11, A-12). **Slice 3b built E1 on a

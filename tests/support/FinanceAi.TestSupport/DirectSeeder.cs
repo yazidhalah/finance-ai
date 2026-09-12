@@ -36,8 +36,8 @@ public static class DirectSeeder
 
         await using (var insertUser = new NpgsqlCommand(
             """
-            INSERT INTO users (id, email, full_name, password_hash, preferred_locale, status)
-            VALUES (@id, @email, @name, @hash, 'en-JO', 'Active')
+            INSERT INTO users (id, email, full_name, password_hash, preferred_locale, status, email_verified_at)
+            VALUES (@id, @email, @name, @hash, 'en-JO', 'Active', now())
             """, connection))
         {
             insertUser.Parameters.AddWithValue("id", userId);

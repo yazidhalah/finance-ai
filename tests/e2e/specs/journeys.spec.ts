@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { Api, PASSWORD, daytimeZone, invitationToken, psql, today } from '../helpers/api'
+import { Api, PASSWORD, daytimeZone, invitationToken, psql, today, verificationToken } from '../helpers/api'
 import { assertLocaleShape, expectMoney, signIn, signOut, snapshot, uiLocale, useLocale } from '../helpers/ui'
 import { totp } from '../helpers/totp'
 
@@ -25,7 +25,10 @@ test('T-121 register → sign in → invite an Accountant → accept from the em
   await page.getByTestId('organizationName').fill(`E2E Org ${stamp}`)
   await page.getByTestId('submit').click()
   await expect(page.getByTestId('register-accepted')).toBeVisible()   // the same answer whether or not the email was free (SEC)
-  await page.getByTestId('to-sign-in').click()
+  // Slice 24: the verification link from the mail, opened in the browser as the owner would.
+  await page.goto(`/verify-email?token=${await verificationToken(email)}`)
+  await expect(page.getByTestId('verify-done')).toBeVisible()
+  await page.getByTestId('verify-to-sign-in').click()
   await page.getByTestId('email').fill(email)
   await page.getByTestId('password').fill(PASSWORD)
   await page.getByTestId('submit').click()

@@ -52,3 +52,22 @@ public sealed class TenantSettings : ITenantScoped
     /// <summary>Slice 22: email the organization's active Owners on critical alerts (SEC-102), in addition to the operator.</summary>
     public bool AlertOwnerEmailEnabled { get; set; }
 }
+
+/// <summary>
+/// Slice 24 (doc 05 /organization/email-settings): a tenant's own SMTP. The password is sealed by the MFA KEK envelope
+/// (SEC-67) and never leaves the row through the API. Absent row → the operator's .env host (slice 8).
+/// </summary>
+public sealed class TenantEmailSettings : ITenantScoped
+{
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+    public Guid TenantId { get; set; }
+    public required string SmtpHost { get; set; }
+    public int SmtpPort { get; set; } = 587;
+    public bool SmtpTls { get; set; } = true;
+    public string? SmtpUsername { get; set; }
+    public byte[]? SmtpPasswordEnc { get; set; }
+    public required string FromAddress { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public Guid? UpdatedBy { get; set; }
+    public long RowVersion { get; set; } = 1;
+}

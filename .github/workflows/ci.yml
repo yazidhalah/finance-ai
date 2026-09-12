@@ -130,6 +130,7 @@ jobs:
           sed -i "s|^AI_SERVICE_TOKEN=.*|AI_SERVICE_TOKEN=$(openssl rand -hex 24)|" .env
           sed -i "s|^MFA_KEK_BASE64=.*|MFA_KEK_BASE64=$(openssl rand -base64 32)|" .env
           sed -i "s|^WEB_ORIGINS=.*|WEB_ORIGINS=http://localhost:8080|" .env
+          sed -i "s|^EMAIL_WEBHOOK_SECRET=.*|EMAIL_WEBHOOK_SECRET=$(openssl rand -hex 32)|; s|^SMTP_ALLOW_PRIVATE_HOSTS=.*|SMTP_ALLOW_PRIVATE_HOSTS=1|" .env
       - run: pipx install podman-compose==1.5.0
       # Staged with --no-deps: the runner's Podman 4.9 cannot start podman-compose's --requires chains (see the script).
       - name: Build images and start the stack (fake AI model, no Ollama)
