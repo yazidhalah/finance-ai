@@ -15,7 +15,18 @@ automated gate of doc 09 is green on `main` today; what remains is the part that
 
 ## 1. The corpus (doc 09 §5.1 — T-90, T-91, T-92)
 
-1. Export the pilot's replies (email/WhatsApp texts) with the invoice context stripped — the text alone.
+1. Export the pilot's replies (email/WhatsApp texts) with the invoice context stripped — the text alone. Once the
+   pilot has been using the inbox, its own corrections are the best source (T-109): every edit-and-approve and every
+   rejected suggestion a person later labelled becomes a proposal row —
+
+   ```
+   dotnet run --project apps/api/FinanceAi.Migrator -- corpus-proposals --tenant <tenant id> \
+       --consent "<reference to the written consent, T-92>" --out pilot-proposals.csv [--since 2026-10-01]
+   ```
+
+   The command refuses to run without the tenant and the consent reference; it writes `provenance = consented`
+   because you named them. Rows carry the human label, the model's label and confidence in `note`, and the human's
+   amount/date/reason in `expect`; the second labeller adds `label_2` in the sheet before import.
 2. Two labellers label independently in a sheet with the columns the importer expects: `text`, `label` (one of the
    15 classes), `label_2` (the second labeller), `language` (`ar` | `en` | `ar_latin` | `mixed`), `provenance`
    (`consented` for the pilot's own replies), optional `note` and `expect` (JSON, e.g. `{"payment_reference_text":
@@ -43,10 +54,12 @@ On the target host, with Ollama and the pinned model (`qwen3:4b`, digest in THIR
 
 ```
 cd services/ai && AI_EVAL_HARDWARE="<gpu name, RAM>" .venv/bin/python -m evaluations.evaluate \
-    --corpus pilot.jsonl --report ../../docs/decisions/0009-ai-evaluation-<date>-qwen3-4b-pilot.md
+    --corpus pilot.jsonl --determinism 20 --report ../../docs/decisions/0009-ai-evaluation-<date>-qwen3-4b-pilot.md
 ```
 
-The report renders every gate with its verdict. The pass criteria are the table in doc 09 §5.2; T-104 (classify
+The report renders every gate with its verdict, including **T-107**: `--determinism 20` reruns twenty items spread
+through the corpus twice more and lists any output that differed at temperature 0 with the fixed seed — a
+difference is a runtime or prompt defect to chase, never a number to average. The pass criteria are the table in doc 09 §5.2; T-104 (classify
 P95 ≤ 8 s) is the one that cannot be judged on a CPU box — the committed reports say so. If a gate fails, T-105
 applies: the operation stays **off by default** for the pilot (`aiEnabled: false`), the manual path carries the loop,
 and the prompt or model is iterated with a new report — never a silent threshold change.

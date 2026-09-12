@@ -105,7 +105,10 @@ axe in both locales (WCAG 2.x A/AA, zero violations), walks the queue and the al
 and asserts screen-reader names on money fields; the contrast and ARIA findings it surfaced are fixed. Slice 29 built
 T-52: `GoldenTenantTests` rebuilds a 2,000-invoice ledger with a scripted year of activity from seed 52 through the
 product's endpoints and compares aging, balances, statuses, reconciliation, invariants and audit counts against
-`tests/integration/…/Golden/golden-ledger.json`; a moved number is accepted with `UPDATE_GOLDEN=1`.
+`tests/integration/…/Golden/golden-ledger.json`; a moved number is accepted with `UPDATE_GOLDEN=1`. Slice 30 closed the
+last two doc 09 ids: `FinanceAi.Migrator corpus-proposals --tenant … --consent … --out …` turns the pilot's corrections
+into corpus rows for the importer (T-109, consent-gated by its arguments), and `evaluate.py --determinism N` reruns
+sampled items and reports any output that differs (T-107).
 What remains before the First Product is "done" is the
 v1 acceptance pass on a pilot corpus and real hardware (doc 09 §5 AI gates are indicative on the
 author-written corpus; Arabic narrative quality needs a native reviewer; T-140 runs nightly on a shared
