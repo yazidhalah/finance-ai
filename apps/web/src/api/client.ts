@@ -278,6 +278,9 @@ export interface Contact {
   isBilling: boolean
   preferredLanguage: 'ar' | 'en' | null
   rowVersion: string
+  /** Slice 25: the MTA bounced this address; sends are refused until the email is edited. */
+  bouncedAt?: string | null
+  bounceReason?: string | null
 }
 
 export const customersApi = {

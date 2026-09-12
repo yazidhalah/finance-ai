@@ -145,6 +145,17 @@ public sealed class Validation
         return this;
     }
 
+    /// <summary>SEC-01 (slice 25): a password on the bundled breached list is refused with <c>breached</c>, whatever its length.</summary>
+    public Validation NotBreached(string field, string? value)
+    {
+        if (value is not null && FinanceAi.Infrastructure.Security.BreachedPasswords.IsBreached(value))
+        {
+            this.Add(field, "breached");
+        }
+
+        return this;
+    }
+
     public Validation MinLength(string field, string? value, int minimum, string code)
     {
         if (value is not null && value.Length < minimum)
@@ -292,7 +303,10 @@ public sealed record ContactResponse(
     bool IsPrimary,
     bool IsBilling,
     string? PreferredLanguage,
-    string RowVersion);
+    string RowVersion,
+    /// <summary>Slice 25: set when the MTA bounced this address; sends are refused until the email is edited.</summary>
+    DateTimeOffset? BouncedAt = null,
+    string? BounceReason = null);
 
 public sealed record ContactListResponse(IReadOnlyList<ContactResponse> Items);
 

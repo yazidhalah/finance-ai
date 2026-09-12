@@ -42,6 +42,22 @@ public sealed class AuthCompletionTests(ApiTestFixture fixture)
         return ((int)r.StatusCode, text.Length == 0 ? default : JsonDocument.Parse(text).RootElement.Clone());
     }
 
+    /// <summary>Slice 25 (SEC-01): a leaked password is refused at registration, at invitation acceptance and at reset — with one code.</summary>
+    [Fact]
+    public async Task BreachedPassword_IsRefusedEverywhereAPasswordIsSet()
+    {
+        using var anonymous = fixture.Api.CreateClient();
+        var r = await anonymous.PostAsJsonAsync("/api/v1/auth/register", new { email = $"leak-{Guid.NewGuid():N}@example.jo", password = "123qweasdzxc", fullName = "Leaky", organizationName = "Leak Co", baseCurrency = "JOD", timezone = "Asia/Amman", locale = "en-JO" }, ApiScenario.Json);
+        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+        var body = await r.Content.ReadFromJsonAsync<JsonElement>(ApiScenario.Json);
+        Assert.Contains(body.GetProperty("errors").EnumerateArray(), e => e.GetProperty("field").GetString() == "password" && e.GetProperty("code").GetString() == "breached");
+
+        var reset = await anonymous.PostAsJsonAsync("/api/v1/auth/reset-password", new { token = new string('0', 64), password = "1qaz2wsx3edc" }, ApiScenario.Json);
+        Assert.Equal(HttpStatusCode.BadRequest, reset.StatusCode);   // refused for the password before the token is even judged
+        var accept = await anonymous.PostAsJsonAsync("/api/v1/auth/accept-invitation", new { token = new string('0', 64), fullName = "X", password = "q1w2e3r4t5y6" }, ApiScenario.Json);
+        Assert.Equal(HttpStatusCode.BadRequest, accept.StatusCode);
+    }
+
     /// <summary>AC-02.</summary>
     [Fact]
     public async Task Mfa_Enroll_Login_Recovery()

@@ -15091,6 +15091,19 @@
           },
           "rowVersion": {
             "type": "string"
+          },
+          "bouncedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "bounceReason": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         },
         "additionalProperties": false

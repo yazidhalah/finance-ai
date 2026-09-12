@@ -94,7 +94,8 @@ built: holidays, the manual invoice (A-11), invoice edits, the invoice trail and
 sign-in (`POST /auth/verify-email`; existing users need `email_verified_at` set once — runbook), tenant SMTP with
 write-only sealed secrets (`/organization/email-settings`, re-authentication, SEC-66 host policy,
 `SMTP_ALLOW_PRIVATE_HOSTS` for Mailpit) and the HMAC-signed MTA webhook (`EMAIL_WEBHOOK_SECRET`); route pin 160.
-Every row of doc 05 is now implemented.
+Every row of doc 05 is now implemented. Slice 25 bundled the SEC-01 breached-password list (offline, SecLists
+≥ 12 chars) and made a bounce mark the contact (`contact_email_bounced` until the address is edited; 0019).
 What remains before the First Product is "done" is the
 v1 acceptance pass on a pilot corpus and real hardware (doc 09 §5 AI gates are indicative on the
 author-written corpus; Arabic narrative quality needs a native reviewer; T-140 runs nightly on a shared

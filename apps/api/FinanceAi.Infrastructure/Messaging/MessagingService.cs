@@ -321,6 +321,8 @@ public sealed class MessagingService(TenantDbContext db, IAuditWriter audit, Tim
         if (!OutboundSwitch.GloballyEnabled || !settings.OutboundSendingEnabled) return new Guard("outbound_disabled");
         if (m.Status is MessageStatus.Draft or MessageStatus.PendingApproval) return new Guard("approval_required", new Dictionary<string, string> { ["reasons"] = string.Join(",", m.ApprovalReasons) });
         if (m.Channel == MessageChannels.Email && string.IsNullOrWhiteSpace(m.ToAddress)) return new Guard("no_contact_email");
+        // Slice 25: an address the MTA bounced is refused until someone edits it — a known-dead address is not a channel.
+        if (m.Channel == MessageChannels.Email && m.ContactId is { } contactId && await db.CustomerContacts.AnyAsync(x => x.Id == contactId && x.BouncedAt != null, ct)) return new Guard("contact_email_bounced");
 
         if (m.CaseId is { } caseId)
         {

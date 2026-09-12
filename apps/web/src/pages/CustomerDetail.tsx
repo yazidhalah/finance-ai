@@ -286,7 +286,7 @@ export function CustomerDetailPage({ id, onBack }: { id: string | null; onBack: 
   )
 }
 
-function ContactsCard({ customerId, editable }: { customerId: string; editable: boolean }) {
+export function ContactsCard({ customerId, editable }: { customerId: string; editable: boolean }) {
   const { t } = useLocale()
   const [contacts, setContacts] = useState<Contact[] | null>(null)
   const [draft, setDraft] = useState({ name: '', email: '', phoneE164: '', roleTitle: '' })
@@ -350,6 +350,7 @@ function ContactsCard({ customerId, editable }: { customerId: string; editable: 
               <span dir="auto" className="font-medium">{c.name}</span>
               {c.roleTitle ? <span dir="auto" className="text-slate-500">{c.roleTitle}</span> : null}
               {c.email ? <Isolate className="font-mono text-xs">{c.email}</Isolate> : null}
+              {c.bouncedAt ? <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-900" title={c.bounceReason ?? undefined} data-testid="bounced-badge">{t('contacts.bounced')}</span> : null}
               {c.phoneE164 ? <Isolate className="font-mono text-xs">{c.phoneE164}</Isolate> : null}
               {c.isPrimary ? (
                 <span className="rounded bg-sky-100 px-2 py-0.5 text-xs text-sky-800" data-testid="primary-badge">{t('contacts.primary')}</span>

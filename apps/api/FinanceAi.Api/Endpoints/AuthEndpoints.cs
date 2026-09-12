@@ -57,7 +57,7 @@ public static class AuthEndpoints
             .Require("email", request.Email).Email("email", request.Email)
             .Require("password", request.Password)
             .MinLength("password", request.Password, Argon2idPasswordHasher.MinimumPasswordLength, "too_short")
-            .MaxLength("password", request.Password, 512)
+            .MaxLength("password", request.Password, 512).NotBreached("password", request.Password)
             .Require("fullName", request.FullName).MaxLength("fullName", request.FullName, 200)
             .Require("organizationName", request.OrganizationName).MaxLength("organizationName", request.OrganizationName, 200)
             .Currency("baseCurrency", request.BaseCurrency)
@@ -292,7 +292,7 @@ public static class AuthEndpoints
     private static async Task<Results<Ok<AcceptInvitationResponse>, ProblemHttpResult>> AcceptInvitationAsync(AcceptInvitationRequest request, HttpContext context, PlatformIdentityStore identity, ILoggerFactory loggerFactory, CancellationToken ct)
     {
         var validation = new Validation().Require("token", request.Token).MaxLength("fullName", request.FullName, 200).MaxLength("password", request.Password, 512);
-        if (request.Password is { Length: > 0 }) validation.MinLength("password", request.Password, Argon2idPasswordHasher.MinimumPasswordLength, "too_short");
+        if (request.Password is { Length: > 0 }) validation.MinLength("password", request.Password, Argon2idPasswordHasher.MinimumPasswordLength, "too_short").NotBreached("password", request.Password);
         if (validation.HasErrors) return ApiProblems.ValidationProblem(context, validation.Errors);
 
         var result = await identity.AcceptInvitationAsync(new PlatformIdentityStore.AcceptInvitationCommand(request.Token!.Trim(), request.FullName, request.Password, context.ClientIp(), context.RequestId()), ct);
@@ -370,7 +370,7 @@ public static class AuthEndpoints
     private static async Task<Results<Ok<AcceptedResponse>, ProblemHttpResult>> ResetPasswordAsync(ResetPasswordRequest request, HttpContext context, PlatformIdentityStore identity, CancellationToken ct)
     {
         var validation = new Validation().Require("token", request.Token).Require("password", request.Password)
-            .MinLength("password", request.Password, Argon2idPasswordHasher.MinimumPasswordLength, "too_short").MaxLength("password", request.Password, 512);
+            .MinLength("password", request.Password, Argon2idPasswordHasher.MinimumPasswordLength, "too_short").MaxLength("password", request.Password, 512).NotBreached("password", request.Password);
         if (validation.HasErrors) return ApiProblems.ValidationProblem(context, validation.Errors);
         return await identity.ResetPasswordAsync(request.Token!.Trim(), request.Password!, context.ClientIp(), context.RequestId(), ct)
             ? TypedResults.Ok(new AcceptedResponse(true))

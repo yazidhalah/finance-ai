@@ -167,6 +167,18 @@ public static class EmailEndpoints
             if (ev == MessageEvent.Delivered) message.DeliveredAt = at;
             else message.BounceReason = (e.Reason ?? "bounced").Length <= 500 ? e.Reason ?? "bounced" : e.Reason![..500];
             message.RowVersion++;
+            if (ev == MessageEvent.Bounced && message.ContactId is { } contactId)
+            {
+                // Slice 25: the address is now known-dead; the send guard refuses it until the contact is edited.
+                var contact = await db.CustomerContacts.FirstOrDefaultAsync(c => c.Id == contactId, ct);
+                if (contact is not null && contact.BouncedAt is null)
+                {
+                    contact.BouncedAt = at;
+                    contact.BounceReason = message.BounceReason;
+                    contact.UpdatedAt = at;
+                }
+            }
+
             await db.SaveChangesAsync(ct);
             await new AuditWriter(db).WriteAsync(new AuditEvent
             {

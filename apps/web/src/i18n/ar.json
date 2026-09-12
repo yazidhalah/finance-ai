@@ -1123,5 +1123,8 @@
   "emailSettings.testFailed": "رفض الخادم: {error}",
   "emailSettings.notConfigured": "يُستخدم خادم بريد المنصة.",
   "errors.rule.smtp_host_not_allowed": "هذا الخادم غير مسموح (لا يمكن استخدام العناوين الخاصة أو المحلية).",
-  "errors.rule.secret_store_unavailable": "مخزن الأسرار غير مُعدّ؛ على المشغّل ضبط MFA_KEK_BASE64."
+  "errors.rule.secret_store_unavailable": "مخزن الأسرار غير مُعدّ؛ على المشغّل ضبط MFA_KEK_BASE64.",
+  "errors.password.breached": "كلمة المرور هذه موجودة في قوائم كلمات المرور المسرّبة؛ اختر غيرها.",
+  "contacts.bounced": "ارتدّ البريد — عدّل العنوان لإعادة الإرسال",
+  "errors.rule.contact_email_bounced": "ارتدّ بريد جهة الاتصال هذه؛ صحّح العنوان قبل الإرسال."
 }

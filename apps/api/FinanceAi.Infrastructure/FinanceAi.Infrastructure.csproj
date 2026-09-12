@@ -27,6 +27,7 @@
          fixture can never apply different bytes than the files reviewed in database/. -->
     <EmbeddedResource Include="../../../database/bootstrap/*.sql" LogicalName="FinanceAi.Infrastructure.Sql.bootstrap.%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../../database/migrations/*.sql" LogicalName="FinanceAi.Infrastructure.Sql.migrations.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Security/Data/breached-passwords-12plus.txt.gz" LogicalName="FinanceAi.Infrastructure.Security.Data.breached-passwords-12plus.txt.gz" />
   </ItemGroup>
 
 </Project>
