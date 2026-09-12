@@ -43,10 +43,10 @@ export async function expectMoney(page: Page, testId: string, amount: string): P
 }
 
 /**
- * Visual snapshots (T-120) compare pixels, and pixels depend on the machine's fonts: the committed baselines were
- * rendered on the developer machine and the GitHub runner renders the same table 5% narrower. Until baselines are
- * produced on the canonical environment (the `refresh-snapshots` workflow input uploads them as an artifact), the
- * comparison is opt-in: PLAYWRIGHT_SNAPSHOTS=1. Everything else the Arabic run asserts is exact and always on.
+ * Visual snapshots (T-120) compare pixels, and pixels depend on the machine's fonts. The committed baselines are
+ * rendered on the CI runner (dispatch the workflow with `refresh_snapshots`, commit the artifact) and the `e2e` job
+ * compares against them with PLAYWRIGHT_SNAPSHOTS=1. Locally the comparison stays opt-in — a developer machine's
+ * fonts differ — while everything else the Arabic run asserts is exact and always on.
  */
 export async function snapshot(locator: Locator, name: string): Promise<void> {
   if (process.env.PLAYWRIGHT_SNAPSHOTS === '1') await expect(locator).toHaveScreenshot(name)
