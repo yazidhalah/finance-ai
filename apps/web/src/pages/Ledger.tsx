@@ -278,7 +278,7 @@ export function InvoiceDetailPage({ id, onBack }: { id: string; onBack: () => vo
             </tr></thead>
             <tbody>
               {detail.history.map((h) => (
-                <tr key={h.id + h.kind} className={`border-b border-slate-100 ${h.isActive ? '' : 'text-slate-400 line-through'}`} data-testid="history-row" data-kind={h.kind}>
+                <tr key={h.id + h.kind} className={`border-b border-slate-100 ${h.isActive ? '' : 'text-slate-500 line-through'}`} data-testid="history-row" data-kind={h.kind}>
                   <td className="px-3 py-2"><Isolate>{h.date}</Isolate></td>
                   <td className="px-3 py-2">{t(`invoices.history.kind.${h.kind}`)}</td>
                   <td className="px-3 py-2 text-end">{h.effect === 'reduces' ? '−' : '+'}<MoneyText value={h.amount} /></td>

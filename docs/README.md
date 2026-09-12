@@ -36,6 +36,7 @@ Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), sl
 | 25 | [slices/slice-25-password-hygiene-and-bounces.md](slices/slice-25-password-hygiene-and-bounces.md) · [review](slices/slice-25-review.md) | The SEC-01 breached-password check (offline, SecLists ≥ 12 chars, bundled) and bounced contacts (guard `contact_email_bounced`, cleared on edit; migration 0019) |
 | 26 | [slices/slice-26-ai-per-operation.md](slices/slice-26-ai-per-operation.md) · [review](slices/slice-26-review.md) | The per-operation AI switches doc 05 names (`aiClassificationEnabled`, `aiBriefingEnabled`, migration 0020); `aiEnabled` stays the kill switch |
 | 27 | [slices/slice-27-performance-completion.md](slices/slice-27-performance-completion.md) · [review](slices/slice-27-review.md) | Doc 09 §7 complete: single-entity and 5,000-row-import budgets, T-142 twenty-user load profile (ten minutes on the nightly) |
+| 28 | [slices/slice-28-accessibility.md](slices/slice-28-accessibility.md) · [review](slices/slice-28-review.md) | T-133 / PRD-25: axe on every screen in both locales, keyboard-only queue and allocation, screen-reader names on money; eight findings fixed |
 
 **Open questions still outstanding.** Q-01, Q-02, Q-04 and Q-06 in document 00 remain unanswered.
 Slices 1–10 proceeded on the documented defaults (A-01…A-05, A-11, A-12). **Slice 3b built E1 on a

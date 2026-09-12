@@ -66,7 +66,7 @@ export function CaseDetailPage({ id, onBack }: { id: string; onBack: () => void 
 
       <Card>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-semibold"><span className="text-slate-400"><Isolate>{`#${c.caseNumber}`}</Isolate></span> <CustomerName nameAr={c.customer.nameAr} nameEn={c.customer.nameEn} /></h1>
+          <h1 className="text-xl font-semibold"><span className="text-slate-500"><Isolate>{`#${c.caseNumber}`}</Isolate></span> <CustomerName nameAr={c.customer.nameAr} nameEn={c.customer.nameEn} /></h1>
           <StatusChip status={c.status} />
           {c.automationDisabled ? <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-900" data-testid="automation-disabled">{t('cases.automationDisabled')}</span> : null}
           <span className="ms-auto rounded bg-slate-800 px-2 py-0.5 text-sm font-semibold text-white tabular" data-testid="priority-score"><Isolate>{String(c.priorityScore)}</Isolate></span>
@@ -179,7 +179,7 @@ export function CaseDetailPage({ id, onBack }: { id: string; onBack: () => void 
           </tr></thead>
           <tbody>
             {detail.invoices.map((i) => (
-              <tr key={i.invoiceId} className={`border-b border-slate-100 ${i.removedAt ? 'text-slate-400' : ''}`} data-testid="case-invoice" data-in-scope={i.removedAt === null}>
+              <tr key={i.invoiceId} className={`border-b border-slate-100 ${i.removedAt ? 'text-slate-500 line-through' : ''}`} data-testid="case-invoice" data-in-scope={i.removedAt === null}>
                 <td className="px-3 py-2"><a href={`/invoices/${i.invoiceId}`} className="text-sky-800 hover:underline"><Isolate className="font-mono text-xs">{i.invoiceNumber}</Isolate></a></td>
                 <td className="px-3 py-2"><Isolate>{date(i.dueDate)}</Isolate></td>
                 <td className="px-3 py-2 text-end tabular"><Isolate>{String(i.daysPastDue)}</Isolate></td>
@@ -202,7 +202,7 @@ export function CaseDetailPage({ id, onBack }: { id: string; onBack: () => void 
               <span className="w-36 shrink-0 text-xs text-slate-500"><Isolate>{when(e.occurredAt)}</Isolate></span>
               <span className="rounded bg-slate-100 px-1 text-xs">{t(`cases.activity.${e.kind}`)}</span>
               <span dir="auto">{e.summary}</span>
-              <span className="ms-auto text-xs text-slate-400">{t(`cases.actor.${e.actorKind}`)}</span>
+              <span className="ms-auto text-xs text-slate-500">{t(`cases.actor.${e.actorKind}`)}</span>
             </li>
           ))}
         </ol>

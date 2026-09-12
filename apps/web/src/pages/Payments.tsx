@@ -57,7 +57,8 @@ export function PaymentsPage() {
             <tbody>
               {items.map((p) => (
                 <tr key={p.id} data-testid="payment-row" className="cursor-pointer border-b border-slate-100 hover:bg-slate-50" onClick={() => setSelected(p)}>
-                  <td className="px-4 py-2"><Isolate>{p.receivedDate}</Isolate></td>
+                  {/* PRD-25: the row opens on click for the mouse; the date is a real button so the keyboard can open it too. */}
+                  <td className="px-4 py-2"><button type="button" className="text-sky-800 hover:underline" data-testid="open-payment" onClick={(ev) => { ev.stopPropagation(); setSelected(p) }}><Isolate>{p.receivedDate}</Isolate></button></td>
                   <td className="px-4 py-2">{t(`payments.method.${p.method}`)}</td>
                   <td className="px-4 py-2"><Isolate className="font-mono text-xs">{p.reference ?? '—'}</Isolate></td>
                   <td className="px-4 py-2 text-end"><MoneyText value={p.amount} /></td>
@@ -201,7 +202,7 @@ export function AllocationScreen({ payment, onChanged, onClose }: { payment: Pay
                   <td className="px-3 py-2"><Isolate>{inv.dueDate}</Isolate></td>
                   <td className="px-3 py-2 text-end"><MoneyText value={inv.openBalance} /></td>
                   <td className="px-3 py-2 text-end">
-                    <TextInput inputMode="decimal" dir="ltr" className="tabular text-end" data-testid={`allocate-${inv.invoiceNumber}`} disabled={!can('payments.allocate')}
+                    <TextInput inputMode="decimal" dir="ltr" className="tabular text-end" data-testid={`allocate-${inv.invoiceNumber}`} disabled={!can('payments.allocate')} aria-label={`${t('allocation.amountFor')} ${inv.invoiceNumber}`}
                       value={lines[inv.id] ?? ''} onChange={(e) => setLines({ ...lines, [inv.id]: e.target.value })} invalid={Boolean(fieldErrors[`lines[${index}].amount`])} />
                     {fieldErrors[`lines[${index}].amount`] ? <span role="alert" className="block text-xs text-red-700">{fieldErrors[`lines[${index}].amount`]}</span> : null}
                   </td>

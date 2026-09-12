@@ -53,7 +53,7 @@ function StepIndicator({ step }: { step: number }) {
     <ol className="flex flex-wrap gap-2 text-sm" data-testid="import-steps">
       {labels.map((key, i) => (
         <li key={key} aria-current={step === i + 1 ? 'step' : undefined}
-          className={`rounded-full px-3 py-1 ${step === i + 1 ? 'bg-sky-700 text-white' : step > i + 1 ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-500'}`}>
+          className={`rounded-full px-3 py-1 ${step === i + 1 ? 'bg-sky-700 text-white' : step > i + 1 ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-600'}`}>
           {i + 1}. {t(key)}
         </li>
       ))}
@@ -92,7 +92,7 @@ function UploadStep({ onUploaded }: { onUploaded: (batch: ImportBatch) => void }
       {problem ? <div className="mt-3"><ErrorNotice messageKey={problem.messageKey} traceId={problem.traceId} /></div> : null}
 
       <div className="mt-4 space-y-3">
-        <input type="file" accept=".csv,.xlsx" data-testid="import-file" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setDuplicate(false) }} />
+        <label className="block text-sm"><span className="mb-1 block text-slate-700">{t('import.fileLabel')}</span><input type="file" accept=".csv,.xlsx" data-testid="import-file" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setDuplicate(false) }} /></label>
 
         {duplicate ? (
           <div role="alert" data-testid="duplicate-file" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">

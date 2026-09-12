@@ -16,7 +16,7 @@ export function ClassificationChip({ classification, confidence }: { classificat
   const tone = c === 'payment_claimed' ? 'bg-amber-100 text-amber-900' : c === 'dispute_raised' || c === 'refusal_to_pay' || c === 'complaint_or_escalation' ? 'bg-red-100 text-red-900' : c === 'promise_to_pay' ? 'bg-emerald-100 text-emerald-900' : c === 'unclassified' ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-700'
   return (
     <span className={`rounded px-2 py-0.5 text-xs ${tone}`} data-testid="classification" data-classification={c}>
-      {t(`ai.classification.${c}`)}{confidence ? <span className="ms-1 tabular text-slate-500" dir="ltr">{confidence}</span> : null}
+      {t(`ai.classification.${c}`)}{confidence ? <span className="ms-1 tabular" dir="ltr">{confidence}</span> : null}
     </span>
   )
 }
@@ -88,7 +88,7 @@ export function SuggestionCard({ suggestion, onChanged, onOpenCase }: { suggesti
       ) : null}
       {/* AI-06: everything the audit needs is on the card, not hidden behind a tooltip. */}
       <dl className="mt-2 grid gap-x-4 gap-y-1 text-xs text-slate-600 md:grid-cols-4" data-testid="provenance">
-        <div><dt className="inline">{t('ai.model')}: </dt><dd className="inline"><Isolate className="font-mono">{s.modelName}</Isolate> <Isolate className="font-mono text-slate-400">{s.modelDigest.slice(0, 12)}</Isolate></dd></div>
+        <div><dt className="inline">{t('ai.model')}: </dt><dd className="inline"><Isolate className="font-mono">{s.modelName}</Isolate> <Isolate className="font-mono text-slate-500">{s.modelDigest.slice(0, 12)}</Isolate></dd></div>
         <div><dt className="inline">{t('ai.promptVersion')}: </dt><dd className="inline"><Isolate className="font-mono">{s.promptVersion}</Isolate></dd></div>
         <div><dt className="inline">{t('ai.reason')}: </dt><dd className="inline">{s.reasonCode ? t(`ai.reasonCode.${s.reasonCode}`) : '—'}</dd></div>
         <div><dt className="inline">{t('ai.latency')}: </dt><dd className="inline tabular" dir="ltr">{s.latencyMs} ms</dd></div>
@@ -338,7 +338,7 @@ export function InboxPage({ onOpenCase }: { onOpenCase: (id: string) => void }) 
       <AiStatusBanner health={health} />
       {pasting ? <PasteReplyDialog onClose={() => setPasting(false)} onDone={() => { setPasting(false); void load() }} /> : null}
       <div className="flex flex-wrap gap-2" role="tablist">
-        {tabs.map((k) => <Button key={k} variant={tab === k ? 'primary' : 'ghost'} onClick={() => setTab(k)} data-testid={`tab-${k}`}>{t(`inbox.tab.${k}`)}</Button>)}
+        {tabs.map((k) => <Button key={k} role="tab" aria-selected={tab === k} variant={tab === k ? 'primary' : 'ghost'} onClick={() => setTab(k)} data-testid={`tab-${k}`}>{t(`inbox.tab.${k}`)}</Button>)}
       </div>
       {tab === 'review' || tab === 'decided' ? (
         suggestions.length === 0 ? <p className="text-sm text-slate-600" data-testid="empty">{t('inbox.empty')}</p> : suggestions.map((s) => <SuggestionCard key={s.id} suggestion={s} onChanged={() => void load()} onOpenCase={onOpenCase} />)

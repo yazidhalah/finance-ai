@@ -158,7 +158,7 @@ export function AgingPage() {
                       </td>
                     ))}
                     <td className="px-4 py-2 text-end"><MoneyText value={row.total} className="font-medium" /></td>
-                    <td className="px-4 py-2 text-end text-slate-400">{report.disputedAvailable ? <MoneyText value={row.disputedTotal} /> : '—'}</td>
+                    <td className="px-4 py-2 text-end text-slate-500">{report.disputedAvailable ? <MoneyText value={row.disputedTotal} /> : '—'}</td>
                   </tr>
                 ))}
                 <tr className="border-t border-slate-300 font-semibold" data-testid="aging-total-row">

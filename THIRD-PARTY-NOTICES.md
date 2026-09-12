@@ -69,6 +69,7 @@ ASP.NET Core, the .NET runtime and the base class libraries ship with the .NET 1
 | `@types/react-dom` | 19.3.0 | MIT | Types only |
 | `@types/node` | 22.20.2 | MIT | Types only |
 | `@playwright/test` | 1.63.0 | Apache-2.0 | E2E journeys (`tests/e2e`, slice 11); pulls `playwright` and `playwright-core` (Apache-2.0) and `undici-types` (MIT). Downloads Chromium headless shell (BSD-3-Clause, Chromium) into the user cache at install time — a test browser, never shipped. |
+| `@axe-core/playwright`, `axe-core` | 4.10.2 / 4.10.3 (dev, `tests/e2e`) | **MPL-2.0** — see note | The T-133 accessibility scan (slice 28): axe runs inside the test browser against every screen and reports WCAG 2.x violations. **Flagged:** MPL-2.0 is file-scoped weak copyleft; the package is a test-time dependency, never bundled into the served SPA or any container image, and is used unmodified. |
 
 Test-only dependencies do not ship, but they are recorded: a license that forbids commercial use
 would still be a problem in CI.
