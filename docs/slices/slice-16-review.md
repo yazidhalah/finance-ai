@@ -49,10 +49,12 @@ None.
 - **Response shapes are not in the OpenAPI document.** Handlers return `IResult`, so every operation shows
   `200 OK` without a schema; the snapshot pins routes, parameters, request bodies and access, not response types.
   Typed results (`Results<Ok<T>, …>`) would close this across ~140 handlers — a slice of its own.
-- **T-141's "no sequential scan" is conditional.** With one 50k tenant in the test database, the aging read covers
-  91 % of the table and a tenant-filtered sequential scan is the planner's correct choice; the test requires an
-  index scan only when the tenant is under 20 % of the table, and always for the selective sweep query. A
-  three-tenant seed (as T-140 literally says) would make the aging case index-bound too; deferred with the seeding cost.
+- **T-141's "no sequential scan" is conditional** — *closed after slice 25*: the test now seeds the three tenants
+  T-140 names (two neighbours with 50k invoices each), the measured tenant is a third of the table, and the planner
+  keys the aging read on `tenant_id` through a bitmap heap scan; the assertion requires an index-driven scan
+  whenever the tenant is not the majority and recognises bitmap plans (the original walker knew only `Index*` and
+  `Seq Scan`, and would have failed the spec's own shape). Originally: with one 50k tenant the aging read covered
+  91 % of the table and a tenant-filtered sequential scan was the planner's correct choice.
 - **Coverage thresholds** (doc 10 slice 0 "coverage") are still not enforced; `coverlet` collects, nobody reads.
 - **The nightly job does not page** — a failure is on the Actions page only. `alert.sh` could be called from the
   workflow once a CI-side `ALERT_WEBHOOK_URL` secret exists.
