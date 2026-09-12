@@ -90,9 +90,16 @@ public sealed class CustomerContact : ITenantScoped
     public DateTimeOffset? BouncedAt { get; set; }
 
     public string? BounceReason { get; set; }
+
+    /// <summary>Slice 31 (SEC-93): the personal data was anonymized in place; the row is kept for the messages that reference it and is read-only from here.</summary>
+    public DateTimeOffset? ErasedAt { get; set; }
+
+    public Guid? ErasedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
     public long RowVersion { get; set; } = 1;
+
+    public const string ErasedName = "Erased contact";
 }
 
 /// <summary>

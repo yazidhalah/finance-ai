@@ -5,6 +5,7 @@ import type { Contact, Customer, CustomerInput, PromiseToPay, Reliability, State
 import { MessageStatusChip } from './Messaging'
 import { MoneyText } from '../components/Money'
 import { PromiseCard, ReliabilityBadge } from './Promises'
+import { ReauthDialog } from './Security'
 import { useSession } from '../auth/SessionProvider'
 import { Button, Card, ErrorNotice, Field, Isolate, Select, TextInput } from '../components/ui'
 import { useLocale } from '../i18n/LocaleProvider'
@@ -292,6 +293,7 @@ export function ContactsCard({ customerId, editable }: { customerId: string; edi
   const [draft, setDraft] = useState({ name: '', email: '', phoneE164: '', roleTitle: '' })
   const [problem, setProblem] = useState<Problem | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [erasing, setErasing] = useState<Contact | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -351,6 +353,7 @@ export function ContactsCard({ customerId, editable }: { customerId: string; edi
               {c.roleTitle ? <span dir="auto" className="text-slate-500">{c.roleTitle}</span> : null}
               {c.email ? <Isolate className="font-mono text-xs">{c.email}</Isolate> : null}
               {c.bouncedAt ? <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-900" title={c.bounceReason ?? undefined} data-testid="bounced-badge">{t('contacts.bounced')}</span> : null}
+              {c.erasedAt ? <span className="rounded bg-slate-200 px-2 py-0.5 text-xs text-slate-800" data-testid="erased-badge">{t('contacts.erased')}</span> : null}
               {c.phoneE164 ? <Isolate className="font-mono text-xs">{c.phoneE164}</Isolate> : null}
               {c.isPrimary ? (
                 <span className="rounded bg-sky-100 px-2 py-0.5 text-xs text-sky-800" data-testid="primary-badge">{t('contacts.primary')}</span>
@@ -358,7 +361,8 @@ export function ContactsCard({ customerId, editable }: { customerId: string; edi
                 <Button variant="ghost" onClick={() => void run(() => customersApi.promoteContact(customerId, c))}>{t('contacts.makePrimary')}</Button>
               ) : null}
               {editable ? (
-                <div className="ms-auto">
+                <div className="ms-auto flex gap-2">
+                  {c.erasedAt ? null : <Button variant="ghost" onClick={() => setErasing(c)} data-testid="erase-contact">{t('contacts.erase')}</Button>}
                   <Button variant="ghost" onClick={() => void run(() => customersApi.removeContact(customerId, c.id))}>{t('contacts.remove')}</Button>
                 </div>
               ) : null}
@@ -386,6 +390,7 @@ export function ContactsCard({ customerId, editable }: { customerId: string; edi
           </div>
         </form>
       ) : null}
+      {erasing ? <ReauthDialog title={t('contacts.eraseTitle')} onClose={() => setErasing(null)} onProof={async (proof) => { const target = erasing; setErasing(null); await run(() => customersApi.eraseContact(customerId, target.id, proof)) }} /> : null}
     </Card>
   )
 }

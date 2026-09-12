@@ -45,6 +45,7 @@ it). Use `--profile tls` with a public `DOMAIN`, or put your own TLS edge in fro
 | `DOMAIN` | the `tls` profile's certificate subject | — |
 | `STACK_SMTP_HOST` / `SMTP_PORT` | the relay the stack's API sends through (`mailpit` inside the stack by default — replace with the real relay before pilot; SEC-84 SPF/DKIM on its domain) | — |
 | `EMAIL_WEBHOOK_SECRET` | the MTA's signed delivery/bounce events (`POST /api/v1/webhooks/email-events`, `X-Signature: sha256=…`) | `openssl rand -hex 32` |
+| `BACKUP_PASSPHRASE` | every backup at rest (SEC-94, slice 31); `backup.sh` refuses to run without it; losing it loses the backups | `openssl rand -base64 32` |
 
 Never paste any of these into a ticket, a log line or a chat. The API refuses to start without the signing key; the
 AI service refuses to start without a token of ≥ 16 characters.
@@ -110,16 +111,26 @@ Both signing and KEK rotations are exercised by `KeyRotationTests` (slice 17) on
 ## 5. Backups and the restore drill (PRD-23, T-150)
 
 ```
-infrastructure/backup.sh                     # pg_dump -Fc → backups/<db>-<UTC>.dump, via 127.0.0.1:5432
-infrastructure/restore-drill.sh backups/x.dump   # restores into a scratch database, compares per-table counts, prints RPO/RTO
+infrastructure/backup.sh                         # pg_dump -Fc, encrypted → backups/<db>-<UTC>.dump.enc (mode 600), via 127.0.0.1:5432
+infrastructure/restore-drill.sh backups/x.dump.enc   # decrypts to a private temp file, restores into a scratch database, compares per-table counts, prints RPO/RTO
 ```
 
 Both read `.env`. On the compose stack `POSTGRES_HOST=127.0.0.1` on the host (the loopback binding above). Run the
 backup nightly from cron and the drill weekly; a failed drill is page-worthy (SEC-102). Backups contain every
-tenant's data and the encrypted TOTP secrets — store them where only the operator can read them.
+tenant's data and the encrypted TOTP secrets, so they are **encrypted at rest** (SEC-94, slice 31): AES-256-CBC
+with PBKDF2 under `BACKUP_PASSPHRASE` (§1). `backup.sh` refuses to run without it. Keep the passphrase with the other
+secrets, never beside the backups — without it every backup is unreadable.
 
-**Restoring for real:** `stack.sh --profile full stop api`, `pg_restore --clean --if-exists -d finance_ai x.dump`
-as `finance`, `stack.sh --profile full up -d --no-build migrate api` (the migrator is idempotent).
+**Restoring for real** (a privileged operation that can resurrect deleted data — SEC-94):
+
+1. `stack.sh --profile full stop api`
+2. `openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:BACKUP_PASSPHRASE -in x.dump.enc -out /tmp/x.dump`
+3. `pg_restore --clean --if-exists -d finance_ai /tmp/x.dump` as `finance`; `rm /tmp/x.dump`
+4. `stack.sh --profile full up -d --no-build migrate api` (the migrator is idempotent)
+5. **Record it:** `stack.sh --profile full run --rm api record-restore --dump x.dump.enc --reason "<why>" --by "<you>"`
+   (or `dotnet FinanceAi.Migrator.dll record-restore …`) — appends `instance.restored` (the file, its SHA-256, the
+   reason, who) to **every tenant's audit chain**, hashed like any other event, so Owners see on their Audit screen
+   that data may have moved back in time. A restore without this step is a finding.
 
 ---
 

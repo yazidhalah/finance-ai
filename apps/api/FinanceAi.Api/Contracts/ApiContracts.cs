@@ -306,7 +306,9 @@ public sealed record ContactResponse(
     string RowVersion,
     /// <summary>Slice 25: set when the MTA bounced this address; sends are refused until the email is edited.</summary>
     DateTimeOffset? BouncedAt = null,
-    string? BounceReason = null);
+    string? BounceReason = null,
+    /// <summary>Slice 31 (SEC-93): the contact's personal data was anonymized; the row is read-only.</summary>
+    DateTimeOffset? ErasedAt = null);
 
 public sealed record ContactListResponse(IReadOnlyList<ContactResponse> Items);
 

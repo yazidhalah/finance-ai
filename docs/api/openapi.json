@@ -4951,6 +4951,108 @@
         "x-permission": "customers.write"
       }
     },
+    "/api/v1/customers/{id}/contacts/{contactId}/erase": {
+      "post": {
+        "tags": [
+          "CustomerEndpoints"
+        ],
+        "operationId": "EraseContact",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "contactId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session (SEC-03), or MFA enrolment is required (403 mfa_enrollment_required is also possible).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role does not hold 'customers.write', or the session is not strong enough (mfa_enrollment_required, reauthentication_required).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such row in this tenant — the same answer whether it exists elsewhere or not at all (SEC-14).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is malformed or fails validation; `errors` names each field.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A business rule refused the request; `errors[0].code` is the rule (doc 03, doc 02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited (API-13); `Retry-After` is set.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "customers.write",
+        "x-requires-reauthentication": true
+      }
+    },
     "/api/v1/imports": {
       "post": {
         "tags": [
@@ -15134,6 +15236,13 @@
               "null",
               "string"
             ]
+          },
+          "erasedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         },
         "additionalProperties": false

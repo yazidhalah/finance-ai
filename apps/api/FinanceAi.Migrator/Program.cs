@@ -59,8 +59,22 @@ try
             Console.WriteLine($"Corpus proposals written to {outPath}: {summary.Proposed} proposed, {summary.AwaitingLabel} rejected and still unlabelled, {summary.Skipped} skipped as too long. Next: services/ai/evaluations/import_corpus.py (redaction, readiness).");
             break;
 
+        case "record-restore":
+            // SEC-94: record-restore --dump <file> --reason <text> [--by <name>]
+            var restoreOptions = ParseOptions(args.Skip(1));
+            if (!restoreOptions.TryGetValue("dump", out var dumpPath) || !restoreOptions.TryGetValue("reason", out var reason))
+            {
+                Console.Error.WriteLine("Usage: record-restore --dump <backup file that was restored> --reason <why> [--by <operator>]");
+                return 2;
+            }
+
+            var by = restoreOptions.TryGetValue("by", out var byName) && byName.Length > 0 ? byName : Environment.UserName;
+            var recorded = await FinanceAi.Infrastructure.Audit.RestoreRecord.RunAsync(PostgresConnections.For(DatabaseRole.Migrator), dumpPath, reason, by, DateTimeOffset.UtcNow);
+            Console.WriteLine($"Restore recorded on {recorded.TenantsRecorded} tenant audit chain(s): {Path.GetFileName(dumpPath)} sha256 {recorded.Sha256}, by {by}.");
+            break;
+
         default:
-            Console.Error.WriteLine($"Unknown command '{command}'. Expected: bootstrap | migrate | up | rotate-mfa-kek | review-pack | corpus-proposals.");
+            Console.Error.WriteLine($"Unknown command '{command}'. Expected: bootstrap | migrate | up | rotate-mfa-kek | review-pack | corpus-proposals | record-restore.");
             return 2;
     }
 

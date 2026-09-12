@@ -46,6 +46,7 @@ public static class CustomerEndpoints
         customers.MapPost("/{id:guid}/contacts", CreateContactAsync).RequiresPermission(Permissions.CustomersWrite).WithName("CreateContact");
         customers.MapPatch("/{id:guid}/contacts/{contactId:guid}", UpdateContactAsync).RequiresPermission(Permissions.CustomersWrite).WithName("UpdateContact");
         customers.MapDelete("/{id:guid}/contacts/{contactId:guid}", DeleteContactAsync).RequiresPermission(Permissions.CustomersWrite).WithName("DeleteContact");
+        customers.MapPost("/{id:guid}/contacts/{contactId:guid}/erase", EraseContactAsync).RequiresPermission(Permissions.CustomersWrite).RequiresReauth().WithName("EraseContact");   // SEC-93, slice 31
 
         return api;
     }
@@ -398,6 +399,11 @@ public static class CustomerEndpoints
             return ApiProblems.NotFoundProblem(context);
         }
 
+        if (contact.ErasedAt is not null)
+        {
+            return ApiProblems.BusinessRuleProblem(context, "contact_erased", null, null);   // SEC-93: an erased contact is read-only
+        }
+
         var validation = ValidateContact(request, isCreate: false);
         if (validation.HasErrors)
         {
@@ -637,9 +643,69 @@ public static class CustomerEndpoints
         c.Notes, [], c.CreatedAt, c.UpdatedAt, c.RowVersion.ToString(CultureInfo.InvariantCulture),
         c.MergedIntoId);
 
+    /// <summary>
+    /// SEC-93 (slice 31): anonymize a contact's personal data while every financial and audit record that referenced
+    /// the contact keeps its meaning. The row stays (messages point at it); name, role, email and phone go; every copy
+    /// of the address on outbound and inbound messages goes with it; later edits are refused. Irreversible, so it
+    /// needs a fresh re-authentication proof (SEC-09). The audit event carries the contact id only.
+    /// </summary>
+    private static async Task<Results<Ok<ContactResponse>, ProblemHttpResult>> EraseContactAsync(
+        Guid id,
+        Guid contactId,
+        HttpContext context,
+        CurrentUser currentUser,
+        TenantDbContext db,
+        IAuditWriter audit,
+        TimeProvider time,
+        CancellationToken ct)
+    {
+        var contact = await db.CustomerContacts.FirstOrDefaultAsync(c => c.Id == contactId && c.CustomerId == id, ct);
+        if (contact is null)
+        {
+            return ApiProblems.NotFoundProblem(context);
+        }
+
+        if (contact.ErasedAt is not null)
+        {
+            return ApiProblems.BusinessRuleProblem(context, "contact_erased", null, null);
+        }
+
+        var email = contact.Email;
+        var phone = contact.PhoneE164;
+        var now = time.GetUtcNow();
+        // The request's tenant-scope transaction (TenantScopeMiddleware) makes the contact, the messages and the audit row one unit.
+
+        contact.Name = CustomerContact.ErasedName;
+        contact.RoleTitle = null;
+        contact.Email = null;
+        contact.PhoneE164 = null;
+        contact.BouncedAt = null;
+        contact.BounceReason = null;
+        contact.ErasedAt = now;
+        contact.ErasedBy = currentUser.UserId;
+        contact.UpdatedAt = now;
+        contact.RowVersion++;
+
+        // Every copy of the address, whether it was written through the contact or matched by address alone.
+        var outbound = await db.Messages.Where(m => m.ContactId == contactId || (m.ToAddress != null && (m.ToAddress == email || m.ToAddress == phone))).ToListAsync(ct);
+        foreach (var m in outbound) m.ToAddress = null;
+        var inbound = await db.InboundMessages.Where(m => m.FromAddress != null && (m.FromAddress == email || m.FromAddress == phone)).ToListAsync(ct);
+        foreach (var m in inbound) m.FromAddress = null;
+
+        await db.SaveChangesAsync(ct);
+        await audit.WriteAsync(AuditFor(currentUser, context, "customer.contact_erased", id, new Dictionary<string, object?>
+        {
+            ["contactId"] = contactId,
+            ["outboundAddressesCleared"] = outbound.Count,
+            ["inboundAddressesCleared"] = inbound.Count,
+        }), ct);
+
+        return TypedResults.Ok(ToResponse(contact));
+    }
+
     private static ContactResponse ToResponse(CustomerContact c) => new(
         c.Id, c.CustomerId, c.Name, c.RoleTitle, c.Email, c.PhoneE164, c.IsPrimary, c.IsBilling, c.PreferredLanguage,
-        c.RowVersion.ToString(CultureInfo.InvariantCulture), c.BouncedAt, c.BounceReason);
+        c.RowVersion.ToString(CultureInfo.InvariantCulture), c.BouncedAt, c.BounceReason, c.ErasedAt);
 
     /// <summary>The audited projection. Money is a string (DM-28), never a JSON number.</summary>
     private static Dictionary<string, object?> Snapshot(Customer c) => new(StringComparer.Ordinal)

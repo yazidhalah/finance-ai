@@ -29,6 +29,9 @@ public static class AuditEventTypes
     public const string TenantSwitched = "auth.tenant_switched";
     public const string ProfileUpdated = "user.profile_updated";
     public const string OrganizationUpdated = "tenant.updated";
+
+    /// <summary>SEC-94 (slice 31): the operator restored the instance from a backup; appended to every tenant's chain.</summary>
+    public const string InstanceRestored = "instance.restored";
 }
 
 /// <summary>

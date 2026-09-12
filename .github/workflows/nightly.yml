@@ -36,6 +36,7 @@ jobs:
           sed -i "s|^JWT_SIGNING_KEY_PEM_BASE64=.*|JWT_SIGNING_KEY_PEM_BASE64=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null | base64 -w0)|" .env
           sed -i "s|^AI_SERVICE_TOKEN=.*|AI_SERVICE_TOKEN=$(openssl rand -hex 24)|" .env
           sed -i "s|^MFA_KEK_BASE64=.*|MFA_KEK_BASE64=$(openssl rand -base64 32)|" .env
+          sed -i "s|^BACKUP_PASSPHRASE=.*|BACKUP_PASSPHRASE=$(openssl rand -base64 32)|" .env
       - run: dotnet build --configuration Release
       # T-142 runs the specified ten minutes here (locally the test defaults to one).
       - run: dotnet test tests/integration/FinanceAi.IntegrationTests --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=detailed"
