@@ -1,6 +1,8 @@
 # End-to-end journeys (Playwright)
 
-Doc 09 §6: T-121 … T-132, run once per locale (`en`, `ar`; T-120). The Arabic run also asserts
+Doc 09 §6: T-121 … T-133, run once per locale (`en`, `ar`; T-120). `specs/accessibility.spec.ts` is T-133
+(slice 28): an axe scan (WCAG 2.x A/AA) of every screen, keyboard-only traversal of the queue and the
+allocation screen, and screen-reader names on money fields. The Arabic run also asserts
 `dir="rtl"`, that every money value sits in its own `<bdi>` isolate with the exact stored amount, and
 keeps visual snapshots of the aging table, the empty queue and a rendered Arabic message preview.
 
