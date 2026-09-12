@@ -51,16 +51,18 @@ P95 ≤ 8 s) is the one that cannot be judged on a CPU box — the committed rep
 applies: the operation stays **off by default** for the pilot (`aiEnabled: false`), the manual path carries the loop,
 and the prompt or model is iterated with a new report — never a silent threshold change.
 
-## 3. Performance on the target host (doc 09 §7 — T-140, T-141)
+## 3. Performance on the target host (doc 09 §7 — T-140, T-141, T-142)
 
 ```
-dotnet test tests/integration/FinanceAi.IntegrationTests -c Release --filter "Category=Performance" --logger "console;verbosity=detailed"
+LOAD_PROFILE_SECONDS=600 dotnet test tests/integration/FinanceAi.IntegrationTests -c Release --filter "Category=Performance" --logger "console;verbosity=detailed"
 ```
 
-Seeds 50k invoices in the test database on the host and asserts aging and queue P95 < 800 ms plus the T-141 plan
-assertions. The tests print their P95/min/max through `ITestOutputHelper`, which the console logger only shows at
-`verbosity=detailed` — record those lines in the decision record. (The nightly workflow runs the same on a shared runner;
-the number that counts is the host's.)
+Seeds the T-140 dataset (three tenants × 50k invoices) in the test database on the host and asserts: aging and queue
+P95 < 800 ms, single-entity reads P95 < 500 ms, a 5,000-row import in < 60 s, the T-141 plan assertions, and T-142 —
+twenty members of one tenant reading for ten minutes with no error-rate increase (five windows, every status counted).
+The tests print their figures through `ITestOutputHelper`, which the console logger only shows at `verbosity=detailed`
+— record those lines in the decision record. (The nightly workflow runs the same on a shared runner; the number that
+counts is the host's.) The fourth T-140 budget, classification P95 < 8 s, is measured by the evaluation harness in §2.
 
 ## 4. The Arabic review (doc 10 acceptance 3)
 

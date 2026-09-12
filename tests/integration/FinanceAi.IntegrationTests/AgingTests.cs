@@ -359,14 +359,8 @@ public sealed class AgingTests(ApiTestFixture fixture, Xunit.Abstractions.ITestO
         Assert.Equal("100.000", mismatch.GetProperty("derived").GetProperty("amount").GetString());
     }
 
-    /// <summary>
-    /// AC-16 / T-140 / PRD-22: 3 tenants × 50k invoices (the measured tenant also carries 100k allocation rows),
-    /// aging P95 under 800 ms for the measured tenant. The two neighbour tenants exist to give the planner a
-    /// table where no tenant is the majority — the shape T-140 names and T-141's index assertion assumes.
-    /// </summary>
-    [Fact]
-    [Trait("Category", "Performance")]
-    public async Task Aging_P95_Under800ms_At50k()
+    /// <summary>The T-140 dataset: the measured tenant with 50k invoices and 100k allocation rows, plus two neighbours × 50k.</summary>
+    private async Task<Setup> SeedThreeTenantsAsync()
     {
         var s = await fixture.Api.NewCustomerAsync("Big Co.");
         var tenant = s.Organization.TenantId;
@@ -403,6 +397,21 @@ public sealed class AgingTests(ApiTestFixture fixture, Xunit.Abstractions.ITestO
         Assert.Equal(50_000L, await fixture.Database.ScalarAsync<long>("SELECT count(*) FROM invoices WHERE tenant_id = @t", ("t", tenant)));
         Assert.True(await fixture.Database.ScalarAsync<long>("SELECT count(*) FROM invoices") >= 150_000L, "T-140 seeds three tenants × 50k invoices");
 
+        return s;
+    }
+
+    /// <summary>
+    /// AC-16 / T-140 / PRD-22: 3 tenants × 50k invoices (the measured tenant also carries 100k allocation rows),
+    /// aging P95 under 800 ms for the measured tenant. The two neighbour tenants exist to give the planner a
+    /// table where no tenant is the majority — the shape T-140 names and T-141's index assertion assumes.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Performance")]
+    public async Task Aging_P95_Under800ms_At50k()
+    {
+        var s = await SeedThreeTenantsAsync();
+        var tenant = s.Organization.TenantId;
+
         var timings = new List<double>();
         for (var i = 0; i < 20; i++)
         {
@@ -433,6 +442,34 @@ public sealed class AgingTests(ApiTestFixture fixture, Xunit.Abstractions.ITestO
         var sweepScans = AssertInvoiceScanIsTenantScoped(sweepPlan!, "the sweep's overdue candidates", requireIndex: true);
         output.WriteLine($"T-141: invoice scans are tenant-scoped (tenant share of the table {share:P0}; index required for the sweep, {(share < 0.5 ? "and" : "not")} for aging)");
         output.WriteLine($"T-141 plans: aging → {agingScans}; sweep → {sweepScans}");
+    }
+
+    /// <summary>T-140 / PRD-22: a single-entity read (one customer, one invoice) at 50k invoices — P95 under 500 ms.</summary>
+    [Fact]
+    [Trait("Category", "Performance")]
+    public async Task SingleEntityRead_P95_Under500ms_At50k()
+    {
+        var s = await SeedThreeTenantsAsync();
+        var tenant = s.Organization.TenantId;
+        var customerId = await fixture.Database.ScalarAsync<Guid>("SELECT id FROM customers WHERE tenant_id = @t AND code = 'PERF-137'", ("t", tenant));
+        var invoiceId = await fixture.Database.ScalarAsync<Guid>("SELECT id FROM invoices WHERE tenant_id = @t AND customer_id = @c ORDER BY invoice_number LIMIT 1", ("t", tenant), ("c", customerId));
+
+        var timings = new List<double>();
+        foreach (var path in new[] { $"/api/v1/customers/{customerId}", $"/api/v1/invoices/{invoiceId}" })
+        {
+            for (var i = 0; i < 20; i++)
+            {
+                var watch = Stopwatch.StartNew();
+                var response = await s.Client.GetAsync(path);
+                watch.Stop();
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                timings.Add(watch.Elapsed.TotalMilliseconds);
+            }
+        }
+
+        var p95 = timings.Order().ElementAt((int)Math.Ceiling(timings.Count * 0.95) - 1);
+        output.WriteLine($"single API P95 {p95:F0} ms, min {timings.Min():F0} ms, max {timings.Max():F0} ms over {timings.Count} single-entity reads at 50k invoices");
+        Assert.True(p95 < 500, $"single API P95 was {p95:F0} ms over {timings.Count} calls (min {timings.Min():F0}, max {timings.Max():F0})");
     }
 
     /// <summary>
