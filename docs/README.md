@@ -70,6 +70,9 @@ module (Expenses, Reconciliation, Cash Flow, Budget-vs-Actual) is designed here.
 | [0003](decisions/0003-ai-advisory-only-boundary.md) | AI is advisory-only; the human/state machine acts |
 | [0004](decisions/0004-messaging-channels.md) | Email owned in-product; WhatsApp via click-to-chat only |
 | [0005](decisions/0005-bilingual-content-strategy.md) | Bilingual content, RTL, and locale strategy |
+| [0006](decisions/0006-ai-evaluation-2026-09-11-qwen3-4b-classify-v1.md) | Evaluation report: qwen3:4b, `classify_reply` prompt v1, on the author-written corpus (AI-111/112) |
+| [0007](decisions/0007-coverage-floor.md) | Coverage floor: Domain 95 / Infrastructure 90 / Api 85, enforced in the `api` CI job |
+| [0008](decisions/0008-no-langgraph-until-a-multi-step-flow-exists.md) | LangGraph is not a dependency until a slice specifies a multi-step flow (A-22) |
 
 ## Glossary (used consistently across all documents)
 
