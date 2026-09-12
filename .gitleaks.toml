@@ -10,6 +10,10 @@ description = "Known non-secrets"
 regexes = [
   # The TOTP fixture in the web tests: Base32 of "1234567890" repeated — never a real enrolment secret.
   '''GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ''',
+  # Slice 25: three entries from the public breached-password list, used by the tests that prove they are refused.
+  '''123qweasdzxc''',
+  '''1qaz2wsx3edc''',
+  '''q1w2e3r4t5y6''',
 ]
 paths = [
   # Placeholders only; every value in the example is empty or a documented dummy.
