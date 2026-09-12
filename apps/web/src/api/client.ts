@@ -1227,13 +1227,20 @@ export interface AiHealth {
   promptVersion: string | null
   error: string | null
   aiEnabled: boolean
+  /** Effective: the kill switch and the operation's own switch (slice 26). */
+  classificationActive: boolean
+  briefingActive: boolean
 }
 
 export interface AiSettings {
   aiEnabled: boolean
+  aiClassificationEnabled: boolean
+  aiBriefingEnabled: boolean
   aiMinConfidence: string
   serviceUrlHost: string
 }
+
+export type AiSettingsPatch = { aiEnabled?: boolean; aiClassificationEnabled?: boolean; aiBriefingEnabled?: boolean; aiMinConfidence?: string }
 
 export const aiApi = {
   inbox: (q: { status?: string; unmatched?: boolean; customerId?: string; caseId?: string } = {}) => request<{ items: InboundMessage[]; totalCount: number }>(`/inbound-messages${qs(q)}`),
@@ -1250,7 +1257,7 @@ export const aiApi = {
   reject: (id: string, reason: string) => request<AiSuggestion>(`/ai/suggestions/${id}/reject`, { method: 'POST', body: { reason } }),
   health: () => request<AiHealth>('/ai/health'),
   settings: () => request<AiSettings>('/organization/ai-settings'),
-  updateSettings: (body: { aiEnabled?: boolean; aiMinConfidence?: string }) => request<AiSettings>('/organization/ai-settings', { method: 'PATCH', body }),
+  updateSettings: (body: AiSettingsPatch) => request<AiSettings>('/organization/ai-settings', { method: 'PATCH', body }),
 }
 
 // ---------------------------------------------------------------------------------------------

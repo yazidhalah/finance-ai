@@ -99,12 +99,17 @@ describe('AI review (slice 9 AC-16)', () => {
   })
 
   it('shows the degraded banner only when the AI is off or unreachable', () => {
-    const healthy = { configured: true, reachable: true, ready: true, modelName: 'qwen3:4b', digest: 'd', promptVersion: 'v1', error: null, aiEnabled: true }
+    const healthy = { configured: true, reachable: true, ready: true, modelName: 'qwen3:4b', digest: 'd', promptVersion: 'v1', error: null, aiEnabled: true, classificationActive: true, briefingActive: true }
     const { rerender } = render(wrap(<AiStatusBanner health={healthy} />))
     expect(screen.queryByTestId('ai-banner')).toBeNull()
     rerender(wrap(<AiStatusBanner health={{ ...healthy, reachable: false, ready: false, error: 'ai_unavailable' }} />))
     expect(screen.getByTestId('ai-banner')).toHaveAttribute('data-reason', 'unreachable')
-    rerender(wrap(<AiStatusBanner health={{ ...healthy, aiEnabled: false }} />))
+    rerender(wrap(<AiStatusBanner health={{ ...healthy, aiEnabled: false, classificationActive: false, briefingActive: false }} />))
+    expect(screen.getByTestId('ai-banner')).toHaveAttribute('data-reason', 'disabled')
+    // Slice 26: the banner keys on the effective classification state — briefing-only off says nothing here.
+    rerender(wrap(<AiStatusBanner health={{ ...healthy, briefingActive: false }} />))
+    expect(screen.queryByTestId('ai-banner')).toBeNull()
+    rerender(wrap(<AiStatusBanner health={{ ...healthy, classificationActive: false }} />))
     expect(screen.getByTestId('ai-banner')).toHaveAttribute('data-reason', 'disabled')
   })
 
@@ -122,10 +127,11 @@ describe('AI review (slice 9 AC-16)', () => {
   })
 
   it('exposes the kill switch and the threshold, and nothing that sends or approves on its own', async () => {
+    const on = { aiEnabled: true, aiClassificationEnabled: true, aiBriefingEnabled: true, aiMinConfidence: '0.700', serviceUrlHost: '127.0.0.1' }
     const calls = stubFetch([
-      () => [200, { aiEnabled: true, aiMinConfidence: '0.700', serviceUrlHost: '127.0.0.1' }],
-      () => [200, { configured: true, reachable: true, ready: true, modelName: 'qwen3:4b', digest: 'd', promptVersion: 'classify_customer_reply.v1', error: null, aiEnabled: true }],
-      () => [200, { aiEnabled: false, aiMinConfidence: '0.700', serviceUrlHost: '127.0.0.1' }],
+      () => [200, on],
+      () => [200, { configured: true, reachable: true, ready: true, modelName: 'qwen3:4b', digest: 'd', promptVersion: 'classify_customer_reply.v1', error: null, aiEnabled: true, classificationActive: true, briefingActive: true }],
+      () => [200, { ...on, aiEnabled: false }],
     ])
     render(wrap(<AiSettingsPanel />))
     expect(await screen.findByTestId('ai-enabled')).toHaveAttribute('data-enabled', 'true')
@@ -135,7 +141,26 @@ describe('AI review (slice 9 AC-16)', () => {
     const patch = calls.find((c) => c.method === 'PATCH')!
     expect(patch.url).toMatch(/\/organization\/ai-settings$/)
     expect(patch.body).toEqual({ aiEnabled: false })
+    // With the kill switch off the per-operation switches are shown but inert.
+    expect(screen.getByTestId('toggle-ai-classification')).toBeDisabled()
+    expect(screen.getByTestId('toggle-ai-briefing')).toBeDisabled()
     expect(document.body.textContent).not.toMatch(/auto.?send/i)
+  })
+
+  it('switches one operation off without touching the other (slice 26)', async () => {
+    const on = { aiEnabled: true, aiClassificationEnabled: true, aiBriefingEnabled: true, aiMinConfidence: '0.700', serviceUrlHost: '127.0.0.1' }
+    const calls = stubFetch([
+      () => [200, on],
+      () => [200, { configured: true, reachable: true, ready: true, modelName: 'qwen3:4b', digest: 'd', promptVersion: 'v1', error: null, aiEnabled: true, classificationActive: true, briefingActive: true }],
+      () => [200, { ...on, aiBriefingEnabled: false }],
+    ])
+    render(wrap(<AiSettingsPanel />))
+    expect(await screen.findByTestId('ai-briefing-enabled')).toHaveAttribute('data-enabled', 'true')
+    fireEvent.click(screen.getByTestId('toggle-ai-briefing'))
+    await waitFor(() => expect(screen.getByTestId('ai-briefing-enabled')).toHaveAttribute('data-enabled', 'false'))
+    expect(calls.find((c) => c.method === 'PATCH')!.body).toEqual({ aiBriefingEnabled: false })
+    expect(screen.getByTestId('ai-classification-enabled')).toHaveAttribute('data-enabled', 'true')
+    expect(screen.getByTestId('ai-enabled')).toHaveAttribute('data-enabled', 'true')
   })
 
   it('adds the inbox to navigation behind cases.read', () => {

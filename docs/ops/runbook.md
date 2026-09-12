@@ -75,7 +75,8 @@ Audited as `tenant.outbound_settings_changed`. Pending approved messages stay `A
 comes back — nothing is lost, nothing goes out meanwhile.
 
 **AI, one tenant:** `PATCH /api/v1/organization/ai-settings {"aiEnabled": false}` — suggestions stop, the briefing
-renders metrics only. **AI, everywhere:** `infrastructure/stack.sh --profile full stop ai` — the API treats the
+renders metrics only. **One operation only** (T-105, a gate the pilot failed): `{"aiClassificationEnabled": false}`
+or `{"aiBriefingEnabled": false}` — the other keeps running; the kill switch overrides both. **AI, everywhere:** `infrastructure/stack.sh --profile full stop ai` — the API treats the
 service as unavailable (`ai_unavailable`, never an error to the user).
 
 ---

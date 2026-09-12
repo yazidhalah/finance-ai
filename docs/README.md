@@ -34,6 +34,7 @@ Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), sl
 | 23 | [slices/slice-23-contract-completion.md](slices/slice-23-contract-completion.md) · [review](slices/slice-23-review.md) | The five ledger/organization rows of doc 05 that were never built: holidays (FIN-73), manual invoice (A-11), invoice edits, the invoice trail, the two-step customer merge (DM-21, migration 0017) |
 | 24 | [slices/slice-24-email-completion.md](slices/slice-24-email-completion.md) · [review](slices/slice-24-review.md) | The last three doc 05 rows: email verification before the first sign-in, tenant SMTP with write-only secrets (SEC-09/66/67), the signed MTA webhook (Sent → Delivered/Bounced); migration 0018 |
 | 25 | [slices/slice-25-password-hygiene-and-bounces.md](slices/slice-25-password-hygiene-and-bounces.md) · [review](slices/slice-25-review.md) | The SEC-01 breached-password check (offline, SecLists ≥ 12 chars, bundled) and bounced contacts (guard `contact_email_bounced`, cleared on edit; migration 0019) |
+| 26 | [slices/slice-26-ai-per-operation.md](slices/slice-26-ai-per-operation.md) · [review](slices/slice-26-review.md) | The per-operation AI switches doc 05 names (`aiClassificationEnabled`, `aiBriefingEnabled`, migration 0020); `aiEnabled` stays the kill switch |
 
 **Open questions still outstanding.** Q-01, Q-02, Q-04 and Q-06 in document 00 remain unanswered.
 Slices 1–10 proceeded on the documented defaults (A-01…A-05, A-11, A-12). **Slice 3b built E1 on a

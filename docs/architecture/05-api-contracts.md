@@ -432,8 +432,10 @@ slice's AI-specific routes and the briefing narrative.
 > - `GET /ai/health` returns configured / reachable / ready / model / digest / prompt version /
 >   `aiEnabled`; the P95 and the below-threshold rate are not computed yet.
 > - `GET /organization/ai-settings` is `tenant.read`; `PATCH` is `ai.settings.write` and takes
->   `aiEnabled` and `aiMinConfidence` (0.500–1.000, three decimals). There is no per-operation
->   enablement yet (one operation exists) and, as specified, nothing that resembles autosend.
+>   `aiEnabled` (the kill switch), `aiClassificationEnabled`, `aiBriefingEnabled` (slice 26: an operation
+>   runs only when the kill switch and its own switch are both on) and `aiMinConfidence` (0.500–1.000,
+>   three decimals). `GET /ai/health` reports the effective `classificationActive` / `briefingActive`.
+>   As specified, nothing resembles autosend.
 
 ---
 

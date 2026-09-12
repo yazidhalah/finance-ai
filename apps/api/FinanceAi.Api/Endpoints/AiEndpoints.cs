@@ -233,7 +233,7 @@ public static class AiEndpoints
         var settings = await db.TenantSettings.AsNoTracking().FirstAsync(ct);
         var configured = HttpAiClient.Token is not null;
         var h = configured ? await ai.HealthAsync(ct) : new AiHealth(false, false, null, null, null, "ai_not_configured");
-        return TypedResults.Ok(new AiHealthResponse(configured, h.Reachable, h.Ready, h.ModelName, h.Digest, h.PromptVersion, h.Error, settings.AiEnabled));
+        return TypedResults.Ok(new AiHealthResponse(configured, h.Reachable, h.Ready, h.ModelName, h.Digest, h.PromptVersion, h.Error, settings.AiEnabled, settings.ClassificationActive, settings.BriefingActive));
     }
 
     private static async Task<Results<Ok<AiSettingsResponse>, ProblemHttpResult>> AiSettingsAsync(TenantDbContext db, CancellationToken ct)
@@ -256,8 +256,10 @@ public static class AiEndpoints
         }
 
         var s = await db.TenantSettings.FirstAsync(ct);
-        var before = new { s.AiEnabled, aiMinConfidence = F3(s.AiMinConfidence) };
+        var before = Snapshot(s);
         if (request.AiEnabled is { } enabled) s.AiEnabled = enabled;
+        if (request.AiClassificationEnabled is { } classification) s.AiClassificationEnabled = classification;
+        if (request.AiBriefingEnabled is { } briefing) s.AiBriefingEnabled = briefing;
         if (threshold is { } th) s.AiMinConfidence = th;
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync(new AuditEvent
@@ -267,13 +269,16 @@ public static class AiEndpoints
             EventType = "tenant.ai_settings_changed",
             EntityType = "tenant",
             EntityId = db.CurrentTenantId,
-            Changes = JsonSerializer.Serialize(new { before, after = new { s.AiEnabled, aiMinConfidence = F3(s.AiMinConfidence) } }, Json),
+            Changes = JsonSerializer.Serialize(new { before, after = Snapshot(s) }, Json),
         }, ct);
         return TypedResults.Ok(Settings(s));
     }
 
     private static AiSettingsResponse Settings(TenantSettings s) =>
-        new(s.AiEnabled, F3(s.AiMinConfidence), Uri.TryCreate(HttpAiClient.BaseUrl, UriKind.Absolute, out var u) ? u.Host : "unknown");
+        new(s.AiEnabled, s.AiClassificationEnabled, s.AiBriefingEnabled, F3(s.AiMinConfidence), Uri.TryCreate(HttpAiClient.BaseUrl, UriKind.Absolute, out var u) ? u.Host : "unknown");
+
+    private static object Snapshot(TenantSettings s) =>
+        new { s.AiEnabled, s.AiClassificationEnabled, s.AiBriefingEnabled, aiMinConfidence = F3(s.AiMinConfidence) };
 
     // ---------------------------------------------------------------------------------------
     // Shaping
