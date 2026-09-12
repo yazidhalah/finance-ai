@@ -43,7 +43,7 @@ On the target host, with Ollama and the pinned model (`qwen3:4b`, digest in THIR
 
 ```
 cd services/ai && AI_EVAL_HARDWARE="<gpu name, RAM>" .venv/bin/python -m evaluations.evaluate \
-    --corpus pilot.jsonl --report ../../docs/decisions/0008-ai-evaluation-<date>-qwen3-4b-pilot.md
+    --corpus pilot.jsonl --report ../../docs/decisions/0009-ai-evaluation-<date>-qwen3-4b-pilot.md
 ```
 
 The report renders every gate with its verdict. The pass criteria are the table in doc 09 §5.2; T-104 (classify
@@ -54,11 +54,12 @@ and the prompt or model is iterated with a new report — never a silent thresho
 ## 3. Performance on the target host (doc 09 §7 — T-140, T-141)
 
 ```
-dotnet test tests/integration/FinanceAi.IntegrationTests -c Release --filter "Category=Performance" --logger "console;verbosity=normal"
+dotnet test tests/integration/FinanceAi.IntegrationTests -c Release --filter "Category=Performance" --logger "console;verbosity=detailed"
 ```
 
 Seeds 50k invoices in the test database on the host and asserts aging and queue P95 < 800 ms plus the T-141 plan
-assertions. Record the printed P95s in the decision record. (The nightly workflow runs the same on a shared runner;
+assertions. The tests print their P95/min/max through `ITestOutputHelper`, which the console logger only shows at
+`verbosity=detailed` — record those lines in the decision record. (The nightly workflow runs the same on a shared runner;
 the number that counts is the host's.)
 
 ## 4. The Arabic review (doc 10 acceptance 3)
@@ -74,7 +75,7 @@ into the pack's "Reviewer notes" blocks; wording changes become a normal slice (
 
 ## 5. Sign-off
 
-Write `docs/decisions/0009-v1-acceptance-<date>.md` with:
+Write `docs/decisions/0010-v1-acceptance-<date>.md` with:
 
 - the corpus readiness block (from §1) and the agreement figures;
 - the gate table from §2 with the hardware named;
