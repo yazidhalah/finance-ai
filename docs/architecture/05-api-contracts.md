@@ -163,6 +163,7 @@ a 401/403/404 test (PRD-13).
 | PATCH | `/customers/{id}` | `customers.write` | `If-Match` required. |
 | DELETE | `/customers/{id}` | `customers.write` | Soft delete; refused (`422 has_open_balance`) if any open invoice. |
 | GET | `/customers/{id}/contacts`, POST, PATCH, DELETE `/contacts/{cid}` | `customers.read`/`.write` | One primary contact enforced. |
+| POST | `/customers/{id}/contacts/{cid}/erase` | `customers.write` + re-authentication | Slice 31 (SEC-93): anonymizes the person in place (name, role, email, phone) and clears every copy of the address on outbound and inbound messages; the row stays for the records that reference it and is read-only afterwards (`422 contact_erased`). Audited without PII. |
 | GET | `/customers/duplicates` | `customers.read` | Candidate duplicate pairs with a similarity score. |
 | POST | `/customers/{id}/merge` | `customers.merge` | `{ "sourceCustomerId": "…", "confirmToken": "…" }`. Two-step: preview then confirm. Irreversible → audit high-severity. |
 | GET | `/customers/{id}/statement` | `customers.read` | Statement of account: invoices, payments, credits, running balance, `?asOf=`, `?currency=`, `?format=json|pdf`. |

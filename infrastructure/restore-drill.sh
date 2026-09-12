@@ -12,19 +12,28 @@ psql_admin() { psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" 
 
 dump="${1:-$(infrastructure/backup.sh)}"
 taken=$(stat -c %Y "$dump")
+# SEC-94: backups are encrypted at rest; decrypt into a private temporary file for the length of the drill.
+plain="$dump"
+case "$dump" in
+  *.enc)
+    [ -n "${BACKUP_PASSPHRASE:-}" ] || { echo "BACKUP_PASSPHRASE is not set: cannot decrypt $dump" >&2; exit 1; }
+    plain=$(mktemp --suffix=.dump)
+    openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:BACKUP_PASSPHRASE -in "$dump" -out "$plain"
+    ;;
+esac
 drill="${POSTGRES_DB}_drill_$(date -u +%H%M%S)"
 echo "backup: $dump ($(( ( $(date +%s) - taken ) ))s old — that is the RPO of this drill)"
 
 psql_admin -d postgres -c "DROP DATABASE IF EXISTS \"$drill\""
 psql_admin -d postgres -c "CREATE DATABASE \"$drill\" TEMPLATE template0 ENCODING 'UTF8'"
-trap 'rc=$?; psql_admin -d postgres -c "DROP DATABASE IF EXISTS \"$drill\"" >/dev/null; if [ $rc -ne 0 ]; then infrastructure/alert.sh restore_drill_failed "restore drill of ${dump:-?} failed (exit $rc)"; fi' EXIT   # SEC-102
+trap 'rc=$?; psql_admin -d postgres -c "DROP DATABASE IF EXISTS \"$drill\"" >/dev/null; [ "$plain" != "$dump" ] && rm -f "$plain"; if [ $rc -ne 0 ]; then infrastructure/alert.sh restore_drill_failed "restore drill of ${dump:-?} failed (exit $rc)"; fi' EXIT   # SEC-102
 
 start=$(date +%s)
 # The roles (finance_app, finance_migrator, finance_reporting) already exist on the server; --no-owner keeps the
 # restore independent of who dumped it. Grants and policies reference the roles by name and come back intact.
 # Streamed through psql with ON_ERROR_STOP so any failed statement fails the drill. A newer client's
 # "SET transaction_timeout" (PostgreSQL 17+) is dropped for a 16 server; nothing else is filtered.
-pg_restore --no-owner -f - "$dump" | grep -v '^SET transaction_timeout' | psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$drill" -v ON_ERROR_STOP=1 -q
+pg_restore --no-owner -f - "$plain" | grep -v '^SET transaction_timeout' | psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$drill" -v ON_ERROR_STOP=1 -q
 rto=$(( $(date +%s) - start ))
 echo "restore: ${rto}s into $drill (RTO of this drill)"
 

@@ -281,6 +281,8 @@ export interface Contact {
   /** Slice 25: the MTA bounced this address; sends are refused until the email is edited. */
   bouncedAt?: string | null
   bounceReason?: string | null
+  /** Slice 31 (SEC-93): the personal data was anonymized; the row is read-only. */
+  erasedAt?: string | null
 }
 
 export const customersApi = {
@@ -316,6 +318,10 @@ export const customersApi = {
 
   removeContact: (id: string, contactId: string) =>
     request<void>(`/customers/${id}/contacts/${contactId}`, { method: 'DELETE' }),
+
+  /** SEC-93: anonymize the person; irreversible, so it carries a re-authentication proof. */
+  eraseContact: (id: string, contactId: string, reauth: string) =>
+    request<Contact>(`/customers/${id}/contacts/${contactId}/erase`, { method: 'POST', body: {}, reauth }),
 }
 
 // ---------------------------------------------------------------------------------------

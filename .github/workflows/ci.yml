@@ -42,6 +42,7 @@ jobs:
           sed -i "s|^JWT_SIGNING_KEY_PEM_BASE64=.*|JWT_SIGNING_KEY_PEM_BASE64=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null | base64 -w0)|" .env
           sed -i "s|^AI_SERVICE_TOKEN=.*|AI_SERVICE_TOKEN=$(openssl rand -hex 24)|" .env
           sed -i "s|^MFA_KEK_BASE64=.*|MFA_KEK_BASE64=$(openssl rand -base64 32)|" .env
+          sed -i "s|^BACKUP_PASSPHRASE=.*|BACKUP_PASSPHRASE=$(openssl rand -base64 32)|" .env
           grep -c "JWT_SIGNING_KEY_PEM_BASE64=." .env
       - run: dotnet format --verify-no-changes
       - run: dotnet build --configuration Release
@@ -129,6 +130,7 @@ jobs:
           sed -i "s|^JWT_SIGNING_KEY_PEM_BASE64=.*|JWT_SIGNING_KEY_PEM_BASE64=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null | base64 -w0)|" .env
           sed -i "s|^AI_SERVICE_TOKEN=.*|AI_SERVICE_TOKEN=$(openssl rand -hex 24)|" .env
           sed -i "s|^MFA_KEK_BASE64=.*|MFA_KEK_BASE64=$(openssl rand -base64 32)|" .env
+          sed -i "s|^BACKUP_PASSPHRASE=.*|BACKUP_PASSPHRASE=$(openssl rand -base64 32)|" .env
           sed -i "s|^WEB_ORIGINS=.*|WEB_ORIGINS=http://localhost:8080|" .env
           sed -i "s|^EMAIL_WEBHOOK_SECRET=.*|EMAIL_WEBHOOK_SECRET=$(openssl rand -hex 32)|; s|^SMTP_ALLOW_PRIVATE_HOSTS=.*|SMTP_ALLOW_PRIVATE_HOSTS=1|" .env
       - run: pipx install podman-compose==1.5.0
@@ -161,6 +163,7 @@ jobs:
           sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci_only/; s/^POSTGRES_APP_PASSWORD=.*/POSTGRES_APP_PASSWORD=ci_app/; s/^POSTGRES_MIGRATOR_PASSWORD=.*/POSTGRES_MIGRATOR_PASSWORD=ci_migrator/; s/^POSTGRES_REPORTING_PASSWORD=.*/POSTGRES_REPORTING_PASSWORD=ci_reporting/' .env
           sed -i "s|^JWT_SIGNING_KEY_PEM_BASE64=.*|JWT_SIGNING_KEY_PEM_BASE64=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null | base64 -w0)|" .env
           sed -i "s|^MFA_KEK_BASE64=.*|MFA_KEK_BASE64=$(openssl rand -base64 32)|" .env
+          sed -i "s|^BACKUP_PASSPHRASE=.*|BACKUP_PASSPHRASE=$(openssl rand -base64 32)|" .env
       - run: sudo apt-get install -y -q postgresql-client
       # A migrated, seeded database: the migrator applies every migration, then the drill dumps, restores and compares.
       - run: dotnet run --project apps/api/FinanceAi.Migrator -c Release -- up
@@ -199,6 +202,7 @@ jobs:
           sed -i "s|^JWT_SIGNING_KEY_PEM_BASE64=.*|JWT_SIGNING_KEY_PEM_BASE64=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null | base64 -w0)|" .env
           sed -i "s|^AI_SERVICE_TOKEN=.*|AI_SERVICE_TOKEN=$(openssl rand -hex 24)|" .env
           sed -i "s|^MFA_KEK_BASE64=.*|MFA_KEK_BASE64=$(openssl rand -base64 32)|" .env
+          sed -i "s|^BACKUP_PASSPHRASE=.*|BACKUP_PASSPHRASE=$(openssl rand -base64 32)|" .env
           grep -c "JWT_SIGNING_KEY_PEM_BASE64=." .env
       - run: dotnet build --configuration Release apps/api/FinanceAi.Api && dotnet build --configuration Release apps/api/FinanceAi.Migrator
       - run: python -m venv services/ai/.venv && services/ai/.venv/bin/pip install -r services/ai/requirements.txt

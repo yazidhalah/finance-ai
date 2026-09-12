@@ -108,7 +108,10 @@ product's endpoints and compares aging, balances, statuses, reconciliation, inva
 `tests/integration/…/Golden/golden-ledger.json`; a moved number is accepted with `UPDATE_GOLDEN=1`. Slice 30 closed the
 last two doc 09 ids: `FinanceAi.Migrator corpus-proposals --tenant … --consent … --out …` turns the pilot's corrections
 into corpus rows for the importer (T-109, consent-gated by its arguments), and `evaluate.py --determinism N` reruns
-sampled items and reports any output that differs (T-107).
+sampled items and reports any output that differs (T-107). Slice 31 began doc 08 §8 (data lifecycle):
+`POST /customers/{id}/contacts/{cid}/erase` anonymizes a person in place under re-authentication (SEC-93, 0021, route
+pin 161); backups are encrypted at rest under `BACKUP_PASSPHRASE` and a real restore is recorded on every tenant's audit
+chain with `FinanceAi.Migrator record-restore` (SEC-94). SEC-91/92 follow.
 What remains before the First Product is "done" is the
 v1 acceptance pass on a pilot corpus and real hardware (doc 09 §5 AI gates are indicative on the
 author-written corpus; Arabic narrative quality needs a native reviewer; T-140 runs nightly on a shared

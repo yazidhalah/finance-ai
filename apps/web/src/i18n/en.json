@@ -1134,5 +1134,9 @@
   "errors.rule.secret_store_unavailable": "The secret store is not configured; the operator must set MFA_KEK_BASE64.",
   "errors.password.breached": "That password appears in lists of leaked passwords; choose one that is not.",
   "contacts.bounced": "Email bounced — edit the address to send again",
-  "errors.rule.contact_email_bounced": "This contact's email address bounced; correct it before sending."
+  "contacts.erased": "Erased",
+  "contacts.erase": "Erase personal data",
+  "contacts.eraseTitle": "Erase this contact's personal data — the name, email and phone are removed everywhere and cannot be recovered; invoices, payments and the message record stay.",
+  "errors.rule.contact_email_bounced": "This contact's email address bounced; correct it before sending.",
+  "errors.rule.contact_erased": "This contact's personal data was erased; the row cannot be edited."
 }

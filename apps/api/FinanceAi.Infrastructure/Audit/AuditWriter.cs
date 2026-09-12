@@ -23,7 +23,7 @@ public interface IAuditWriter
 public sealed class AuditWriter(TenantDbContext db) : IAuditWriter
 {
     /// <summary>Arbitrary but fixed class id for this advisory-lock namespace.</summary>
-    private const int LockNamespace = 0x41554449;
+    internal const int LockNamespace = 0x41554449;
 
     public async Task WriteAsync(AuditEvent auditEvent, CancellationToken ct = default)
     {
