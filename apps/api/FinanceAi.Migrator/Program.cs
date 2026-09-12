@@ -43,8 +43,24 @@ try
             Console.WriteLine($"Review pack written to {target} ({FinanceAi.Domain.Entities.SystemTemplates.All.Count} templates).");
             break;
 
+        case "corpus-proposals":
+            // T-109: corpus-proposals --tenant <id> --consent <reference> --out <path.csv> [--since yyyy-MM-dd]
+            var options = ParseOptions(args.Skip(1));
+            if (!options.TryGetValue("tenant", out var tenantText) || !Guid.TryParse(tenantText, out var tenantId) || !options.TryGetValue("consent", out var consent) || !options.TryGetValue("out", out var outPath))
+            {
+                Console.Error.WriteLine("Usage: corpus-proposals --tenant <tenant id> --consent <written-consent reference> --out <path.csv> [--since yyyy-MM-dd]");
+                return 2;
+            }
+
+            DateOnly? since = options.TryGetValue("since", out var sinceText) ? DateOnly.ParseExact(sinceText, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) : null;
+            var (csv, summary) = await FinanceAi.Infrastructure.Ai.CorpusProposals.RenderAsync(PostgresConnections.For(DatabaseRole.Migrator), tenantId, consent, since);
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outPath))!);
+            await File.WriteAllTextAsync(outPath, csv);
+            Console.WriteLine($"Corpus proposals written to {outPath}: {summary.Proposed} proposed, {summary.AwaitingLabel} rejected and still unlabelled, {summary.Skipped} skipped as too long. Next: services/ai/evaluations/import_corpus.py (redaction, readiness).");
+            break;
+
         default:
-            Console.Error.WriteLine($"Unknown command '{command}'. Expected: bootstrap | migrate | up | rotate-mfa-kek | review-pack.");
+            Console.Error.WriteLine($"Unknown command '{command}'. Expected: bootstrap | migrate | up | rotate-mfa-kek | review-pack | corpus-proposals.");
             return 2;
     }
 
@@ -55,6 +71,19 @@ catch (Exception ex)
     // The message only: a connection string or a role password must never reach the console (SEC-67).
     Console.Error.WriteLine($"Migration failed: {ex.Message}");
     return 1;
+}
+
+static Dictionary<string, string> ParseOptions(IEnumerable<string> arguments)
+{
+    var options = new Dictionary<string, string>(StringComparer.Ordinal);
+    string? key = null;
+    foreach (var argument in arguments)
+    {
+        if (argument.StartsWith("--", StringComparison.Ordinal)) { key = argument[2..]; options[key] = string.Empty; }
+        else if (key is not null) { options[key] = argument; key = null; }
+    }
+
+    return options;
 }
 
 static void Report(IReadOnlyList<string> applied) =>
