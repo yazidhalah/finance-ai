@@ -704,11 +704,15 @@ public sealed record EditAndApproveSuggestionRequest(string? Classification, Gui
 
 public sealed record RejectSuggestionRequest(string? Reason);
 
-public sealed record AiHealthResponse(bool Configured, bool Reachable, bool Ready, string? ModelName, string? Digest, string? PromptVersion, string? Error, bool AiEnabled);
+/// <summary>
+/// <c>AiEnabled</c> is the tenant's kill switch; <c>ClassificationActive</c> and <c>BriefingActive</c> are the effective
+/// per-operation states (the kill switch AND the operation's own switch) — what the screens key on (slice 26).
+/// </summary>
+public sealed record AiHealthResponse(bool Configured, bool Reachable, bool Ready, string? ModelName, string? Digest, string? PromptVersion, string? Error, bool AiEnabled, bool ClassificationActive, bool BriefingActive);
 
-public sealed record AiSettingsResponse(bool AiEnabled, string AiMinConfidence, string ServiceUrlHost);
+public sealed record AiSettingsResponse(bool AiEnabled, bool AiClassificationEnabled, bool AiBriefingEnabled, string AiMinConfidence, string ServiceUrlHost);
 
-public sealed record AiSettingsRequest(bool? AiEnabled, string? AiMinConfidence);
+public sealed record AiSettingsRequest(bool? AiEnabled, bool? AiClassificationEnabled, bool? AiBriefingEnabled, string? AiMinConfidence);
 
 // ---------------------------------------------------------------------------------------------
 // Slice 10 — daily briefing (doc 05 slice 10)

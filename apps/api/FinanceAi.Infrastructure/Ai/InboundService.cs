@@ -106,7 +106,7 @@ public sealed class InboundService(TenantDbContext db, IAuditWriter audit, TimeP
         if (message.ClassificationStatus is InboundStatus.Classified or InboundStatus.HumanClassified or InboundStatus.Ignored) throw new CaseException("already_classified");
 
         var context = await cases.ContextAsync(ct);
-        if (!context.Settings.AiEnabled) throw new CaseException("ai_disabled");
+        if (!context.Settings.ClassificationActive) throw new CaseException("ai_disabled");
 
         var customer = await db.Customers.FirstAsync(c => c.Id == customerId, ct);
         var c = message.CaseId is { } caseId ? await db.Cases.FirstOrDefaultAsync(x => x.Id == caseId, ct) : null;

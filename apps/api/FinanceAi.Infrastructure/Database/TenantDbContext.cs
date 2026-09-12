@@ -250,6 +250,10 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.AllowSplitDunningDuringDispute).HasColumnName("allow_split_dunning_during_dispute");
             e.Property(x => x.CollectorSeesOnlyAssigned).HasColumnName("collector_sees_only_assigned");
             e.Property(x => x.AiEnabled).HasColumnName("ai_enabled");
+            e.Property(x => x.AiClassificationEnabled).HasColumnName("ai_classification_enabled");
+            e.Property(x => x.AiBriefingEnabled).HasColumnName("ai_briefing_enabled");
+            e.Ignore(x => x.ClassificationActive);
+            e.Ignore(x => x.BriefingActive);
             e.Property(x => x.AiMinConfidence).HasColumnName("ai_min_confidence");
             e.Property(x => x.BriefingLanguage).HasColumnName("briefing_language").HasColumnType("char(2)");
             e.Property(x => x.BriefingEmailEnabled).HasColumnName("briefing_email_enabled");
