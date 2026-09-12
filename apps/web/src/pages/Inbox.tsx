@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ApiError, aiApi, aiClassifications, casesApi, customersApi, disputeReasons } from '../api/client'
-import type { AiClassification, AiHealth, AiSettings, AiSuggestion, CaseInvoice, Customer, InboundMessage } from '../api/client'
+import type { AiClassification, AiHealth, AiSettings, AiSettingsPatch, AiSuggestion, CaseInvoice, Customer, InboundMessage } from '../api/client'
 import { useSession } from '../auth/SessionProvider'
 import { Button, Card, ErrorNotice, Field, Isolate, Select, TextInput } from '../components/ui'
 import { useLocale } from '../i18n/LocaleProvider'
@@ -37,8 +37,8 @@ export function QuotedText({ text, language }: { text: string; language?: string
 /** The doc 06 §6.10 degraded banner: shown wherever the shell renders, only when the AI service is down or off. */
 export function AiStatusBanner({ health }: { health: AiHealth | null }) {
   const { t } = useLocale()
-  if (!health || (health.reachable && health.ready && health.aiEnabled)) return null
-  const key = !health.configured ? 'notConfigured' : !health.aiEnabled ? 'disabled' : !health.reachable ? 'unreachable' : 'notReady'
+  if (!health || (health.reachable && health.ready && health.classificationActive)) return null
+  const key = !health.configured ? 'notConfigured' : !health.classificationActive ? 'disabled' : !health.reachable ? 'unreachable' : 'notReady'
   return (
     <div role="status" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="ai-banner" data-reason={key}>
       {t(`ai.banner.${key}`)}
@@ -365,7 +365,7 @@ export function AiSettingsPanel() {
     } catch (e) { setProblem(toProblem(e)) }
   }, [])
   useEffect(() => { void load() }, [load])
-  async function save(body: { aiEnabled?: boolean; aiMinConfidence?: string }) {
+  async function save(body: AiSettingsPatch) {
     setBusy(true); setProblem(null)
     try { const s = await aiApi.updateSettings(body); setSettings(s); setThreshold(s.aiMinConfidence) } catch (e) { setProblem(toProblem(e)) } finally { setBusy(false) }
   }
@@ -380,6 +380,15 @@ export function AiSettingsPanel() {
       <div className="mt-3 flex flex-wrap items-end gap-3">
         <span className="text-sm" data-testid="ai-enabled" data-enabled={settings.aiEnabled}>{settings.aiEnabled ? t('ai.settings.on') : t('ai.settings.off')}</span>
         {can('ai.settings.write') ? <Button variant="ghost" busy={busy} onClick={() => void save({ aiEnabled: !settings.aiEnabled })} data-testid="toggle-ai">{settings.aiEnabled ? t('ai.settings.disable') : t('ai.settings.enable')}</Button> : null}
+      </div>
+      <p className="mt-3 text-xs text-slate-600">{t('ai.settings.operationsHint')}</p>
+      <div className="mt-1 flex flex-wrap items-center gap-3">
+        <span className="text-sm" data-testid="ai-classification-enabled" data-enabled={settings.aiClassificationEnabled}>{settings.aiClassificationEnabled ? t('ai.settings.classificationOn') : t('ai.settings.classificationOff')}</span>
+        {can('ai.settings.write') ? <Button variant="ghost" busy={busy} disabled={!settings.aiEnabled} onClick={() => void save({ aiClassificationEnabled: !settings.aiClassificationEnabled })} data-testid="toggle-ai-classification">{settings.aiClassificationEnabled ? t('ai.settings.disable') : t('ai.settings.enable')}</Button> : null}
+        <span className="text-sm" data-testid="ai-briefing-enabled" data-enabled={settings.aiBriefingEnabled}>{settings.aiBriefingEnabled ? t('ai.settings.briefingOn') : t('ai.settings.briefingOff')}</span>
+        {can('ai.settings.write') ? <Button variant="ghost" busy={busy} disabled={!settings.aiEnabled} onClick={() => void save({ aiBriefingEnabled: !settings.aiBriefingEnabled })} data-testid="toggle-ai-briefing">{settings.aiBriefingEnabled ? t('ai.settings.disable') : t('ai.settings.enable')}</Button> : null}
+      </div>
+      <div className="mt-3 flex flex-wrap items-end gap-3">
         <Field label={t('ai.settings.threshold')} hint={t('ai.settings.thresholdHint')}>
           <TextInput inputMode="decimal" dir="ltr" className="tabular" data-testid="ai-threshold" value={threshold} disabled={!can('ai.settings.write')} onChange={(e) => setThreshold(e.target.value)} />
         </Field>

@@ -150,7 +150,7 @@ public sealed class BriefingService(TenantDbContext db, IAuditWriter audit, Time
 
     private async Task<(string? Narrative, IReadOnlyList<string> Highlights, string Status, Guid? SuggestionId)> NarrateAsync(BriefingMetrics metrics, string language, DateOnly date, string companyName, CaseService.Context context, Guid? actorUserId, CancellationToken ct)
     {
-        if (!context.Settings.AiEnabled)
+        if (!context.Settings.BriefingActive)
         {
             return (null, [], NarrativeStatus.Disabled, null);
         }

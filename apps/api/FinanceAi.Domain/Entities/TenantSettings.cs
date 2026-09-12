@@ -28,6 +28,15 @@ public sealed class TenantSettings : ITenantScoped
     public bool CollectorSeesOnlyAssigned { get; set; }
 
     public bool AiEnabled { get; set; } = true;
+
+    /// <summary>Slice 26: the operation runs only when <see cref="AiEnabled"/> and its own switch are both on.</summary>
+    public bool AiClassificationEnabled { get; set; } = true;
+
+    public bool AiBriefingEnabled { get; set; } = true;
+
+    public bool ClassificationActive => this.AiEnabled && this.AiClassificationEnabled;
+
+    public bool BriefingActive => this.AiEnabled && this.AiBriefingEnabled;
     public decimal AiMinConfidence { get; set; } = 0.700m;
     public int[] DunningCadenceDays { get; set; } = [0, 7, 14, 30];
     public TimeOnly QuietHoursStart { get; set; } = new(20, 0);

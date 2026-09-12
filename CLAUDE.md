@@ -96,6 +96,8 @@ write-only sealed secrets (`/organization/email-settings`, re-authentication, SE
 `SMTP_ALLOW_PRIVATE_HOSTS` for Mailpit) and the HMAC-signed MTA webhook (`EMAIL_WEBHOOK_SECRET`); route pin 160.
 Every row of doc 05 is now implemented. Slice 25 bundled the SEC-01 breached-password list (offline, SecLists
 ≥ 12 chars) and made a bounce mark the contact (`contact_email_bounced` until the address is edited; 0019).
+Slice 26 added the per-operation AI switches doc 05 names (`aiClassificationEnabled`, `aiBriefingEnabled`; 0020) —
+`aiEnabled` stays the kill switch, an operation runs only when both are on (T-105 for the pilot).
 Slice 27 completed doc 09 §7: the T-140 dataset is three tenants, the single-entity and 5,000-row-import budgets
 are asserted, and T-142 (20 members, ten minutes on the nightly via `LOAD_PROFILE_SECONDS`, no error-rate increase)
 runs alongside.

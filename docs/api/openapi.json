@@ -13183,7 +13183,9 @@
           "digest",
           "promptVersion",
           "error",
-          "aiEnabled"
+          "aiEnabled",
+          "classificationActive",
+          "briefingActive"
         ],
         "type": "object",
         "properties": {
@@ -13222,6 +13224,12 @@
           },
           "aiEnabled": {
             "type": "boolean"
+          },
+          "classificationActive": {
+            "type": "boolean"
+          },
+          "briefingActive": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -13245,11 +13253,25 @@
       "AiSettingsRequest": {
         "required": [
           "aiEnabled",
+          "aiClassificationEnabled",
+          "aiBriefingEnabled",
           "aiMinConfidence"
         ],
         "type": "object",
         "properties": {
           "aiEnabled": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "aiClassificationEnabled": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "aiBriefingEnabled": {
             "type": [
               "null",
               "boolean"
@@ -13267,12 +13289,20 @@
       "AiSettingsResponse": {
         "required": [
           "aiEnabled",
+          "aiClassificationEnabled",
+          "aiBriefingEnabled",
           "aiMinConfidence",
           "serviceUrlHost"
         ],
         "type": "object",
         "properties": {
           "aiEnabled": {
+            "type": "boolean"
+          },
+          "aiClassificationEnabled": {
+            "type": "boolean"
+          },
+          "aiBriefingEnabled": {
             "type": "boolean"
           },
           "aiMinConfidence": {
