@@ -1123,5 +1123,8 @@
   "emailSettings.testFailed": "The server refused: {error}",
   "emailSettings.notConfigured": "Using the platform's mail server.",
   "errors.rule.smtp_host_not_allowed": "That host is not allowed (private or local addresses cannot be used).",
-  "errors.rule.secret_store_unavailable": "The secret store is not configured; the operator must set MFA_KEK_BASE64."
+  "errors.rule.secret_store_unavailable": "The secret store is not configured; the operator must set MFA_KEK_BASE64.",
+  "errors.password.breached": "That password appears in lists of leaked passwords; choose one that is not.",
+  "contacts.bounced": "Email bounced — edit the address to send again",
+  "errors.rule.contact_email_bounced": "This contact's email address bounced; correct it before sending."
 }

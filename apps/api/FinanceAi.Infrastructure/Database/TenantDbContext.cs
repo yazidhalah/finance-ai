@@ -354,6 +354,8 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.PhoneE164).HasColumnName("phone_e164");
             e.Property(x => x.IsPrimary).HasColumnName("is_primary");
             e.Property(x => x.IsBilling).HasColumnName("is_billing");
+            e.Property(x => x.BouncedAt).HasColumnName("bounced_at");
+            e.Property(x => x.BounceReason).HasColumnName("bounce_reason");
             e.Property(x => x.PreferredLanguage).HasColumnName("preferred_language");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");

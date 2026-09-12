@@ -237,6 +237,29 @@ public sealed class EmailCompletionTests(ApiTestFixture fixture)
         var audit = await b.Client.GetFromJsonAsync<JsonElement>("/api/v1/audit?entityType=message", ApiScenario.Json);
         Assert.Contains(audit.GetProperty("items").EnumerateArray(), e => e.GetProperty("eventType").GetString() == "message.bounced" && e.GetProperty("actorKind").GetString() == "system");
 
+        // Slice 25: the bounce marks the contact; the next send to it is refused until the address is edited.
+        var contacts = await b.Client.GetFromJsonAsync<JsonElement>($"/api/v1/customers/{b.CustomerId}/contacts", ApiScenario.Json);
+        var contact = contacts.GetProperty("items").EnumerateArray().Single();
+        Assert.Equal("550 5.1.1 user unknown", contact.GetProperty("bounceReason").GetString());
+        var caseB = (await b.Client.GetFromJsonAsync<JsonElement>($"/api/v1/cases?customerId={b.CustomerId}", ApiScenario.Json)).GetProperty("items")[0].GetProperty("caseId").GetGuid();
+        var tplB = (await b.Client.GetFromJsonAsync<JsonElement>("/api/v1/templates?key=dunning_14&language=en&channel=email", ApiScenario.Json)).GetProperty("items")[0];
+        await b.Client.PostAsync($"/api/v1/templates/{tplB.GetProperty("id").GetGuid()}/approve", new { });
+        using (var _ = fixture.Api.PinClock(new DateTimeOffset(DateTime.UtcNow.Date.AddHours(7))))
+        {
+            var next = await b.Client.PostAsync($"/api/v1/cases/{caseB}/messages", new { channel = "email", templateId = tplB.GetProperty("id").GetGuid() });
+            var accountantB = await fixture.Database.AddMemberAsync(b.Organization.TenantId, FinanceAi.Domain.Authorization.TenantRole.Accountant);
+            using var approverB = fixture.Api.AuthenticatedClient(await fixture.Api.LoginAsync(accountantB.Email, accountantB.Password));
+            await approverB.PostAsync($"/api/v1/messages/{next.GetProperty("id").GetGuid()}/approve", new { });
+            using var send = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/messages/{next.GetProperty("id").GetGuid()}/send") { Content = JsonContent.Create(new { }, options: ApiScenario.Json) };
+            send.Headers.TryAddWithoutValidation("Idempotency-Key", Guid.NewGuid().ToString());
+            var refused = await b.Client.SendAsync(send);
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+            Assert.Equal("contact_email_bounced", (await refused.Content.ReadFromJsonAsync<JsonElement>(ApiScenario.Json)).GetProperty("errors")[0].GetProperty("code").GetString());
+        }
+
+        var fixedContact = await b.Client.PatchAsJsonAsync($"/api/v1/customers/{b.CustomerId}/contacts/{contact.GetProperty("id").GetGuid()}", new { email = $"corrected-{Guid.NewGuid():N}@example.test" }, ApiScenario.Json);
+        Assert.Equal(JsonValueKind.Null, (await fixedContact.Content.ReadFromJsonAsync<JsonElement>(ApiScenario.Json)).GetProperty("bouncedAt").ValueKind);
+
         // A second delivery of the same event is a no-op: the message is no longer Sent.
         using var again = new HttpRequestMessage(HttpMethod.Post, "/api/v1/webhooks/email-events") { Content = new StringContent(payload, Encoding.UTF8, "application/json") };
         again.Headers.Add("X-Signature", "sha256=" + Convert.ToHexStringLower(HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes(payload))));

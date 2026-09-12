@@ -9,7 +9,7 @@ source-available license is a blocking review finding, not a discussion.
 
 Versions are pinned; lockfiles (`package-lock.json`, `packages.lock.json`) are committed.
 
-Last updated: slice 20 — the whole tree is now checked in CI (`check-notices.py --transitive`); `lightningcss` (transitive, dev, MPL-2.0) recorded and Flagged.
+Last updated: slice 25 — the bundled breached-password list (SecLists, MIT) under "Data files".
 
 ---
 
@@ -129,6 +129,12 @@ Direct dependencies are pinned in `services/ai/requirements.txt`; the transitive
 | `iniconfig` | 2.3.0 | MIT | via pytest |
 | `packaging` | 26.3 | Apache-2.0 OR BSD-2-Clause | via pytest |
 | `Pygments` | 2.21.0 | BSD-2-Clause | via pytest |
+
+## Data files
+
+| File | Source | License | Use |
+|------|--------|---------|-----|
+| `apps/api/FinanceAi.Infrastructure/Security/Data/breached-passwords-12plus.txt.gz` | SecLists `Passwords/Common-Credentials/xato-net-10-million-passwords-1000000.txt` (Daniel Miessler), filtered to entries of 12+ characters (46,296 lines), gzipped | MIT | SEC-01: the offline breached-password check at registration, invitation acceptance and password reset (slice 25). No network call is ever made for a password. |
 
 ## AI models and runtime
 

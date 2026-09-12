@@ -412,7 +412,13 @@ public static class CustomerEndpoints
         }
 
         var wasPrimary = contact.IsPrimary;
+        var emailBefore = contact.Email;
         ApplyContact(contact, request);
+        if (contact.BouncedAt is not null && !string.Equals(emailBefore, contact.Email, StringComparison.OrdinalIgnoreCase))
+        {
+            contact.BouncedAt = null;   // slice 25: a corrected address gets a fresh chance
+            contact.BounceReason = null;
+        }
 
         // Demoting the only primary is refused for the same reason the first contact is promoted.
         if (wasPrimary && !contact.IsPrimary)
@@ -633,7 +639,7 @@ public static class CustomerEndpoints
 
     private static ContactResponse ToResponse(CustomerContact c) => new(
         c.Id, c.CustomerId, c.Name, c.RoleTitle, c.Email, c.PhoneE164, c.IsPrimary, c.IsBilling, c.PreferredLanguage,
-        c.RowVersion.ToString(CultureInfo.InvariantCulture));
+        c.RowVersion.ToString(CultureInfo.InvariantCulture), c.BouncedAt, c.BounceReason);
 
     /// <summary>The audited projection. Money is a string (DM-28), never a JSON number.</summary>
     private static Dictionary<string, object?> Snapshot(Customer c) => new(StringComparer.Ordinal)

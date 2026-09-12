@@ -85,6 +85,11 @@ public sealed class CustomerContact : ITenantScoped
     public bool IsPrimary { get; set; }
     public bool IsBilling { get; set; }
     public string? PreferredLanguage { get; set; }
+
+    /// <summary>Slice 25: the MTA bounced this address; sends to it are refused (`contact_email_bounced`) until the email is edited.</summary>
+    public DateTimeOffset? BouncedAt { get; set; }
+
+    public string? BounceReason { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
     public long RowVersion { get; set; } = 1;
