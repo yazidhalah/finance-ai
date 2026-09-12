@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SessionProvider } from '../auth/SessionProvider'
 import { LocaleProvider } from '../i18n/LocaleProvider'
 import { ContactsCard } from '../pages/CustomerDetail'
+import type { Contact } from '../api/client'
 
 const identity = {
   user: { id: 'u1', fullName: 'Test', preferredLocale: 'en-JO', email: 'x@example.com' },
@@ -25,10 +26,10 @@ describe('Contacts (slice 25)', () => {
   })
 
   it('erases a contact only through the re-authentication dialog, and shows the erased row read-only (slice 31)', async () => {
-    const rana = { id: 'c1', customerId: 'k1', name: 'Rana', roleTitle: 'AP', email: 'rana@example.test', phoneE164: null, isPrimary: true, isBilling: true, preferredLanguage: 'ar', rowVersion: '1', bouncedAt: null, bounceReason: null, erasedAt: null }
-    const erased = { ...rana, name: 'Erased contact', roleTitle: null, email: null, rowVersion: '2', erasedAt: '2026-09-12T10:00:00Z' }
+    const rana: Contact = { id: 'c1', customerId: 'k1', name: 'Rana', roleTitle: 'AP', email: 'rana@example.test', phoneE164: null, isPrimary: true, isBilling: true, preferredLanguage: 'ar', rowVersion: '1', bouncedAt: null, bounceReason: null, erasedAt: null }
+    const erased: Contact = { ...rana, name: 'Erased contact', roleTitle: null, email: null, rowVersion: '2', erasedAt: '2026-09-12T10:00:00Z' }
     const calls: { url: string; method: string; headers: Record<string, string> }[] = []
-    let listed = [rana]
+    let listed: Contact[] = [rana]
     vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
       const method = init?.method ?? 'GET'
       calls.push({ url, method, headers: Object.fromEntries(Object.entries((init?.headers ?? {}) as Record<string, string>)) })
