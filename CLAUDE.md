@@ -100,7 +100,9 @@ Slice 26 added the per-operation AI switches doc 05 names (`aiClassificationEnab
 `aiEnabled` stays the kill switch, an operation runs only when both are on (T-105 for the pilot).
 Slice 27 completed doc 09 §7: the T-140 dataset is three tenants, the single-entity and 5,000-row-import budgets
 are asserted, and T-142 (20 members, ten minutes on the nightly via `LOAD_PROFILE_SECONDS`, no error-rate increase)
-runs alongside.
+runs alongside. Slice 28 built T-133 (PRD-25): `tests/e2e/specs/accessibility.spec.ts` scans every screen with
+axe in both locales (WCAG 2.x A/AA, zero violations), walks the queue and the allocation screen by keyboard alone,
+and asserts screen-reader names on money fields; the contrast and ARIA findings it surfaced are fixed.
 What remains before the First Product is "done" is the
 v1 acceptance pass on a pilot corpus and real hardware (doc 09 §5 AI gates are indicative on the
 author-written corpus; Arabic narrative quality needs a native reviewer; T-140 runs nightly on a shared

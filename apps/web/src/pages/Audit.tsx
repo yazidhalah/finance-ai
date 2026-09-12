@@ -178,10 +178,10 @@ export function AuditPage() {
                 {items.map((e) => {
                   const hasDetail = (e.changes && Object.keys(e.changes).length > 0) || e.note || e.aiSuggestionId
                   return [
-                    <tr key={e.id} className={`border-t border-slate-100 ${hasDetail ? 'cursor-pointer hover:bg-slate-50' : ''}`} data-testid="audit-row" onClick={() => hasDetail && setExpanded(expanded === e.id ? null : e.id)} aria-expanded={hasDetail ? expanded === e.id : undefined}>
+                    <tr key={e.id} className={`border-t border-slate-100 ${hasDetail ? 'cursor-pointer hover:bg-slate-50' : ''}`} data-testid="audit-row" onClick={() => hasDetail && setExpanded(expanded === e.id ? null : e.id)}>
                       <td className="py-1 font-mono text-xs" dir="ltr">{e.occurredAt.replace('T', ' ').slice(0, 19)}</td>
-                      <td className="font-mono text-xs" dir="ltr">{e.eventType}{hasDetail ? <span className="ms-1 text-slate-400">{expanded === e.id ? '▾' : '▸'}</span> : null}</td>
-                      <td className="font-mono text-xs" dir="ltr">{e.entityType} <span className="text-slate-400">{e.entityId.slice(0, 8)}</span></td>
+                      <td className="font-mono text-xs" dir="ltr">{e.eventType}{hasDetail ? <button type="button" className="ms-1 text-slate-500" aria-expanded={expanded === e.id} aria-label={t('audit.toggleDetail')} onClick={(ev) => { ev.stopPropagation(); setExpanded(expanded === e.id ? null : e.id) }}>{expanded === e.id ? '▾' : '▸'}</button> : null}</td>
+                      <td className="font-mono text-xs" dir="ltr">{e.entityType} <span className="text-slate-500">{e.entityId.slice(0, 8)}</span></td>
                       <td className="font-mono text-xs" dir="ltr">{e.fromState || e.toState ? `${e.fromState ?? '—'} → ${e.toState ?? '—'}` : ''}{e.reasonCode ? ` (${e.reasonCode})` : ''}</td>
                       <td className="font-mono text-xs" dir="ltr">{e.actorKind}{e.actorUserId ? ` ${e.actorUserId.slice(0, 8)}` : ''}</td>
                     </tr>,

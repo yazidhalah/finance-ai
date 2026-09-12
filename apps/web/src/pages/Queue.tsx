@@ -158,7 +158,7 @@ export function QueuePage({ onOpen }: { onOpen: (id: string) => void }) {
                       <button type="button" className="rounded bg-slate-800 px-2 py-0.5 font-semibold text-white tabular" onClick={() => setExpanded(expanded === item.caseId ? null : item.caseId)}
                         aria-expanded={expanded === item.caseId} data-testid="priority-score"><Isolate>{String(item.priorityScore)}</Isolate></button>
                     </td>
-                    <td className="px-3 py-2 text-slate-700">{t(`cases.action.${item.suggestedAction.kind}`)}{item.suggestedAction.templateKey ? <span className="ms-1 text-xs text-slate-400"><Isolate>{item.suggestedAction.templateKey}</Isolate></span> : null}</td>
+                    <td className="px-3 py-2 text-slate-700">{t(`cases.action.${item.suggestedAction.kind}`)}{item.suggestedAction.templateKey ? <span className="ms-1 text-xs text-slate-500"><Isolate>{item.suggestedAction.templateKey}</Isolate></span> : null}</td>
                     <td className="px-3 py-2">{can('cases.write') ? <Button variant="ghost" onClick={() => setSnoozing(item)} data-testid="snooze">{t('cases.snooze')}</Button> : null}</td>
                   </tr>
                   {expanded === item.caseId ? (
