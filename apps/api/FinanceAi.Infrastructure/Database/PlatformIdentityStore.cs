@@ -721,6 +721,24 @@ public sealed class PlatformIdentityStore(
 
     public sealed record MembershipSummary(Guid TenantId, string TenantName, TenantRole Role, string BaseCurrency, string Timezone);
 
+    /// <summary>
+    /// Slice 32: the active tenants, for the scheduler that runs each tenant's daily job in its own scope. Ids and
+    /// timezones only — the scheduler enters every tenant separately and never carries one tenant's data into another.
+    /// </summary>
+    public async Task<IReadOnlyList<(Guid Id, string Timezone)>> ListActiveTenantsAsync(CancellationToken ct = default)
+    {
+        await using var db = await contexts.CreateDbContextAsync(ct);
+        await using var scope = await DatabaseScope.EnterPlatformAsync(db, null, null, ct);
+        var tenants = await db.Tenants
+            .IgnoreQueryFilters()
+            .Where(t => t.Status == TenantStatus.Active)
+            .OrderBy(t => t.CreatedAt)
+            .Select(t => new { t.Id, t.Timezone })
+            .ToListAsync(ct);
+        await scope.CompleteAsync(ct);
+        return tenants.Select(t => (t.Id, t.Timezone)).ToList();
+    }
+
     public async Task<IReadOnlyList<MembershipSummary>> ListMembershipsAsync(Guid userId, CancellationToken ct = default)
     {
         await using var db = await contexts.CreateDbContextAsync(ct);

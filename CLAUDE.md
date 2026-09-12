@@ -111,7 +111,9 @@ into corpus rows for the importer (T-109, consent-gated by its arguments), and `
 sampled items and reports any output that differs (T-107). Slice 31 began doc 08 §8 (data lifecycle):
 `POST /customers/{id}/contacts/{cid}/erase` anonymizes a person in place under re-authentication (SEC-93, 0021, route
 pin 161); backups are encrypted at rest under `BACKUP_PASSPHRASE` and a real restore is recorded on every tenant's audit
-chain with `FinanceAi.Migrator record-restore` (SEC-94). SEC-91/92 follow.
+chain with `FinanceAi.Migrator record-restore` (SEC-94). SEC-91/92 follow. Slice 32 closed slice 5's D-2: the API schedules the
+daily sweep itself (`SweepRunner`/`SweepScheduler`, `SWEEP_INTERVAL_MINUTES`, default 60, 0 in the test suites); the
+system is the actor and each tenant runs in its own scope.
 What remains before the First Product is "done" is the
 v1 acceptance pass on a pilot corpus and real hardware (doc 09 §5 AI gates are indicative on the
 author-written corpus; Arabic narrative quality needs a native reviewer; T-140 runs nightly on a shared

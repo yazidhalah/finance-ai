@@ -31,6 +31,7 @@ public sealed class ApiTestFixture : IAsyncLifetime
         Environment.SetEnvironmentVariable("ALERT_EMAIL", "ops@finance-ai.test");   // slice 15: the alert path's email leg, captured by Mailpit
         Environment.SetEnvironmentVariable("EMAIL_WEBHOOK_SECRET", "test-webhook-secret-" + Guid.NewGuid().ToString("N"));   // slice 24
         Environment.SetEnvironmentVariable("SMTP_ALLOW_PRIVATE_HOSTS", "1");   // slice 24: tenant SMTP tests point at Mailpit
+        Environment.SetEnvironmentVariable("SWEEP_INTERVAL_MINUTES", "0");   // slice 32: the tests drive the sweep themselves; the scheduler stays idle
 
         // Slice 13: the TOTP secrets' key-encryption key. Random per run; nothing persists across runs.
         Environment.SetEnvironmentVariable("MFA_KEK_BASE64", Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)));

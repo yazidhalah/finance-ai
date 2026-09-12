@@ -46,6 +46,7 @@ it). Use `--profile tls` with a public `DOMAIN`, or put your own TLS edge in fro
 | `STACK_SMTP_HOST` / `SMTP_PORT` | the relay the stack's API sends through (`mailpit` inside the stack by default — replace with the real relay before pilot; SEC-84 SPF/DKIM on its domain) | — |
 | `EMAIL_WEBHOOK_SECRET` | the MTA's signed delivery/bounce events (`POST /api/v1/webhooks/email-events`, `X-Signature: sha256=…`) | `openssl rand -hex 32` |
 | `BACKUP_PASSPHRASE` | every backup at rest (SEC-94, slice 31); `backup.sh` refuses to run without it; losing it loses the backups | `openssl rand -base64 32` |
+| `SWEEP_INTERVAL_MINUTES` | how often the API runs every tenant's daily job (slice 32); default 60, `0` pauses it (§2) | — |
 
 Never paste any of these into a ticket, a log line or a chat. The API refuses to start without the signing key; the
 AI service refuses to start without a token of ≥ 16 characters.
@@ -74,6 +75,9 @@ PUT /api/v1/organization/outbound   {"outboundSendingEnabled": false}
 
 Audited as `tenant.outbound_settings_changed`. Pending approved messages stay `Approved` and are sent when the switch
 comes back — nothing is lost, nothing goes out meanwhile.
+
+**The daily job, everywhere:** `SWEEP_INTERVAL_MINUTES=0` and recreate `api` — no cases open, no reminders go out, no
+briefings render until it is back; `POST /api/v1/cases/sweep` still runs one tenant by hand. Set it back to `60`.
 
 **AI, one tenant:** `PATCH /api/v1/organization/ai-settings {"aiEnabled": false}` — suggestions stop, the briefing
 renders metrics only. **One operation only** (T-105, a gate the pilot failed): `{"aiClassificationEnabled": false}`

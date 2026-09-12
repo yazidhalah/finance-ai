@@ -42,7 +42,7 @@ export default defineConfig({
       command: `dotnet run --project ${resolve(root, 'apps/api/FinanceAi.Migrator')} -c Release -- up && dotnet ${resolve(root, 'apps/api/FinanceAi.Api/bin/Release/net10.0/FinanceAi.Api.dll')}`,
       url: 'http://127.0.0.1:5080/health',
       reuseExistingServer: true,
-      env: { ...env, ASPNETCORE_URLS: 'http://127.0.0.1:5080', ASPNETCORE_ENVIRONMENT: 'Production', AI_SERVICE_URL: 'http://127.0.0.1:8091', AI_SERVICE_TIMEOUT_SECONDS: '20', AUTH_RATE_LIMIT_PER_MINUTE: '100000' },
+      env: { ...env, ASPNETCORE_URLS: 'http://127.0.0.1:5080', ASPNETCORE_ENVIRONMENT: 'Production', AI_SERVICE_URL: 'http://127.0.0.1:8091', AI_SERVICE_TIMEOUT_SECONDS: '20', AUTH_RATE_LIMIT_PER_MINUTE: '100000', SWEEP_INTERVAL_MINUTES: '0' },
       timeout: 180_000,
     },
     {
