@@ -368,17 +368,16 @@ public sealed class PlatformIdentityStore(
             .OrderBy(m => m.CreatedAt)
             .FirstOrDefaultAsync(ct);
 
-        if (user.IsLockedAt(now))
-        {
-            await this.RecordFailureAsync(db, user, membership, actorIp, requestId, now, ct);
-            await scope.CompleteAsync(ct);
-            return new AuthenticationResult(AuthenticationOutcome.Locked, null, user.LockedUntil);
-        }
-
+        // The password is always compared, even for an account that is already locked: a lock
+        // checked before the hash would answer in microseconds instead of an Argon2id's worth of
+        // work, and that gap is an oracle for "this address exists and is locked" (SEC-06). The
+        // lock is judged together with the other failure conditions below, so a correct password
+        // on a locked account still fails (AC-09) and a locked result is only ever produced after
+        // a real hash comparison in this request.
         var passwordMatches = user.PasswordHash is not null &&
                               passwordHasher.Verify(password, user.PasswordHash);
 
-        if (!passwordMatches || user.Status != UserStatus.Active || membership is null)
+        if (!passwordMatches || user.Status != UserStatus.Active || membership is null || user.IsLockedAt(now))
         {
             await this.RecordFailureAsync(db, user, membership, actorIp, requestId, now, ct);
             await scope.CompleteAsync(ct);
