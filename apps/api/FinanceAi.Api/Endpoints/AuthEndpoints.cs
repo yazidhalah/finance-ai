@@ -34,6 +34,7 @@ public static class AuthEndpoints
         // Slice 13: password reset is anonymous by nature; MFA enrolment and re-authentication need a session but not a second factor yet.
         auth.MapPost("/forgot-password", ForgotPasswordAsync).AllowAnonymousEndpoint().WithName("ForgotPassword");
         auth.MapPost("/reset-password", ResetPasswordAsync).AllowAnonymousEndpoint().WithName("ResetPassword");
+        auth.MapPost("/verify-email", VerifyEmailAsync).AllowAnonymousEndpoint().WithName("VerifyEmail");   // slice 24
         auth.MapPost("/mfa/enroll", MfaEnrollAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("MfaEnroll");
         auth.MapPost("/mfa/verify", MfaVerifyAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("MfaVerify");
         auth.MapPost("/reauthenticate", ReauthenticateAsync).RequiresAuthenticatedUser().AllowsWithoutMfa().WithName("Reauthenticate");
@@ -48,6 +49,7 @@ public static class AuthEndpoints
         RegisterRequest request,
         HttpContext context,
         PlatformIdentityStore identity,
+        FinanceAi.Infrastructure.Messaging.IMailTransport mail,
         ILoggerFactory loggerFactory,
         CancellationToken ct)
     {
@@ -80,6 +82,26 @@ public static class AuthEndpoints
                 context.RequestId()),
             ct);
 
+        // Slice 24: the verification link, to the address that registered (doc 05 "email verification required").
+        if (result.VerificationToken is not null && FinanceAi.Infrastructure.Messaging.OutboundSwitch.GloballyEnabled)
+        {
+            var link = $"{FinanceAi.Infrastructure.Members.MembersService.WebOrigin}/verify-email?token={result.VerificationToken}";
+            var arabic = (result.Locale ?? Locales.Default).StartsWith("ar", StringComparison.Ordinal);
+            try
+            {
+                await mail.SendAsync(new FinanceAi.Infrastructure.Messaging.OutgoingMail(request.Email!.Trim(),
+                    arabic ? "تأكيد بريدك الإلكتروني — finance-ai" : "Verify your email — finance-ai",
+                    arabic ? $"لتفعيل حسابك افتح الرابط التالي خلال 24 ساعة:\n{link}\n\nإن لم تسجّل في finance-ai فتجاهل هذه الرسالة." : $"To activate your account, open this link within 24 hours:\n{link}\n\nIf you did not register with finance-ai, ignore this message.",
+                    arabic ? "ar" : "en", $"verify-{result.UserId:N}-{Guid.CreateVersion7():N}"), ct);
+            }
+            catch (Exception ex) when (ex is System.Net.Mail.SmtpException or FormatException or InvalidOperationException or System.IO.IOException)
+            {
+                // A mail that cannot be sent must not fail — or distinguish — the registration (SEC-07). The address can
+                // still be verified through a password reset (D-4). Logged without the address (SEC-41).
+                loggerFactory.CreateLogger(typeof(AuthEndpoints)).LogWarning("Verification mail could not be sent: {Reason}.", ex.GetType().Name);
+            }
+        }
+
         // The outcome is recorded server-side but never rendered: the response is byte-identical
         // whether or not the email was already registered (SEC-07, AC-04).
         loggerFactory.CreateLogger(typeof(AuthEndpoints)).LogInformation(
@@ -109,6 +131,13 @@ public static class AuthEndpoints
 
         switch (result.Outcome)
         {
+            case PlatformIdentityStore.AuthenticationOutcome.EmailUnverified:
+                // Only after the password matched (slice 24): the address exists, is theirs, and is unverified.
+                return ApiProblems.Create(
+                    context, StatusCodes.Status401Unauthorized, "email_unverified",
+                    "Verify your email address with the link we sent before signing in.",
+                    "errors.auth.email_unverified");
+
             case PlatformIdentityStore.AuthenticationOutcome.MfaRequired:
                 // Only reachable after the password matched (slice 13): the client shows the TOTP step and resubmits.
                 return ApiProblems.Create(
@@ -328,6 +357,14 @@ public static class AuthEndpoints
         // Recorded, never rendered (SEC-07).
         loggerFactory.CreateLogger(typeof(AuthEndpoints)).LogInformation("Password reset requested; user found: {Found}.", reset is not null);
         return TypedResults.Accepted((string?)null, new AcceptedResponse(true));
+    }
+
+    /// <summary>Slice 24: one shape for every token (SEC-07); <c>accepted</c> says whether the address is now verified.</summary>
+    private static async Task<Results<Ok<AcceptedResponse>, ProblemHttpResult>> VerifyEmailAsync(VerifyEmailRequest request, HttpContext context, PlatformIdentityStore identity, CancellationToken ct)
+    {
+        var validation = new Validation().Require("token", request.Token);
+        if (validation.HasErrors) return ApiProblems.ValidationProblem(context, validation.Errors);
+        return TypedResults.Ok(new AcceptedResponse(await identity.VerifyEmailAsync(request.Token!.Trim(), ct)));
     }
 
     private static async Task<Results<Ok<AcceptedResponse>, ProblemHttpResult>> ResetPasswordAsync(ResetPasswordRequest request, HttpContext context, PlatformIdentityStore identity, CancellationToken ct)

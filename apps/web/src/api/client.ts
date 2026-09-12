@@ -1355,6 +1355,8 @@ export const authApi = {
   reauthenticate: (password: string, totp?: string) => request<{ reauthToken: string; expiresIn: number }>('/auth/reauthenticate', { method: 'POST', body: { password, totp } }),
   forgotPassword: (email: string) => request<{ accepted: boolean }>('/auth/forgot-password', { method: 'POST', body: { email } }),
   resetPassword: (token: string, password: string) => request<{ accepted: boolean }>('/auth/reset-password', { method: 'POST', body: { token, password } }),
+  /** Slice 24: the link a registration sent; `accepted` false for any unusable token. */
+  verifyEmail: (token: string) => request<{ accepted: boolean }>('/auth/verify-email', { method: 'POST', body: { token } }),
   transferOwnership: (targetMembershipId: string, reauth: string) => request<{ newOwner: Member; previousOwner: Member }>('/organization/transfer-ownership', { method: 'POST', body: { targetMembershipId }, reauth }),
 }
 
@@ -1397,4 +1399,17 @@ export const opsApi = {
   /** Slice 22: email the organization's Owners on critical alerts. */
   alertSettings: (ownerEmailEnabled: boolean) => request<{ ownerEmailEnabled: boolean }>('/organization/alert-settings', { method: 'PATCH', body: { ownerEmailEnabled } }),
   acknowledge: (id: string) => request<Alert>(`/organization/alerts/${id}/acknowledge`, { method: 'POST', body: {} }),
+}
+
+
+// ---------------------------------------------------------------------------------------------
+// Slice 24 — tenant SMTP (doc 05 /organization/email-settings): the password is write-only
+
+export type EmailSettings = { configured: boolean; smtpHost: string | null; smtpPort: number | null; smtpTls: boolean | null; smtpUsername: string | null; hasPassword: boolean; fromAddress: string | null; updatedAt: string | null }
+export const emailSettingsApi = {
+  get: () => request<EmailSettings>('/organization/email-settings'),
+  /** Needs a fresh re-authentication proof in `X-Reauth` (SEC-09). */
+  put: (body: { smtpHost: string; smtpPort: number; smtpTls: boolean; smtpUsername?: string; smtpPassword?: string; fromAddress: string }, reauth: string) =>
+    request<EmailSettings>('/organization/email-settings', { method: 'PUT', body, reauth }),
+  test: () => request<{ ok: boolean; error: string | null }>('/organization/email-settings/test', { method: 'POST', body: {} }),
 }

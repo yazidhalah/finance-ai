@@ -59,7 +59,7 @@ public sealed class PlatformIdentityStore(
         EmailAlreadyRegistered,
     }
 
-    public sealed record RegisterResult(RegisterOutcome Outcome, Guid? TenantId, Guid? UserId);
+    public sealed record RegisterResult(RegisterOutcome Outcome, Guid? TenantId, Guid? UserId, string? VerificationToken = null, string? Locale = null);
 
     /// <summary>
     /// Creates the user, the organization, the Owner membership and the settings row in one
@@ -154,8 +154,13 @@ public sealed class PlatformIdentityStore(
         await audit.WriteAsync(Event(AuditEventTypes.UserRegistered, "user", userId, tenantId, userId, command.ActorIp, command.RequestId, now), ct);
         await audit.WriteAsync(Event(AuditEventTypes.MembershipCreated, "tenant_membership", membership.Id, tenantId, userId, command.ActorIp, command.RequestId, now, toState: nameof(TenantRole.Owner)), ct);
 
+        // Slice 24: the verification link (doc 05 "email verification required"); the caller mails it.
+        var verification = InvitationTokens.NewToken();
+        db.EmailVerificationTokens.Add(new EmailVerificationToken { UserId = userId, TokenHash = InvitationTokens.Hash(verification), ExpiresAt = now.Add(EmailVerificationToken.Validity), CreatedAt = now });
+        await db.SaveChangesAsync(ct);
+
         await scope.CompleteAsync(ct);
-        return new RegisterResult(RegisterOutcome.Created, tenantId, userId);
+        return new RegisterResult(RegisterOutcome.Created, tenantId, userId, verification, command.Locale);
     }
 
     // ---------------------------------------------------------------------------------------
@@ -289,6 +294,9 @@ public sealed class PlatformIdentityStore(
     {
         Succeeded,
 
+        /// <summary>The password matched but the address was never verified (slice 24). Only ever after a correct password.</summary>
+        EmailUnverified,
+
         /// <summary>Wrong password, unknown email, disabled user, or no usable membership. The
         /// caller MUST render all of these identically (SEC-06, SEC-07).</summary>
         Failed,
@@ -388,6 +396,13 @@ public sealed class PlatformIdentityStore(
         {
             await scope.CompleteAsync(ct);
             return new AuthenticationResult(AuthenticationOutcome.Failed, null, null);
+        }
+
+        // Slice 24: the address must be verified — judged only once the password has matched (SEC-07 ordering).
+        if (user.EmailVerifiedAt is null)
+        {
+            await scope.CompleteAsync(ct);
+            return new AuthenticationResult(AuthenticationOutcome.EmailUnverified, null, null);
         }
 
         // Slice 13 (SEC-02): the second factor, only once the password has matched.
@@ -567,6 +582,29 @@ public sealed class PlatformIdentityStore(
         await db.SaveChangesAsync(ct);
         await scope.CompleteAsync(ct);
         return new ResetRequest(user.Id, user.Email, user.PreferredLocale, token);
+    }
+
+    /// <summary>Slice 24: marks the address verified. Every unusable token is one outcome: false — and the same time budget.</summary>
+    public async Task<bool> VerifyEmailAsync(string token, CancellationToken ct = default)
+    {
+        if (!InvitationTokens.LooksLikeToken(token)) return false;
+        var hash = InvitationTokens.Hash(token);
+        var now = time.GetUtcNow();
+        await using var db = await contexts.CreateDbContextAsync(ct);
+        await using var scope = await DatabaseScope.EnterPlatformAsync(db, null, null, ct);
+        var verification = await db.EmailVerificationTokens.FirstOrDefaultAsync(t => t.TokenHash == hash, ct);
+        if (verification is null || !verification.IsUsable(now))
+        {
+            await scope.CompleteAsync(ct);
+            return false;
+        }
+
+        var user = await db.Users.IgnoreQueryFilters().FirstAsync(u => u.Id == verification.UserId, ct);
+        user.EmailVerifiedAt ??= now;
+        verification.UsedAt = now;
+        await db.SaveChangesAsync(ct);
+        await scope.CompleteAsync(ct);
+        return true;
     }
 
     /// <summary>Sets the new hash and ends every session of the user. Every unusable token is one outcome: false.</summary>

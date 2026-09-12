@@ -24,3 +24,18 @@ public sealed class PasswordResetToken
 
     public bool IsUsable(DateTimeOffset now) => this.UsedAt is null && this.ExpiresAt > now;
 }
+
+/// <summary>Slice 24: the verification link a registration sends. Same shape and lifetime discipline as the reset token.</summary>
+public sealed class EmailVerificationToken
+{
+    public static readonly TimeSpan Validity = TimeSpan.FromHours(24);
+
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+    public Guid UserId { get; set; }
+    public required string TokenHash { get; set; }
+    public DateTimeOffset ExpiresAt { get; set; }
+    public DateTimeOffset? UsedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    public bool IsUsable(DateTimeOffset now) => this.UsedAt is null && now < this.ExpiresAt;
+}

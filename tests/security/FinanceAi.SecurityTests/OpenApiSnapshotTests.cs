@@ -107,10 +107,10 @@ public sealed class OpenApiSnapshotTests(ApiTestFixture fixture)
             }
         }
 
-        Assert.Equal(148, count);
+        Assert.Equal(160, count);
         Assert.Empty(undeclared);
         Assert.Equal(
-            ["POST /api/v1/auth/accept-invitation", "POST /api/v1/auth/forgot-password", "POST /api/v1/auth/login", "POST /api/v1/auth/refresh", "POST /api/v1/auth/register", "POST /api/v1/auth/reset-password"],
+            ["POST /api/v1/auth/accept-invitation", "POST /api/v1/auth/forgot-password", "POST /api/v1/auth/login", "POST /api/v1/auth/refresh", "POST /api/v1/auth/register", "POST /api/v1/auth/reset-password", "POST /api/v1/auth/verify-email", "POST /api/v1/webhooks/email-events"],
             anonymous.Order(StringComparer.Ordinal).ToList());
     }
 }

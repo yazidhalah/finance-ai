@@ -14,7 +14,7 @@ namespace FinanceAi.Infrastructure.Messaging;
 /// <c>send</c> and again in the dispatcher, so nothing queued earlier can slip past a later change of state.
 /// The slice doc §2 is the contract for which paths send without a click.
 /// </summary>
-public sealed class MessagingService(TenantDbContext db, IAuditWriter audit, TimeProvider time, CaseService cases, DisputeService disputes, IMailTransport transport) : IMessagingHooks
+public sealed class MessagingService(TenantDbContext db, IAuditWriter audit, TimeProvider time, CaseService cases, DisputeService disputes, IMailTransport transport, FinanceAi.Infrastructure.Security.ISecretBox secrets) : IMessagingHooks
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -455,6 +455,8 @@ public sealed class MessagingService(TenantDbContext db, IAuditWriter audit, Tim
         }
 
         var now = time.GetUtcNow();
+        // Slice 24: the tenant's own SMTP when it has one (doc 05 email-settings); the .env host otherwise.
+        var via = TenantSmtpResolver.From(await db.TenantEmailSettings.AsNoTracking().FirstOrDefaultAsync(ct), secrets);
         var due = await db.Messages.Where(m => m.Status == MessageStatus.Queued && (m.NextAttemptAt == null || m.NextAttemptAt <= now)).OrderBy(m => m.QueuedAt).Select(m => m.Id).ToListAsync(ct);
         var sent = 0;
         var failed = 0;
@@ -485,7 +487,8 @@ public sealed class MessagingService(TenantDbContext db, IAuditWriter audit, Tim
 
             try
             {
-                var providerId = await transport.SendAsync(new OutgoingMail(m.ToAddress!, m.Subject ?? string.Empty, m.Body, m.Language, m.Id.ToString()), ct);
+                // The header value the MTA echoes back in its events (slice 24 webhook): the message and its tenant.
+                var providerId = await transport.SendAsync(new OutgoingMail(m.ToAddress!, m.Subject ?? string.Empty, m.Body, m.Language, $"{m.Id:N}.{db.CurrentTenantId:N}"), via, ct);
                 m.ProviderMessageId = providerId;
                 m.SentAt = time.GetUtcNow();
                 m.Attempts++;

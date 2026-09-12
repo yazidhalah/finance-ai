@@ -267,7 +267,9 @@ public sealed record CustomerResponse(
     IReadOnlyList<CustomerPositionDto> Balances,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    string RowVersion);
+    string RowVersion,
+    /// <summary>DM-21 (slice 23): set when this row was merged into another customer; the row is kept, inactive.</summary>
+    Guid? MergedIntoId = null);
 
 public sealed record CustomerListResponse(IReadOnlyList<CustomerResponse> Items, string? NextCursor, int TotalCount);
 
@@ -778,3 +780,44 @@ public sealed record AlertSettingsResponse(bool OwnerEmailEnabled);
 public sealed record TimelineListResponse(IReadOnlyList<TimelineEntryDto> Items);
 
 public sealed record PlaceholderListResponse(IReadOnlyList<PlaceholderDto> Items);
+
+// ---- Slice 23: holidays (FIN-73), manual invoices (A-11), invoice edits, merge (DM-21) ----
+
+public sealed record HolidayRequest(string? Date, string? Name);
+
+public sealed record HolidayDto(Guid Id, string Date, string Name);
+
+public sealed record HolidayListResponse(IReadOnlyList<HolidayDto> Items);
+
+/// <summary>A-11: manual single-invoice entry. Amounts are F3 strings (FIN-02); any two of net/tax/total reconcile the third.</summary>
+public sealed record ManualInvoiceRequest(
+    Guid? CustomerId, string? InvoiceNumber, string? IssueDate, string? DueDate, string? Currency,
+    string? NetAmount, string? TaxAmount, string? TotalAmount, string? FxRateToBase, string? PoReference, string? Notes, string? ExternalId);
+
+/// <summary>Doc 05: only these three fields are editable; anything else in the body is <c>unexpected_field</c>.</summary>
+public sealed record InvoiceEditRequest(string? DueDate, string? PoReference, string? Notes);
+
+/// <summary>DM-21 two-step merge: without <c>confirmToken</c> the answer is a preview; with the token from that preview, the merge runs.</summary>
+public sealed record CustomerMergeRequest(Guid? SourceCustomerId, string? ConfirmToken);
+
+public sealed record MergeTableDto(string Name, int Rows);
+
+public sealed record CustomerMergeResponse(Guid TargetCustomerId, Guid SourceCustomerId, bool Merged, IReadOnlyList<MergeTableDto> Moves, IReadOnlyList<string> ConflictingInvoiceNumbers, bool BothHaveOpenCases, string? ConfirmToken);
+
+// ---- Slice 24: email verification, tenant SMTP, the MTA webhook ----
+
+public sealed record VerifyEmailRequest(string? Token);
+
+/// <summary>Tenant SMTP (doc 05). The password is write-only: send it to set or replace it, omit it to keep the stored one.</summary>
+public sealed record EmailSettingsRequest(string? SmtpHost, int? SmtpPort, bool? SmtpTls, string? SmtpUsername, string? SmtpPassword, string? FromAddress);
+
+public sealed record EmailSettingsResponse(bool Configured, string? SmtpHost, int? SmtpPort, bool? SmtpTls, string? SmtpUsername, bool HasPassword, string? FromAddress, DateTimeOffset? UpdatedAt);
+
+public sealed record EmailSettingsTestResponse(bool Ok, string? Error);
+
+/// <summary>The local MTA's verdicts (doc 05 /webhooks/email-events): <c>messageId</c> is the <c>X-FinanceAi-Message</c> header the mail carried.</summary>
+public sealed record EmailEvent(string? MessageId, string? Event, string? Reason, DateTimeOffset? OccurredAt);
+
+public sealed record EmailEventsRequest(IReadOnlyList<EmailEvent>? Events);
+
+public sealed record EmailEventsResponse(int Applied, int Skipped);

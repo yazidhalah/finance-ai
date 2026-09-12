@@ -20,6 +20,7 @@ import { InboxPage } from './pages/Inbox'
 import { TodayPage } from './pages/Today'
 import { AcceptInvitationPage } from './pages/Members'
 import { AuditPage } from './pages/Audit'
+import { VerifyEmailPage } from './pages/EmailSettings'
 import { ForgotPasswordPage, MfaEnrolment, ResetPasswordPage } from './pages/Security'
 import { RegisterOrganization } from './pages/RegisterOrganization'
 import { SignIn } from './pages/SignIn'
@@ -30,6 +31,7 @@ type Screen =
   | { kind: 'acceptInvitation' }
   | { kind: 'forgotPassword' }
   | { kind: 'resetPassword' }
+  | { kind: 'verifyEmail' }
   | { kind: 'organization' }
   | { kind: 'customers' }
   | { kind: 'customer'; id: string | null }
@@ -60,6 +62,7 @@ type Screen =
 function screenFromPath(path: string): Screen {
   if (path.startsWith('/accept-invitation')) return { kind: 'acceptInvitation' }
   if (path.startsWith('/reset-password')) return { kind: 'resetPassword' }
+  if (path.startsWith('/verify-email')) return { kind: 'verifyEmail' }
   if (path.startsWith('/forgot-password')) return { kind: 'forgotPassword' }
   const customer = /^\/customers\/(new|[0-9a-f-]{36})$/i.exec(path)
   if (customer) return { kind: 'customer', id: customer[1] === 'new' ? null : customer[1]! }
@@ -136,6 +139,8 @@ function Routes() {
       <ForgotPasswordPage onSignIn={() => { window.history.replaceState(null, '', '/'); setScreen({ kind: 'signIn' }) }} />
     ) : screen.kind === 'resetPassword' ? (
       <ResetPasswordPage onSignIn={() => { window.history.replaceState(null, '', '/'); setScreen({ kind: 'signIn' }) }} />
+    ) : screen.kind === 'verifyEmail' ? (
+      <VerifyEmailPage onSignIn={() => { window.history.replaceState(null, '', '/'); setScreen({ kind: 'signIn' }) }} />
     ) : (
       <SignIn onRegister={() => setScreen({ kind: 'register' })} onForgot={() => setScreen({ kind: 'forgotPassword' })} />
     )

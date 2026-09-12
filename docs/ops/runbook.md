@@ -43,6 +43,8 @@ it). Use `--profile tls` with a public `DOMAIN`, or put your own TLS edge in fro
 | `AI_SERVICE_TOKEN` | the API → AI service call (AI-101) | `openssl rand -hex 24` |
 | `WEB_ORIGINS` | which origins the API accepts (SEC-62) — set to the public URL, e.g. `https://ar.example.jo` | — |
 | `DOMAIN` | the `tls` profile's certificate subject | — |
+| `STACK_SMTP_HOST` / `SMTP_PORT` | the relay the stack's API sends through (`mailpit` inside the stack by default — replace with the real relay before pilot; SEC-84 SPF/DKIM on its domain) | — |
+| `EMAIL_WEBHOOK_SECRET` | the MTA's signed delivery/bounce events (`POST /api/v1/webhooks/email-events`, `X-Signature: sha256=…`) | `openssl rand -hex 32` |
 
 Never paste any of these into a ticket, a log line or a chat. The API refuses to start without the signing key; the
 AI service refuses to start without a token of ≥ 16 characters.
@@ -139,7 +141,19 @@ acknowledging on the Audit screen marks it handled and is audited.
 
 The two script alerts go to the webhook only (they run where there is no API); their stderr is in cron's mail.
 
-## 7. Symptoms → first look
+## 7. One-time step when deploying slice 24
+
+Registration now requires the address to be verified before the first sign-in. Accounts that registered earlier were
+trusted without it; mark them once, as the superuser, so nobody is locked out:
+
+```
+UPDATE users SET email_verified_at = now() WHERE email_verified_at IS NULL AND created_at < '<the deploy timestamp>';
+```
+
+Accounts created afterwards verify through the mail; a lost link is recovered through "Forgot password", which
+verifies the address on completion.
+
+## 8. Symptoms → first look
 
 | Symptom | Look at |
 |---------|---------|
@@ -149,4 +163,6 @@ The two script alerts go to the webhook only (they run where there is no API); t
 | `ai_unavailable` everywhere | `stack.sh --profile full ps` — `ollama-pull` must have exited 0 (the model is ~2.5 GB); `logs ai` |
 | Briefing has metrics but no narrative | expected when the guard rejects a numeral (`rejected_by_guard` in the AI suggestions list); no action |
 | `api` unhealthy after `migrate` | `logs migrate` — a migration failed; the API never starts against a half-migrated schema |
+| Sign-in answers `email_unverified` | the address never opened its verification link; the user can use "Forgot password" (verifies on completion), or the operator runs §7 for pre-slice-24 accounts |
+| Customer mail is not leaving | `GET /organization/outbound` (the switches), then `/organization/email-settings/test` for a tenant with its own SMTP; `smtp_host_not_allowed` means the host resolved to a private address (SEC-66) |
 | Browser gets 401 on everything after sign-in | the site is served over plain HTTP on a non-localhost host — the `Secure` cookie is dropped; use TLS |

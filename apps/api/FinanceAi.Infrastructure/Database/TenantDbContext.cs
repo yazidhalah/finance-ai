@@ -93,6 +93,10 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
 
     public DbSet<UserRecoveryCode> UserRecoveryCodes => this.Set<UserRecoveryCode>();
 
+    public DbSet<EmailVerificationToken> EmailVerificationTokens => this.Set<EmailVerificationToken>();
+
+    public DbSet<TenantEmailSettings> TenantEmailSettings => this.Set<TenantEmailSettings>();
+
     public DbSet<PasswordResetToken> PasswordResetTokens => this.Set<PasswordResetToken>();
 
     public override int SaveChanges()
@@ -332,6 +336,8 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.UpdatedBy).HasColumnName("updated_by");
             e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
             e.Property(x => x.DeletedAt).HasColumnName("deleted_at");
+            e.Property(x => x.MergedIntoId).HasColumnName("merged_into_id");
+            e.Property(x => x.MergedAt).HasColumnName("merged_at");
         });
 
     private static void ConfigureCustomerContacts(ModelBuilder model) =>
@@ -860,6 +866,8 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             e.Property(x => x.QueuedAt).HasColumnName("queued_at");
             e.Property(x => x.SentBy).HasColumnName("sent_by");
             e.Property(x => x.SentAt).HasColumnName("sent_at");
+            e.Property(x => x.DeliveredAt).HasColumnName("delivered_at");
+            e.Property(x => x.BounceReason).HasColumnName("bounce_reason");
             e.Property(x => x.Attempts).HasColumnName("attempts");
             e.Property(x => x.NextAttemptAt).HasColumnName("next_attempt_at");
             e.Property(x => x.ProviderMessageId).HasColumnName("provider_message_id");
@@ -993,6 +1001,35 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
 
     private static void ConfigureOps(ModelBuilder model)
     {
+        model.Entity<EmailVerificationToken>(e =>
+        {
+            e.ToTable("email_verification_tokens");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.UserId).HasColumnName("user_id");
+            e.Property(x => x.TokenHash).HasColumnName("token_hash");
+            e.Property(x => x.ExpiresAt).HasColumnName("expires_at");
+            e.Property(x => x.UsedAt).HasColumnName("used_at");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+        });
+
+        model.Entity<TenantEmailSettings>(e =>
+        {
+            e.ToTable("tenant_email_settings");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TenantId).HasColumnName("tenant_id");
+            e.Property(x => x.SmtpHost).HasColumnName("smtp_host");
+            e.Property(x => x.SmtpPort).HasColumnName("smtp_port");
+            e.Property(x => x.SmtpTls).HasColumnName("smtp_tls");
+            e.Property(x => x.SmtpUsername).HasColumnName("smtp_username");
+            e.Property(x => x.SmtpPasswordEnc).HasColumnName("smtp_password_enc");
+            e.Property(x => x.FromAddress).HasColumnName("from_address");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.Property(x => x.UpdatedBy).HasColumnName("updated_by");
+            e.Property(x => x.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
+        });
+
         model.Entity<InvariantRun>(e =>
         {
             e.ToTable("invariant_runs");

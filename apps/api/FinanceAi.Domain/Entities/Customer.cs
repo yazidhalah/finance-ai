@@ -61,6 +61,11 @@ public sealed class Customer : ITenantScoped
     /// <summary>DM-08: customers are soft-deleted, never removed. Financial history survives.</summary>
     public DateTimeOffset? DeletedAt { get; set; }
 
+    /// <summary>DM-21 (slice 23): set on the merged-away row, which is retained; the survivor's id.</summary>
+    public Guid? MergedIntoId { get; set; }
+
+    public DateTimeOffset? MergedAt { get; set; }
+
     public bool HasAName => !string.IsNullOrWhiteSpace(this.NameAr) || !string.IsNullOrWhiteSpace(this.NameEn);
 }
 
