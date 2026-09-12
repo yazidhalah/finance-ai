@@ -37,3 +37,18 @@ built two of the budgets on a one-tenant seed and flagged the rest. PR #32 fixed
 
 Single API P95 11 ms (min 5, max 110, 40 reads) · import of 5,000 rows 4.8 s (upload 0.2, mapping 1.2, commit 3.5) ·
 T-142 at 30 s: 3,999 requests (133/s), 0 errors, P95 39 ms, windows flat (68/31/33/32/32 ms).
+
+## 5. Runner baseline (2026-09-12, hosted ubuntu-24.04, run 34686449891, main `c052219`)
+
+| Test | Figure |
+|------|--------|
+| Aging P95 at 50k (three tenants, 31 % share) | **375 ms** (min 344, max 410); bitmap heap scan on `tenant_id` |
+| Queue P95 at 5,000 cases | **20 ms** (min 17, max 21) |
+| Single API P95 at 50k | **8 ms** (min 7, max 51, 40 reads) |
+| Import of 5,000 rows | **5.0 s** (upload 0.1, mapping 1.2, commit 3.7) |
+| T-142, 20 users × 600 s | **79,484 requests (132.5/s), 0 errors, P95 79 ms**; windows 94 / 76 / 76 / 77 / 79 ms (max 678 → 183 ms); statuses 200 × 79,484 |
+
+The first window's higher max is warm-up on a cold runner; from the second window on the profile is flat. Every
+budget of doc 09 §7 that the integration suite can judge holds on the shared runner; the host's figures are the ones
+the acceptance pass records.
+
