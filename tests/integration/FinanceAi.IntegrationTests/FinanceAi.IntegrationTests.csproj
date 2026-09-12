@@ -19,6 +19,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- T-52: the golden ledger's checked-in expected values travel with the test binary. -->
+    <None Include="Golden\golden-ledger.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\support\FinanceAi.TestSupport\FinanceAi.TestSupport.csproj" />
     <ProjectReference Include="..\..\..\apps\api\FinanceAi.Api\FinanceAi.Api.csproj" />
     <ProjectReference Include="..\..\..\apps\api\FinanceAi.Infrastructure\FinanceAi.Infrastructure.csproj" />

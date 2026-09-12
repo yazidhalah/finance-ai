@@ -80,6 +80,25 @@ public static class DirectSeeder
         return result is null or DBNull ? default : (T)result;
     }
 
+    /// <summary>Reads two-column rows as the superuser (a key and a count, typically).</summary>
+    public static async IAsyncEnumerable<(TKey Key, TValue Value)> RowsAsync<TKey, TValue>(this DatabaseFixture fixture, string sql, params (string Name, object Value)[] parameters)
+    {
+        ArgumentNullException.ThrowIfNull(fixture);
+
+        await using var connection = fixture.OpenAdmin();
+        await using var command = new NpgsqlCommand(sql, connection);
+        foreach (var (name, value) in parameters ?? [])
+        {
+            command.Parameters.AddWithValue(name, value);
+        }
+
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            yield return ((TKey)reader.GetValue(0), (TValue)reader.GetValue(1));
+        }
+    }
+
     /// <summary>Runs a statement as the superuser — for seeding and for corrupting state on purpose.</summary>
     public static async Task<int> ExecuteAsync(this DatabaseFixture fixture, string sql, params (string Name, object Value)[] parameters)
     {

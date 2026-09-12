@@ -1,0 +1,309 @@
+{
+  "seed": 52,
+  "aging": {
+    "baseCurrencyTotal": "1801352.513",
+    "currencies": [
+      {
+        "currency": "JOD",
+        "total": "1639262.156",
+        "invoiceCount": 666,
+        "unappliedCash": "0.000",
+        "unappliedCredit": "0.000",
+        "buckets": [
+          {
+            "bucket": "Current",
+            "amount": "514336.041",
+            "invoiceCount": 174
+          },
+          {
+            "bucket": "Days1To30",
+            "amount": "151976.477",
+            "invoiceCount": 54
+          },
+          {
+            "bucket": "Days31To60",
+            "amount": "110451.089",
+            "invoiceCount": 48
+          },
+          {
+            "bucket": "Days61To90",
+            "amount": "121442.901",
+            "invoiceCount": 54
+          },
+          {
+            "bucket": "Days90Plus",
+            "amount": "741055.648",
+            "invoiceCount": 336
+          }
+        ],
+        "customers": [
+          {
+            "code": "GOLD-01",
+            "total": "43945.816",
+            "invoiceCount": 19
+          },
+          {
+            "code": "GOLD-02",
+            "total": "41515.062",
+            "invoiceCount": 17
+          },
+          {
+            "code": "GOLD-03",
+            "total": "52904.824",
+            "invoiceCount": 22
+          },
+          {
+            "code": "GOLD-04",
+            "total": "36633.184",
+            "invoiceCount": 17
+          },
+          {
+            "code": "GOLD-05",
+            "total": "31349.788",
+            "invoiceCount": 17
+          },
+          {
+            "code": "GOLD-06",
+            "total": "56576.751",
+            "invoiceCount": 18
+          },
+          {
+            "code": "GOLD-08",
+            "total": "50660.158",
+            "invoiceCount": 21
+          },
+          {
+            "code": "GOLD-09",
+            "total": "30764.640",
+            "invoiceCount": 16
+          },
+          {
+            "code": "GOLD-10",
+            "total": "57788.201",
+            "invoiceCount": 25
+          },
+          {
+            "code": "GOLD-11",
+            "total": "49748.101",
+            "invoiceCount": 17
+          },
+          {
+            "code": "GOLD-12",
+            "total": "33461.552",
+            "invoiceCount": 16
+          },
+          {
+            "code": "GOLD-13",
+            "total": "86702.962",
+            "invoiceCount": 32
+          },
+          {
+            "code": "GOLD-15",
+            "total": "25652.115",
+            "invoiceCount": 10
+          },
+          {
+            "code": "GOLD-16",
+            "total": "43758.313",
+            "invoiceCount": 19
+          },
+          {
+            "code": "GOLD-17",
+            "total": "41631.205",
+            "invoiceCount": 15
+          },
+          {
+            "code": "GOLD-18",
+            "total": "69779.421",
+            "invoiceCount": 22
+          },
+          {
+            "code": "GOLD-19",
+            "total": "40803.423",
+            "invoiceCount": 17
+          },
+          {
+            "code": "GOLD-20",
+            "total": "37545.054",
+            "invoiceCount": 18
+          },
+          {
+            "code": "GOLD-22",
+            "total": "36692.237",
+            "invoiceCount": 14
+          },
+          {
+            "code": "GOLD-23",
+            "total": "59953.494",
+            "invoiceCount": 23
+          },
+          {
+            "code": "GOLD-24",
+            "total": "50078.204",
+            "invoiceCount": 19
+          },
+          {
+            "code": "GOLD-25",
+            "total": "54929.968",
+            "invoiceCount": 22
+          },
+          {
+            "code": "GOLD-26",
+            "total": "47363.309",
+            "invoiceCount": 20
+          },
+          {
+            "code": "GOLD-27",
+            "total": "47276.216",
+            "invoiceCount": 25
+          },
+          {
+            "code": "GOLD-29",
+            "total": "48752.194",
+            "invoiceCount": 16
+          },
+          {
+            "code": "GOLD-30",
+            "total": "35580.002",
+            "invoiceCount": 16
+          },
+          {
+            "code": "GOLD-31",
+            "total": "31579.888",
+            "invoiceCount": 18
+          },
+          {
+            "code": "GOLD-32",
+            "total": "65731.195",
+            "invoiceCount": 26
+          },
+          {
+            "code": "GOLD-33",
+            "total": "79358.995",
+            "invoiceCount": 27
+          },
+          {
+            "code": "GOLD-34",
+            "total": "47292.825",
+            "invoiceCount": 19
+          },
+          {
+            "code": "GOLD-36",
+            "total": "40898.586",
+            "invoiceCount": 20
+          },
+          {
+            "code": "GOLD-37",
+            "total": "32681.089",
+            "invoiceCount": 13
+          },
+          {
+            "code": "GOLD-38",
+            "total": "50617.059",
+            "invoiceCount": 18
+          },
+          {
+            "code": "GOLD-39",
+            "total": "40311.041",
+            "invoiceCount": 19
+          },
+          {
+            "code": "GOLD-40",
+            "total": "38945.284",
+            "invoiceCount": 13
+          }
+        ]
+      },
+      {
+        "currency": "USD",
+        "total": "228618.270",
+        "invoiceCount": 110,
+        "unappliedCash": "0.000",
+        "unappliedCredit": "0.000",
+        "buckets": [
+          {
+            "bucket": "Current",
+            "amount": "72092.022",
+            "invoiceCount": 31
+          },
+          {
+            "bucket": "Days1To30",
+            "amount": "10620.943",
+            "invoiceCount": 7
+          },
+          {
+            "bucket": "Days31To60",
+            "amount": "29028.906",
+            "invoiceCount": 11
+          },
+          {
+            "bucket": "Days61To90",
+            "amount": "21127.971",
+            "invoiceCount": 10
+          },
+          {
+            "bucket": "Days90Plus",
+            "amount": "95748.428",
+            "invoiceCount": 51
+          }
+        ],
+        "customers": [
+          {
+            "code": "GOLD-07",
+            "total": "44519.421",
+            "invoiceCount": 22
+          },
+          {
+            "code": "GOLD-14",
+            "total": "50157.549",
+            "invoiceCount": 23
+          },
+          {
+            "code": "GOLD-21",
+            "total": "47241.314",
+            "invoiceCount": 23
+          },
+          {
+            "code": "GOLD-28",
+            "total": "45944.499",
+            "invoiceCount": 23
+          },
+          {
+            "code": "GOLD-35",
+            "total": "40755.487",
+            "invoiceCount": 19
+          }
+        ]
+      }
+    ]
+  },
+  "invoiceStatusCounts": {
+    "Open": 776,
+    "Settled": 1224
+  },
+  "reconciliation": {
+    "invoicesChecked": 2000,
+    "mismatches": 0
+  },
+  "invariants": "ok",
+  "auditEventCounts": {
+    "allocation.recorded": 1617,
+    "allocation.reversed": 40,
+    "auth.login_succeeded": 1,
+    "briefing.generated": 2,
+    "collection_case.status_changed": 40,
+    "collection_case.sweep_run": 1,
+    "credit_note.applied": 64,
+    "credit_note.created": 64,
+    "customer.created": 41,
+    "import.committed": 1,
+    "import.mapped": 1,
+    "invoice.status_changed": 3292,
+    "membership.created": 1,
+    "payment.recorded": 1499,
+    "payment.status_changed": 37,
+    "tenant.created": 1,
+    "user.registered": 1,
+    "withholding.recorded": 143
+  }
+}
