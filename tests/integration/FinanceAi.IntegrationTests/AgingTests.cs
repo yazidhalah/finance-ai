@@ -359,7 +359,11 @@ public sealed class AgingTests(ApiTestFixture fixture, Xunit.Abstractions.ITestO
         Assert.Equal("100.000", mismatch.GetProperty("derived").GetProperty("amount").GetString());
     }
 
-    /// <summary>AC-16 / T-140 / PRD-22: 50k invoices, 100k allocation rows, one tenant, P95 under 800 ms.</summary>
+    /// <summary>
+    /// AC-16 / T-140 / PRD-22: 3 tenants × 50k invoices (the measured tenant also carries 100k allocation rows),
+    /// aging P95 under 800 ms for the measured tenant. The two neighbour tenants exist to give the planner a
+    /// table where no tenant is the majority — the shape T-140 names and T-141's index assertion assumes.
+    /// </summary>
     [Fact]
     [Trait("Category", "Performance")]
     public async Task Aging_P95_Under800ms_At50k()
@@ -367,15 +371,23 @@ public sealed class AgingTests(ApiTestFixture fixture, Xunit.Abstractions.ITestO
         var s = await fixture.Api.NewCustomerAsync("Big Co.");
         var tenant = s.Organization.TenantId;
         // Seeded as the superuser with the constraint triggers off: the point is the read path, not the writers.
-        await fixture.Database.ExecuteAsync(
-            """
-            ALTER TABLE payment_allocations DISABLE TRIGGER ALL;
+        // The neighbours get invoices only; they are never read, they make the measured tenant a third of the table.
+        const string seedInvoices = """
             INSERT INTO customers (id, tenant_id, code, name_en, payment_terms_days)
             SELECT gen_random_uuid(), @t, 'PERF-' || g, 'Perf customer ' || g, 30 FROM generate_series(1, 200) g;
             INSERT INTO invoices (id, tenant_id, customer_id, invoice_number, status, issue_date, due_date, currency, net_amount, tax_amount, total_amount, balance_cache, base_currency)
             SELECT gen_random_uuid(), @t, c.id, 'PERF-' || c.code || '-' || g, 'Open',
                    date '2026-09-11' - (g % 400), date '2026-09-11' - (g % 400) + 30, 'JOD', 1000, 160, 1160, 1160, 'JOD'
             FROM customers c CROSS JOIN generate_series(1, 250) g WHERE c.tenant_id = @t AND c.code LIKE 'PERF-%';
+            """;
+        foreach (var neighbour in new[] { await fixture.Api.CreateOrganizationAsync("Neighbour A"), await fixture.Api.CreateOrganizationAsync("Neighbour B") })
+        {
+            await fixture.Database.ExecuteAsync(seedInvoices, ("t", neighbour.TenantId));
+        }
+
+        await fixture.Database.ExecuteAsync(
+            "ALTER TABLE payment_allocations DISABLE TRIGGER ALL;\n" + seedInvoices +
+            """
             INSERT INTO payments (id, tenant_id, customer_id, amount, currency, method, received_date, effective_date, status)
             SELECT gen_random_uuid(), @t, c.id, 100000000, 'JOD', 'BankTransfer', date '2026-01-01', date '2026-01-01', 'Confirmed'
             FROM customers c WHERE c.tenant_id = @t AND c.code LIKE 'PERF-%';
@@ -389,6 +401,7 @@ public sealed class AgingTests(ApiTestFixture fixture, Xunit.Abstractions.ITestO
             ANALYZE invoices; ANALYZE payment_allocations;
             """, ("t", tenant));
         Assert.Equal(50_000L, await fixture.Database.ScalarAsync<long>("SELECT count(*) FROM invoices WHERE tenant_id = @t", ("t", tenant)));
+        Assert.True(await fixture.Database.ScalarAsync<long>("SELECT count(*) FROM invoices") >= 150_000L, "T-140 seeds three tenants × 50k invoices");
 
         var timings = new List<double>();
         for (var i = 0; i < 20; i++)
@@ -406,25 +419,29 @@ public sealed class AgingTests(ApiTestFixture fixture, Xunit.Abstractions.ITestO
 
         // T-141 (slice 16): the plans behind the two hot reads at 50k rows. fn_aging is LANGUAGE sql and inlinable,
         // so EXPLAIN shows the real plan, not a function scan. The sweep's candidate query, asked for the old tail of
-        // the ledger (a selective cutoff — the seed makes every invoice overdue), must hit the partial index. The aging read touches a tenant's whole ledger: when that tenant is most of the table
-        // (as here, one 50k tenant in a test database) a sequential scan filtered on tenant_id is the planner's
-        // correct choice; when the tenant is a minority the scan must be an index scan keyed on tenant_id.
+        // the ledger (a selective cutoff — the seed makes every invoice overdue), must hit the partial index. The
+        // aging read touches a tenant's whole ledger: when that tenant is most of the table a sequential scan
+        // filtered on tenant_id is the planner's correct choice; when the tenant is not the majority (the
+        // three-tenant seed puts it at a third) the scan must be keyed on tenant_id through an index — at a third
+        // the planner chooses a bitmap heap scan on the tenant key.
         var share = await fixture.Database.ScalarAsync<double>("SELECT (SELECT count(*) FROM invoices WHERE tenant_id = @t)::float / greatest((SELECT count(*) FROM invoices), 1)", ("t", tenant));
         var agingPlan = await fixture.Database.ScalarAsync<string>(
             "EXPLAIN (FORMAT JSON) SELECT * FROM fn_aging(@t, date '2026-09-11', 'due_date', 'Asia/Amman')", ("t", tenant));
-        AssertInvoiceScanIsTenantScoped(agingPlan!, "fn_aging", requireIndex: share < 0.2);
+        var agingScans = AssertInvoiceScanIsTenantScoped(agingPlan!, "fn_aging", requireIndex: share < 0.5);
         var sweepPlan = await fixture.Database.ScalarAsync<string>(
             "EXPLAIN (FORMAT JSON) SELECT DISTINCT customer_id FROM invoices WHERE tenant_id = @t AND status = 'Open' AND balance_cache > 0 AND due_date < date '2025-09-20'", ("t", tenant));
-        AssertInvoiceScanIsTenantScoped(sweepPlan!, "the sweep's overdue candidates", requireIndex: true);
-        output.WriteLine($"T-141: invoice scans are tenant-scoped (tenant share of the table {share:P0}; index required for the sweep, {(share < 0.2 ? "and" : "not")} for aging)");
+        var sweepScans = AssertInvoiceScanIsTenantScoped(sweepPlan!, "the sweep's overdue candidates", requireIndex: true);
+        output.WriteLine($"T-141: invoice scans are tenant-scoped (tenant share of the table {share:P0}; index required for the sweep, {(share < 0.5 ? "and" : "not")} for aging)");
+        output.WriteLine($"T-141 plans: aging → {agingScans}; sweep → {sweepScans}");
     }
 
     /// <summary>
-    /// T-141: walks an EXPLAIN (FORMAT JSON) tree. Every scan of <c>invoices</c> must be an index scan keyed on the
-    /// tenant, or — only when allowed — a sequential scan whose filter names <c>tenant_id</c>. An unfiltered scan, or
-    /// a sequential scan where an index was required, fails.
+    /// T-141: walks an EXPLAIN (FORMAT JSON) tree. Every scan of <c>invoices</c> must be keyed on the tenant through
+    /// an index (an index scan, or a bitmap heap scan whose recheck condition names <c>tenant_id</c>), or — only
+    /// when allowed — a sequential scan whose filter names <c>tenant_id</c>. An unfiltered scan, or a sequential
+    /// scan where an index was required, fails.
     /// </summary>
-    private static void AssertInvoiceScanIsTenantScoped(string planJson, string what, bool requireIndex)
+    private static string AssertInvoiceScanIsTenantScoped(string planJson, string what, bool requireIndex)
     {
         using var doc = JsonDocument.Parse(planJson);
         var scans = new List<(string Type, string Detail)>();
@@ -434,7 +451,8 @@ public sealed class AgingTests(ApiTestFixture fixture, Xunit.Abstractions.ITestO
             if (node.ValueKind != JsonValueKind.Object) return;
             if (node.TryGetProperty("Relation Name", out var rel) && rel.GetString() == "invoices" && node.TryGetProperty("Node Type", out var type))
             {
-                var cond = node.TryGetProperty("Index Cond", out var ic) ? ic.GetString() ?? string.Empty : string.Empty;
+                var cond = node.TryGetProperty("Index Cond", out var ic) ? ic.GetString() ?? string.Empty
+                    : node.TryGetProperty("Recheck Cond", out var rc) ? rc.GetString() ?? string.Empty : string.Empty;
                 var filter = node.TryGetProperty("Filter", out var f) ? f.GetString() ?? string.Empty : string.Empty;
                 var index = node.TryGetProperty("Index Name", out var iname) ? iname.GetString() ?? string.Empty : string.Empty;
                 scans.Add((type.GetString()!, $"index={index} cond=[{cond}] filter=[{filter}]"));
@@ -447,10 +465,14 @@ public sealed class AgingTests(ApiTestFixture fixture, Xunit.Abstractions.ITestO
         Assert.True(scans.Count > 0, $"{what}: the plan never reads invoices? {planJson}");
         foreach (var (type, detail) in scans)
         {
-            var isIndex = type.Contains("Index", StringComparison.Ordinal) && detail.Contains("tenant_id", StringComparison.Ordinal);
+            // A bitmap heap scan is index-driven: its Bitmap Index Scan child carries the index and its recheck condition the key.
+            var isIndex = (type.Contains("Index", StringComparison.Ordinal) || type == "Bitmap Heap Scan")
+                && detail[..detail.IndexOf(" filter=", StringComparison.Ordinal)].Contains("tenant_id", StringComparison.Ordinal);
             var isFilteredSeq = type == "Seq Scan" && detail.Contains("tenant_id", StringComparison.Ordinal);
             Assert.True(isIndex || (!requireIndex && isFilteredSeq),
                 $"{what}: {type} on invoices is not tenant-scoped the way T-141 requires ({detail}); index required: {requireIndex}. Plan: {planJson}");
         }
+
+        return string.Join(" | ", scans.Select(scan => $"{scan.Type} ({scan.Detail})"));
     }
 }
