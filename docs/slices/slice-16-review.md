@@ -42,7 +42,7 @@ None.
 | OpenAPI snapshot | a new/removed route, a changed route template or parameter, a changed request body type, a changed permission or access level, MFA/re-auth metadata | `Document_MatchesTheCheckedInSnapshot` (diff on mismatch, `UPDATE_OPENAPI=1` to accept) |
 | gitleaks | any secret in any commit of the history; staged secrets locally | clean run over 30 commits; a planted GitHub token and a private key detected (AC-03, 2026-09-11) |
 | notices check | a direct dependency (NuGet, npm, pip, container image) absent from the notices; a declared licence outside the allowlist; MPL-2.0 without a **Flagged** row | `--self-test` runs all three failure modes in CI before the real check |
-| nightly | aging and queue P95 at 50k rows; invoice scans that are not tenant-scoped | `Aging_P95_Under800ms_At50k` (267 ms locally), `Queue_P95_Under800ms` (34 ms); T-141 assertions |
+| nightly | aging and queue P95 at 50k rows; invoice scans that are not tenant-scoped | `Aging_P95_Under800ms_At50k` (267 ms locally), `Queue_P95_Under800ms` (34 ms); T-141 assertions. **Runner baseline** (2026-09-12, ubuntu-24.04 hosted, three-tenant seed, run 34683368263): aging P95 293 ms (min 227, max 367), queue P95 61 ms (min 15, max 158); aging → bitmap heap scan on `tenant_id`, sweep → `invoices_aging_idx` |
 
 ## Flagged, in one place
 
