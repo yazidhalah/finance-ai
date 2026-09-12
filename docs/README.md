@@ -40,6 +40,7 @@ Doc 04 has been amended by slice 1 (DM-06, DM-06a, DM-06b), slice 2 (DM-20a), sl
 | 29 | [slices/slice-29-golden-tenant.md](slices/slice-29-golden-tenant.md) · [review](slices/slice-29-review.md) | T-52: the golden tenant — 2,000 invoices and a scripted year from seed 52, compared against a checked-in ledger file |
 | 30 | [slices/slice-30-corpus-loop-and-determinism.md](slices/slice-30-corpus-loop-and-determinism.md) · [review](slices/slice-30-review.md) | T-109 corpus proposals from human corrections (consent-gated command); T-107 determinism check in the evaluation harness |
 | 31 | [slices/slice-31-data-lifecycle-1.md](slices/slice-31-data-lifecycle-1.md) · [review](slices/slice-31-review.md) | Doc 08 §8 begins: customer erasure under re-authentication (SEC-93, migration 0021, route pin 161); backups encrypted at rest and restores recorded on every audit chain (SEC-94) |
+| 32 | [slices/slice-32-sweep-scheduler.md](slices/slice-32-sweep-scheduler.md) · [review](slices/slice-32-review.md) | The daily job runs itself: `SweepScheduler` in the API sweeps every active tenant per `SWEEP_INTERVAL_MINUTES` (closes slice 5 D-2) |
 
 **Open questions still outstanding.** Q-01, Q-02, Q-04 and Q-06 in document 00 remain unanswered.
 Slices 1–10 proceeded on the documented defaults (A-01…A-05, A-11, A-12). **Slice 3b built E1 on a

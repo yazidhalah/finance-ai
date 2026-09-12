@@ -164,6 +164,8 @@ public static class ApiServiceRegistration
         services.AddScoped<FinanceAi.Infrastructure.Ledger.BalanceReconciliation>();
         services.AddScoped<FinanceAi.Infrastructure.Reports.AgingService>();
         services.AddScoped<FinanceAi.Infrastructure.Cases.CaseService>();
+        services.AddSingleton<FinanceAi.Infrastructure.Cases.SweepRunner>();
+        services.AddHostedService<FinanceAi.Api.Jobs.SweepScheduler>();   // slice 32: the daily job runs itself
         services.AddScoped<FinanceAi.Infrastructure.Cases.ICaseHooks>(sp => sp.GetRequiredService<FinanceAi.Infrastructure.Cases.CaseService>());
         services.AddScoped<FinanceAi.Infrastructure.Cases.PromiseService>();
         services.AddScoped<FinanceAi.Infrastructure.Cases.IPromiseHooks>(sp => sp.GetRequiredService<FinanceAi.Infrastructure.Cases.PromiseService>());
