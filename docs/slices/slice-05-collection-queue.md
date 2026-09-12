@@ -96,7 +96,7 @@ All through `TenantScopeMiddleware`; none anonymous. The route count pin moves f
 | # | Decision | Why |
 |---|----------|-----|
 | D-1 | Weights are versioned constants in code; the tenant selects a version | FIN-81 needs reproducibility, which a version number gives; per-tenant weight values would need a table and an editor no persona has asked for. |
-| D-2 | The sweep is an endpoint (`POST /cases/sweep`) until a scheduler exists | No background worker yet; the job is idempotent so an operator or a cron calling it is safe. |
+| D-2 | The sweep is an endpoint (`POST /cases/sweep`) until a scheduler exists | No background worker yet; the job is idempotent so an operator or a cron calling it is safe. *Closed in slice 32: the API schedules it (`SWEEP_INTERVAL_MINUTES`); the endpoint stays for on-demand runs.* |
 | D-3 | Each score contribution is rounded to an integer before summing | Makes "breakdown sums to score" true by construction rather than by tolerance. |
 | D-4 | `case_number` is allocated under a per-tenant advisory lock and protected by a unique index | Human-friendly, gap-free enough, and a race produces a constraint error, never a duplicate. |
 | D-5 | `case_invoices.removed_at` marks an invoice leaving scope; rows are never deleted | The timeline can say "INV-7 settled on the 12th"; no DELETE grant, like the ledger. |

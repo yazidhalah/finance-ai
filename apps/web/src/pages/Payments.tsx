@@ -149,16 +149,19 @@ export function AllocationScreen({ payment, onChanged, onClose }: { payment: Pay
   const [problem, setProblem] = useState<Problem | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
+  // Keyed on the permission's value, not on `can` itself: the session object is replaced on every silent token refresh,
+  // and a refetch mid-edit would reset the amounts under the user's fingers.
+  const mayAllocate = can('payments.allocate')
   useEffect(() => {
     void (async () => {
       try {
-        const [open, prop] = await Promise.all([ledgerApi.invoicesOf(payment.customerId), can('payments.allocate') ? ledgerApi.proposal(payment.id) : Promise.resolve(null)])
+        const [open, prop] = await Promise.all([ledgerApi.invoicesOf(payment.customerId), mayAllocate ? ledgerApi.proposal(payment.id) : Promise.resolve(null)])
         setInvoices(open.items.filter((i) => i.currency === payment.currency))
         setProposal(prop)
         setLines(Object.fromEntries((prop?.lines ?? []).map((l) => [l.invoiceId, l.proposed.amount])))
       } catch (e) { setProblem(toProblem(e)) }
     })()
-  }, [payment.id, payment.customerId, payment.currency, can])
+  }, [payment.id, payment.customerId, payment.currency, mayAllocate])
 
   async function confirm() {
     setBusy(true); setProblem(null); setFieldErrors({})
