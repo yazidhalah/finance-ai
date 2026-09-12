@@ -98,6 +98,9 @@ Every row of doc 05 is now implemented. Slice 25 bundled the SEC-01 breached-pas
 ≥ 12 chars) and made a bounce mark the contact (`contact_email_bounced` until the address is edited; 0019).
 Slice 26 added the per-operation AI switches doc 05 names (`aiClassificationEnabled`, `aiBriefingEnabled`; 0020) —
 `aiEnabled` stays the kill switch, an operation runs only when both are on (T-105 for the pilot).
+Slice 27 completed doc 09 §7: the T-140 dataset is three tenants, the single-entity and 5,000-row-import budgets
+are asserted, and T-142 (20 members, ten minutes on the nightly via `LOAD_PROFILE_SECONDS`, no error-rate increase)
+runs alongside.
 What remains before the First Product is "done" is the
 v1 acceptance pass on a pilot corpus and real hardware (doc 09 §5 AI gates are indicative on the
 author-written corpus; Arabic narrative quality needs a native reviewer; T-140 runs nightly on a shared

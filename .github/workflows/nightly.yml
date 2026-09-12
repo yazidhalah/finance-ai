@@ -37,7 +37,9 @@ jobs:
           sed -i "s|^AI_SERVICE_TOKEN=.*|AI_SERVICE_TOKEN=$(openssl rand -hex 24)|" .env
           sed -i "s|^MFA_KEK_BASE64=.*|MFA_KEK_BASE64=$(openssl rand -base64 32)|" .env
       - run: dotnet build --configuration Release
+      # T-142 runs the specified ten minutes here (locally the test defaults to one).
       - run: dotnet test tests/integration/FinanceAi.IntegrationTests --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=detailed"
+        env: { LOAD_PROFILE_SECONDS: "600" }
       # SEC-102: a failed nightly pages through the same webhook as the product's alerts, when the repository has the secret.
       - name: Alert on failure
         if: failure()

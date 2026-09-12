@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -8,7 +9,7 @@ namespace FinanceAi.IntegrationTests;
 
 /// <summary>Slice 3 AC-01 … AC-14, AC-17, AC-18, AC-22 … AC-24. Every test creates its own organization.</summary>
 [Collection(ApiCollection.Name)]
-public sealed class ImportTests(ApiTestFixture fixture)
+public sealed class ImportTests(ApiTestFixture fixture, Xunit.Abstractions.ITestOutputHelper output)
 {
     private static readonly Dictionary<string, string> StandardMap = new()
     {
@@ -524,6 +525,40 @@ public sealed class ImportTests(ApiTestFixture fixture)
         var response = await client.PostAsJsonAsync("/api/v1/customers", body, ApiScenario.Json);
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<JsonElement>(ApiScenario.Json)).GetProperty("id").GetGuid();
+    }
+
+    /// <summary>T-140 / PRD-22: a 5,000-row CSV — upload, mapping (with its per-row validation and customer matching) and commit — in under 60 s.</summary>
+    [Fact]
+    [Trait("Category", "Performance")]
+    public async Task Import_5000Rows_Under60s()
+    {
+        var org = await fixture.Api.CreateOrganizationAsync();
+        using var client = fixture.Api.AuthenticatedClient(org.OwnerSession);
+        await fixture.Database.ExecuteAsync(
+            """
+            INSERT INTO customers (id, tenant_id, code, name_en, payment_terms_days)
+            SELECT gen_random_uuid(), @t, 'IMP-' || g, 'Import customer ' || g, 30 FROM generate_series(1, 50) g;
+            """, ("t", org.TenantId));
+
+        var csv = new StringBuilder(Header).Append('\n');
+        for (var i = 1; i <= 5_000; i++)
+        {
+            csv.Append("PERF-").Append(i).Append(",Import customer ").Append(1 + i % 50).Append(",2026-09-01,2026-10-01,JOD,1000.000,160.000,1160.000,\n");
+        }
+
+        var watch = Stopwatch.StartNew();
+        var batchId = (await UploadAsync(client, "five-thousand.csv", csv.ToString())).GetProperty("id").GetGuid();
+        var uploaded = watch.Elapsed;
+        var mapped = await MapAsync(client, batchId, StandardMap);
+        var mappedAt = watch.Elapsed;
+        Assert.Equal(5_000, mapped.GetProperty("acceptedCount").GetInt32());
+        var commit = await client.PostAsync($"/api/v1/imports/{batchId}/commit", null);
+        watch.Stop();
+        Assert.Equal(HttpStatusCode.OK, commit.StatusCode);
+
+        Assert.Equal(5_000L, await fixture.Database.ScalarAsync<long>("SELECT count(*) FROM invoices WHERE tenant_id = @t AND invoice_number LIKE 'PERF-%'", ("t", org.TenantId)));
+        output.WriteLine($"import of 5,000 rows: {watch.Elapsed.TotalSeconds:F1} s total (upload {uploaded.TotalSeconds:F1} s, mapping {(mappedAt - uploaded).TotalSeconds:F1} s, commit {(watch.Elapsed - mappedAt).TotalSeconds:F1} s)");
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(60), $"import of 5,000 rows took {watch.Elapsed.TotalSeconds:F1} s");
     }
 
     private static Task<JsonElement> UploadAsync(HttpClient client, string name, string csv) => UploadAsync(client, name, Encoding.UTF8.GetBytes(csv));
